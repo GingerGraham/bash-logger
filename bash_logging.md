@@ -1,1 +1,239 @@
 # Bash Logging Module
+
+A flexible, reusable logging module for Bash scripts that provides standardized logging functionality with various configuration options.
+
+## Features
+
+- Multiple log levels (DEBUG, INFO, WARN, ERROR)
+- Console output with color-coding by severity
+- Optional file output
+- Customizable log format
+- UTC or local time support
+- Runtime configuration changes
+
+## Installation
+
+Simply place the `logging.sh` file in a directory of your choice.
+
+## Basic Usage
+
+```bash
+# Source the logging module
+source /path/to/logging.sh
+
+# Initialize the logger with defaults
+init_logger
+
+# Log messages at different levels
+log_debug "This is a debug message"
+log_info "This is an info message"
+log_warn "This is a warning message"
+log_error "This is an error message"
+```
+
+## Initialization Options
+
+The `init_logger` function accepts the following options:
+
+| Option | Description |
+|--------|-------------|
+| `-l, --log FILE` | Specify a log file to write logs to |
+| `-q, --quiet` | Disable console output |
+| `-v, --verbose` | Set log level to DEBUG (most verbose) |
+| `-d, --level LEVEL` | Set log level (DEBUG, INFO, WARN, ERROR or 0-3) |
+| `-f, --format FORMAT` | Set custom log format |
+| `-u, --utc` | Use UTC time instead of local time |
+
+Example:
+
+```bash
+# Initialize logger with file output and DEBUG level
+init_logger --log "/var/log/myscript.log" --level DEBUG
+```
+
+## Log Levels
+
+The module supports four log levels, from most to least verbose:
+
+| Level | Numeric Value | Function |
+|-------|---------------|----------|
+| DEBUG | 0 | `log_debug` |
+| INFO | 1 | `log_info` |
+| WARN | 2 | `log_warn` |
+| ERROR | 3 | `log_error` |
+
+Messages with a level lower than the current log level are suppressed.
+
+## Custom Log Format
+
+You can customize the log format using special placeholders:
+
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `%d` | Date and time | `2025-03-03 12:34:56` |
+| `%l` | Log level | `INFO` |
+| `%s` | Script name | `myscript.sh` |
+| `%m` | Log message | `Operation completed successfully` |
+| `%z` | Timezone | `UTC` or `LOCAL` |
+
+The default format is: `%d [%l] [%s] %m`
+
+Example of custom format:
+
+```bash
+init_logger --format "[%l] %d %z [%s] %m"
+```
+
+## Runtime Configuration
+
+You can change configuration at runtime using these functions:
+
+```bash
+# Change log level
+set_log_level DEBUG   # Set to DEBUG level
+set_log_level WARN    # Set to WARN level
+
+# Change timezone setting
+set_timezone_utc true   # Use UTC time
+set_timezone_utc false  # Use local time
+
+# Change log format
+set_log_format "[%l] %d [%s] - %m"
+```
+
+## Example Use Cases
+
+### Basic Script Logging
+
+```bash
+#!/bin/bash
+
+# Source the logging module
+source /path/to/logging.sh
+
+# Initialize with default settings
+init_logger
+
+log_info "Script starting"
+log_debug "Debug information" 
+# ... script operations ...
+log_warn "Warning: resource usage high"
+log_info "Script completed"
+```
+
+### Logging to File with Verbose Output
+
+```bash
+#!/bin/bash
+
+# Source the logging module
+source /path/to/logging.sh
+
+# Initialize with file output and verbose mode
+init_logger --log "/tmp/myapp.log" --verbose
+
+log_info "Application starting"
+log_debug "Configuration loaded" # This will be logged due to verbose mode
+# ... application operations ...
+log_info "Application completed"
+```
+
+### Changing Log Level Based on Command-line Arguments
+
+```bash
+#!/bin/bash
+
+# Source the logging module
+source /path/to/logging.sh
+
+# Basic initialization
+init_logger
+
+# Parse command line arguments
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    --debug)
+      set_log_level DEBUG
+      shift
+      ;;
+    # Other arguments...
+  esac
+done
+
+log_debug "Debug mode enabled"  # Only shows if --debug was passed
+log_info "Normal operation"
+```
+
+### Advanced Usage with Custom Format and UTC Time
+
+```bash
+#!/bin/bash
+
+# Source the logging module
+source /path/to/logging.sh
+
+# Initialize with custom format and UTC time
+init_logger --format "%d %z [%l] [%s] %m" --utc
+
+log_info "Starting processing job"
+
+# Later, change format for a specific part of the script
+set_log_format "[%l] %m"
+log_info "Using simplified format"
+
+# Return to original format
+set_log_format "%d %z [%l] [%s] %m"
+log_info "Back to detailed format"
+```
+
+### Logging in Functions
+
+```bash
+#!/bin/bash
+
+source /path/to/logging.sh
+init_logger --log "/var/log/myapp.log"
+
+function process_item() {
+  local item=$1
+  log_debug "Processing item: $item"
+  
+  # Processing logic...
+  if [[ "$item" == "important" ]]; then
+    log_info "Found important item"
+  fi
+  
+  # Error handling
+  if [[ "$?" -ne 0 ]]; then
+    log_error "Failed to process item: $item"
+    return 1
+  fi
+  
+  log_debug "Completed processing item: $item"
+  return 0
+}
+
+log_info "Starting batch processing"
+process_item "test"
+process_item "important"
+log_info "Batch processing complete"
+```
+
+## Exit Codes
+
+The `init_logger` function returns:
+- `0` on successful initialization
+- `1` on error (e.g., unable to create log file)
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. Ensure that `logging.sh` is sourced using the correct path
+2. Check write permissions if using file logging
+3. Verify log directory exists or can be created
+4. Ensure you're using valid log level names
+
+## License
+
+This module is provided under the [insert your license here].
