@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Path to logger module
-# LOGGER_PATH="${PARENT_DIR}/logging.sh" # logger is in the parent directory (example of an optional, alternative path)
-LOGGER_PATH="${SCRIPT_DIR}/logging.sh" # logger is in same directory as script
+LOGGER_PATH="${PARENT_DIR}/logging.sh" # logger is in the parent directory (example of an optional, alternative path)
+# LOGGER_PATH="${SCRIPT_DIR}/logging.sh" # logger is in same directory as script
 
 # Check if logger exists
 if [[ ! -f "$LOGGER_PATH" ]]; then
@@ -22,6 +22,9 @@ fi
 # Create log directory
 LOGS_DIR="${PARENT_DIR}/logs"
 mkdir -p "$LOGS_DIR"
+
+LOGGING_FILE="${LOGS_DIR}/all_demo.log"
+echo "Log file is at $LOGGING_FILE"
 
 # Source the logger module
 echo "Sourcing logger from: $LOGGER_PATH"
@@ -38,12 +41,31 @@ test_all_log_levels() {
     echo
 }
 
+# Test log messages with a specific format
+test_format() {
+    local format="$1"
+    local description="$2"
+    
+    echo -e "\n========== Using format: \"$format\" =========="
+    echo "$description"
+    
+    # Update the format
+    set_log_format "$format"
+    
+    # Log example messages
+    log_info "This is an example informational message"
+    log_error "This is an example error message"
+}
+
 # Initialize with default level (INFO)
 echo "========== Initializing with default level (INFO) =========="
-init_logger --log "${LOGS_DIR}/log_levels_demo.log" || {
+echo "Log file is at ${LOGGING_FILE}"
+init_logger --log "${LOGGING_FILE}" || {
     echo "Failed to initialize logger" >&2
     exit 1
 }
+
+echo "========== Log Level Demo =========="
 
 test_all_log_levels "with default INFO level"
 
@@ -69,7 +91,7 @@ test_all_log_levels "with numeric level 1 (INFO)"
 
 # Test initialization with level parameter
 echo "========== Reinitializing with WARN level =========="
-init_logger --log "${LOGS_DIR}/log_levels_demo.log" --level WARN || {
+init_logger --log "${LOGGING_FILE}" --level WARN || {
     echo "Failed to initialize logger" >&2
     exit 1
 }
@@ -77,11 +99,75 @@ test_all_log_levels "after init with --level WARN"
 
 # Test verbose flag with level parameter (level should take precedence)
 echo "========== Reinitializing with --verbose AND --level ERROR =========="
-init_logger --log "${LOGS_DIR}/log_levels_demo.log" --verbose --level ERROR || {
+init_logger --log "${LOGGING_FILE}" --verbose --level ERROR || {
     echo "Failed to initialize logger" >&2
     exit 1
 }
 test_all_log_levels "after init with --verbose AND --level ERROR"
 
 echo "========== Log Level Demo Complete =========="
-echo "Log file is at ${LOGS_DIR}/log_levels_demo.log"
+
+echo -e "\n========== Format Demo =========="
+init_logger --log "${LOGGING_FILE}" --verbose --level INFO || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+
+# Show the default format first
+echo "Default format: \"$LOG_FORMAT\""
+log_info "This is the default log format"
+
+# Test various formats
+test_format "%l: %m" "Basic format with just level and message"
+
+test_format "[%l] [%s] %m" "Format without timestamp"
+
+test_format "%d | %-5l | %m" "Format with aligned level"
+
+test_format "%d | %s | %l | %m" "Pipe-separated format"
+
+test_format "{\"timestamp\":\"%d\", \"level\":\"%l\", \"script\":\"%s\", \"message\":\"%m\"}" "JSON-like format"
+
+test_format "$(hostname) %d [%l] (%s) %m" "Format with hostname"
+
+test_format "%d UTC [%l] %m" "Format with timezone indicator"
+
+# Test initialization with format parameter
+echo -e "\n========== Initializing with custom format =========="
+init_logger --log "$LOGGING_FILE" --format "CUSTOM: %d [%l] %m" || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+log_info "This message uses the format specified during initialization"
+
+echo -e "\n========== Format Demo Complete =========="
+
+echo -e "\n========== Use UTC Complete =========="
+echo "This script demonstrates the use of UTC time in log messages."
+echo "The log messages will show the timestamp in UTC time."
+
+# Initialize with default settings
+echo "========== Initializing with UTC Time =========="
+init_logger --log "${LOGGING_FILE}" --format "%d %z [%l] [%s] %m" --utc || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+
+# Log some messages
+log_info "This is an informational message"
+log_warn "This is a warning message"
+log_error "This is an error message"
+
+# Revert back to local time
+echo "========== Setting back to local time =========="
+set_timezone_utc "false"
+
+# Log some messages
+log_info "This is an informational message"
+log_warn "This is a warning message"
+log_error "This is an error message"
+
+echo "========== Use UTC Demo Complete =========="
+
+echo "Log file is at ${LOGGING_FILE}"
+echo "You can examine the log file to see how different formats appear in the log."

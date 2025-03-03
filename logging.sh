@@ -6,7 +6,7 @@
 # 
 # Usage in other scripts:
 #   source /path/to/logging.sh # Ensure that the path is an absolute path
-#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL]
+#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT]
 #
 # Functions provided:
 #   log_debug "message"   - Log debug level message
@@ -31,6 +31,19 @@ CONSOLE_LOG="true"
 LOG_FILE=""
 VERBOSE="false"
 CURRENT_LOG_LEVEL=$LOG_LEVEL_INFO
+USE_UTC="false" # Set to true to use UTC time in logs
+
+# Default log format
+# Format variables:
+#   %d = date and time (YYYY-MM-DD HH:MM:SS)
+#   %l = log level name (DEBUG, INFO, WARN, ERROR)
+#   %s = script name
+#   %m = message
+#   %z = timezone (UTC or LOCAL)
+# Example:
+#   "[%l] %d [%s] %m" => "[INFO] 2025-03-03 12:34:56 [myscript.sh] Hello world"
+#  "%d %z [%l] [%s] %m" => "2025-03-03 12:34:56 UTC [INFO] [myscript.sh] Hello world"
+LOG_FORMAT="%d [%l] [%s] %m"
 
 # Convert log level name to numeric value
 get_log_level_value() {
@@ -82,6 +95,33 @@ get_log_level_name() {
     esac
 }
 
+# Function to format log message
+format_log_message() {
+    local level_name="$1"
+    local message="$2"
+    
+    # Get timestamp in appropriate timezone
+    local current_date
+    local timezone_str
+    if [[ "$USE_UTC" == "true" ]]; then
+        current_date=$(date -u '+%Y-%m-%d %H:%M:%S')  # UTC time
+        timezone_str="UTC"
+    else
+        current_date=$(date '+%Y-%m-%d %H:%M:%S')     # Local time
+        timezone_str="LOCAL"
+    fi
+    
+    # Replace format variables
+    local formatted_message="$LOG_FORMAT"
+    formatted_message="${formatted_message//%d/$current_date}"
+    formatted_message="${formatted_message//%l/$level_name}"
+    formatted_message="${formatted_message//%s/${SCRIPT_NAME:-unknown}}"
+    formatted_message="${formatted_message//%m/$message}"
+    formatted_message="${formatted_message//%z/$timezone_str}"
+    
+    echo "$formatted_message"
+}
+
 # Function to initialize logger with custom settings
 init_logger() {
     # Get the calling script's name
@@ -95,6 +135,16 @@ init_logger() {
     # Parse command line arguments
     while [[ "$#" -gt 0 ]]; do
         case $1 in
+            -d|--level)
+                local level_value=$(get_log_level_value "$2")
+                CURRENT_LOG_LEVEL=$level_value
+                # If both --verbose and --level are specified, --level takes precedence
+                shift 2
+                ;;
+            -f|--format)
+                LOG_FORMAT="$2"
+                shift 2
+                ;;
             -l|--log)
                 LOG_FILE="$2"
                 shift 2
@@ -103,16 +153,14 @@ init_logger() {
                 CONSOLE_LOG="false"
                 shift
                 ;;
+            -u|--utc)
+                USE_UTC="true"
+                shift
+                ;;
             -v|--verbose)
                 VERBOSE="true"
                 CURRENT_LOG_LEVEL=$LOG_LEVEL_DEBUG
                 shift
-                ;;
-            -d|--level)
-                local level_value=$(get_log_level_value "$2")
-                CURRENT_LOG_LEVEL=$level_value
-                # If both --verbose and --level are specified, --level takes precedence
-                shift 2
                 ;;
             *)
                 echo "Unknown parameter for logger: $1" >&2
@@ -149,8 +197,9 @@ init_logger() {
             return 1
         fi
         
-        # Write a test message to the log file
-        echo "[INIT] $(date '+%Y-%m-%d %H:%M:%S') Logger initialized by $caller_script" >> "$LOG_FILE" 2>/dev/null || {
+        # Write the initialization message using the same format
+        local init_message=$(format_log_message "INIT" "Logger initialized by $caller_script")
+        echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
             echo "Error: Failed to write test message to log file" >&2
             return 1
         }
@@ -159,7 +208,7 @@ init_logger() {
     fi
     
     # Log initialization success
-    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, log level=$(get_log_level_name $CURRENT_LOG_LEVEL)"
+    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, log level=$(get_log_level_name $CURRENT_LOG_LEVEL), format=\"$LOG_FORMAT\""
     return 0
 }
 
@@ -170,7 +219,88 @@ set_log_level() {
     CURRENT_LOG_LEVEL=$(get_log_level_value "$level")
     local new_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
     
-    log_warn "Log level changed from $old_level to $new_level"
+    # Create a special log entry that bypasses level checks
+    local current_date
+    if [[ "$USE_UTC" == "true" ]]; then
+        current_date=$(date -u '+%Y-%m-%d %H:%M:%S')
+    else
+        current_date=$(date '+%Y-%m-%d %H:%M:%S')
+    fi
+
+    local timezone_str
+    if [[ "$USE_UTC" == "true" ]]; then
+        timezone_str="UTC"
+    else
+        timezone_str="LOCAL"
+    fi
+
+    local message="Log level changed from $old_level to $new_level"
+    local log_entry=$(format_log_message "CONFIG" "$message")
+    
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+    fi
+    
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+}
+
+set_timezone_utc() {
+    local use_utc="$1"
+    local old_setting="$USE_UTC"
+    USE_UTC="$use_utc"
+    
+    # Create a special log entry that bypasses level checks
+    local current_date
+    if [[ "$USE_UTC" == "true" ]]; then
+        current_date=$(date -u '+%Y-%m-%d %H:%M:%S')
+    else
+        current_date=$(date '+%Y-%m-%d %H:%M:%S')
+    fi
+
+    local timezone_str
+    if [[ "$USE_UTC" == "true" ]]; then
+        timezone_str="UTC"
+    else
+        timezone_str="LOCAL"
+    fi
+    
+    local message="Timezone setting changed from $old_setting to $USE_UTC"
+    local log_entry=$(format_log_message "CONFIG" "$message")
+    
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+    fi
+    
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+}
+
+# Function to change log format
+set_log_format() {
+    local old_format="$LOG_FORMAT"
+    LOG_FORMAT="$1"
+    
+    # Create a special log entry that bypasses level checks
+    local current_date=$(date '+%Y-%m-%d %H:%M:%S')
+    local message="Log format changed from \"$old_format\" to \"$LOG_FORMAT\""
+    local log_entry=$(format_log_message "CONFIG" "$message")
+    
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+    fi
+    
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
 }
 
 # Function to log messages with different severity levels
@@ -184,8 +314,8 @@ log_message() {
         return
     fi
     
-    local current_date=$(date '+%Y-%m-%d %H:%M:%S')
-    local log_entry="[${level_name}] ${current_date} [${SCRIPT_NAME:-unknown}] ${message}"
+    # Format the log entry
+    local log_entry=$(format_log_message "$level_name" "$message")
     
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -202,6 +332,9 @@ log_message() {
                 ;;
             "ERROR")
                 echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
+                ;;
+            "INIT")
+                echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
                 ;;
         esac
     fi
@@ -236,6 +369,10 @@ log_warn() {
 
 log_error() {
     log_message "ERROR" $LOG_LEVEL_ERROR "$1"
+}
+
+log_init() {
+    log_message "INIT" -1 "$1"  # Using -1 to ensure it always shows
 }
 
 # Only execute initialization if this script is being run directly
