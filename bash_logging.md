@@ -236,4 +236,4 @@ If you encounter issues:
 
 ## License
 
-This module is provided under the [insert your license here].
+This module is provided under the MIT License.
