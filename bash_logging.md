@@ -164,6 +164,8 @@ log_debug "Debug mode enabled"  # Only shows if --debug was passed
 log_info "Normal operation"
 ```
 
+**Note:** For clarity, the logger provides in `logging.sh` enables `DEBUG` logging through the `--verbose` option when called using `init_logger --verbose` however the provided `set_log_level` function accepts log levels based on their common names (DEBUG, INFO, WARN, ERROR) or their numeric values (0, 1, 2, 3). The example above uses a command line parser in the calling script to optionally enable `DEBUG` logging by accepting a local argument `--debug` and then using the `set_log_level` function to enable `DEBUG` logging.
+
 ### Advanced Usage with Custom Format and UTC Time
 
 ```bash
