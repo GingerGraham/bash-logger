@@ -38,6 +38,8 @@ test_all_log_levels() {
     log_info "This is an INFO message"
     log_warn "This is a WARN message"
     log_error "This is an ERROR message"
+    log_fatal "This is a FATAL message"
+    log_sensitive "This is a SENSITIVE message and should not be logged"
     echo
 }
 
@@ -83,6 +85,11 @@ test_all_log_levels "with WARN level"
 echo "========== Setting level to ERROR =========="
 set_log_level "ERROR"
 test_all_log_levels "with ERROR level"
+
+# Initialize with FATAL level
+echo "========== Setting level to FATAL =========="
+set_log_level "FATAL"
+test_all_log_levels "with FATAL level"
 
 # Initialize with numeric level (INFO = 1)
 echo "========== Setting level to 1 (INFO) =========="

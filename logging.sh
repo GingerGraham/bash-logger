@@ -9,10 +9,11 @@
 #   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT]
 #
 # Functions provided:
-#   log_debug "message"   - Log debug level message
-#   log_info "message"    - Log info level message
-#   log_warn "message"    - Log warning level message
-#   log_error "message"   - Log error level message
+#   log_debug "message"     - Log debug level message
+#   log_info "message"      - Log info level message
+#   log_warn "message"      - Log warning level message
+#   log_error "message"     - Log error level message
+#   log_sensitive "message" - Log sensitive message (console only, never to file)
 #
 # Log Levels:
 #   0 = DEBUG (most verbose)
@@ -25,6 +26,7 @@ LOG_LEVEL_DEBUG=0
 LOG_LEVEL_INFO=1
 LOG_LEVEL_WARN=2
 LOG_LEVEL_ERROR=3
+LOG_LEVEL_FATAL=4
 
 # Default settings (these can be overridden by init_logger)
 CONSOLE_LOG="true"
@@ -36,10 +38,10 @@ USE_UTC="false" # Set to true to use UTC time in logs
 # Default log format
 # Format variables:
 #   %d = date and time (YYYY-MM-DD HH:MM:SS)
+#   %z = timezone (UTC or LOCAL)
 #   %l = log level name (DEBUG, INFO, WARN, ERROR)
 #   %s = script name
 #   %m = message
-#   %z = timezone (UTC or LOCAL)
 # Example:
 #   "[%l] %d [%s] %m" => "[INFO] 2025-03-03 12:34:56 [myscript.sh] Hello world"
 #  "%d %z [%l] [%s] %m" => "2025-03-03 12:34:56 UTC [INFO] [myscript.sh] Hello world"
@@ -60,6 +62,9 @@ get_log_level_value() {
             ;;
         "ERROR")
             echo $LOG_LEVEL_ERROR
+            ;;
+        "FATAL")
+            echo $LOG_LEVEL_FATAL
             ;;
         *)
             # If it's a number between 0-3, use it directly
@@ -88,6 +93,9 @@ get_log_level_name() {
             ;;
         $LOG_LEVEL_ERROR)
             echo "ERROR"
+            ;;
+        $LOG_LEVEL_FATAL)
+            echo "FATAL"
             ;;
         *)
             echo "UNKNOWN"
@@ -308,6 +316,7 @@ log_message() {
     local level_name="$1"
     local level_value="$2"
     local message="$3"
+    local skip_file="${4:-false}"
     
     # Skip logging if message level is below current log level
     if [[ "$level_value" -lt "$CURRENT_LOG_LEVEL" ]]; then
@@ -333,14 +342,21 @@ log_message() {
             "ERROR")
                 echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
                 ;;
+            "FATAL")
+                echo -e "\e[41m${log_entry}\e[0m" >&2  # Red background, to stderr
+                ;;
             "INIT")
                 echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
+                ;;
+            "SENSITIVE")
+                echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
                 ;;
         esac
     fi
     
     # If LOG_FILE is set and not empty, append to the log file (without colors)
-    if [[ -n "$LOG_FILE" ]]; then
+    # Skip writing to the file if skip_file is true
+    if [[ -n "$LOG_FILE" && "$skip_file" != "true" ]]; then
         echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null || {
             # Only print the error once to avoid spam
             if [[ -z "$LOGGER_FILE_ERROR_REPORTED" ]]; then
@@ -371,8 +387,17 @@ log_error() {
     log_message "ERROR" $LOG_LEVEL_ERROR "$1"
 }
 
+log_fatal() {
+    log_message "FATAL" $LOG_LEVEL_FATAL "$1"
+}
+
 log_init() {
     log_message "INIT" -1 "$1"  # Using -1 to ensure it always shows
+}
+
+# New function for sensitive logging - console only, never to file
+log_sensitive() {
+    log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true"
 }
 
 # Only execute initialization if this script is being run directly

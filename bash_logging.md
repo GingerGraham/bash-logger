@@ -29,6 +29,7 @@ log_debug "This is a debug message"
 log_info "This is an info message"
 log_warn "This is a warning message"
 log_error "This is an error message"
+log_sensitive "This is a sensitive message"  # Displayed on console but not in file
 ```
 
 ## Initialization Options
@@ -59,8 +60,10 @@ The module supports four log levels, from most to least verbose:
 |-------|---------------|----------|
 | DEBUG | 0 | `log_debug` |
 | INFO | 1 | `log_info` |
+| SENSITIVE | 1 | `log_sensitive` |
 | WARN | 2 | `log_warn` |
 | ERROR | 3 | `log_error` |
+| FATAL | 4 | `log_fatal` |
 
 Messages with a level lower than the current log level are suppressed.
 
