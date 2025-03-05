@@ -29,7 +29,6 @@ log_debug "This is a debug message"
 log_info "This is an info message"
 log_warn "This is a warning message"
 log_error "This is an error message"
-log_sensitive "This is a sensitive message"  # Displayed on console but not in file
 ```
 
 ## Initialization Options
@@ -63,7 +62,6 @@ The module supports four log levels, from most to least verbose:
 | SENSITIVE | 1 | `log_sensitive` |
 | WARN | 2 | `log_warn` |
 | ERROR | 3 | `log_error` |
-| FATAL | 4 | `log_fatal` |
 
 Messages with a level lower than the current log level are suppressed.
 
@@ -222,6 +220,20 @@ log_info "Starting batch processing"
 process_item "test"
 process_item "important"
 log_info "Batch processing complete"
+```
+
+## Sensitive Data
+
+Where you may need to output sensitive data for debugging or troubleshooting the `log_sensitive` function can be used. This function will only output the message to the console and not to the log file. It is your responsibility to ensure that your console session is not logged or that any console logging file is not accessible to unauthorized users.
+
+```bash
+#!/bin/bash
+
+source /path/to/logging.sh
+
+init_logger --log "/var/log/myapp.log"
+
+log_sensitive "Sensitive data: $SECRET"
 ```
 
 ## Exit Codes
