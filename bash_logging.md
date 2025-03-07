@@ -48,6 +48,8 @@ The `init_logger` function accepts the following options:
 | `-u, --utc` | Use UTC time instead of local time |
 | `-j, --journal` | Enable logging to systemd journal |
 | `-t, --tag TAG` | Set custom tag for journal logs (default: script name) |
+| `--color --colour` | Explicitly enable color output (default: auto-detect) |
+| `--no-color --no-colour` | Disable color output | 
 
 Example:
 

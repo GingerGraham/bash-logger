@@ -6,7 +6,7 @@
 # 
 # Usage in other scripts:
 #   source /path/to/logging.sh # Ensure that the path is an absolute path
-#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG]
+#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG] [--color] [--no-color]
 #
 # Functions provided:
 #   log_debug "message"     - Log debug level message
@@ -36,8 +36,11 @@ CURRENT_LOG_LEVEL=$LOG_LEVEL_INFO
 USE_UTC="false" # Set to true to use UTC time in logs
 
 # Journal logging settings
-USE_JOURNAL="false"
+USE_JOURNAL="true"
 JOURNAL_TAG=""  # Tag for syslog/journal entries
+
+# Color settings
+USE_COLORS="auto"  # Can be "auto", "always", or "never"
 
 # Default log format
 # Format variables:
@@ -50,6 +53,58 @@ JOURNAL_TAG=""  # Tag for syslog/journal entries
 #   "[%l] %d [%s] %m" => "[INFO] 2025-03-03 12:34:56 [myscript.sh] Hello world"
 #  "%d %z [%l] [%s] %m" => "2025-03-03 12:34:56 UTC [INFO] [myscript.sh] Hello world"
 LOG_FORMAT="%d [%l] [%s] %m"
+
+# Function to detect terminal color support
+detect_color_support() {
+    # Default to no colors if explicitly disabled
+    if [[ -n "$NO_COLOR" || "$CLICOLOR" == "0" ]]; then
+        return 1
+    fi
+    
+    # Force colors if explicitly enabled
+    if [[ "$CLICOLOR_FORCE" == "1" ]]; then
+        return 0
+    fi
+    
+    # Check if stdout is a terminal
+    if [[ ! -t 1 ]]; then
+        return 1
+    fi
+    
+    # Check color capabilities with tput if available
+    if command -v tput >/dev/null 2>&1; then
+        if [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]]; then
+            return 0
+        fi
+    fi
+    
+    # Check TERM as fallback
+    if [[ -n "$TERM" && "$TERM" != "dumb" ]]; then
+        case "$TERM" in
+            xterm*|rxvt*|ansi|linux|screen*|tmux*|vt100|vt220|alacritty)
+                return 0
+                ;;
+        esac
+    fi
+    
+    return 1  # Default to no colors
+}
+
+# Function to determine if colors should be used
+should_use_colors() {
+    case "$USE_COLORS" in
+        "always")
+            return 0
+            ;;
+        "never")
+            return 1
+            ;;
+        "auto"|*)
+            detect_color_support
+            return $?
+            ;;
+    esac
+}
 
 # Check if logger command is available
 check_logger_available() {
@@ -177,6 +232,14 @@ init_logger() {
     # Parse command line arguments
     while [[ "$#" -gt 0 ]]; do
         case $1 in
+            --color|--colour)
+                USE_COLORS="always"
+                shift
+                ;;
+            --no-color|--no-colour)
+                USE_COLORS="never"
+                shift
+                ;;
             -d|--level)
                 local level_value=$(get_log_level_value "$2")
                 CURRENT_LOG_LEVEL=$level_value
@@ -267,7 +330,7 @@ init_logger() {
     fi
     
     # Log initialization success
-    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, log level=$(get_log_level_name $CURRENT_LOG_LEVEL), format=\"$LOG_FORMAT\""
+    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(get_log_level_name $CURRENT_LOG_LEVEL), format=\"$LOG_FORMAT\""
     return 0
 }
 
@@ -284,7 +347,11 @@ set_log_level() {
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
@@ -308,7 +375,11 @@ set_timezone_utc() {
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
@@ -332,7 +403,11 @@ set_log_format() {
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
@@ -365,7 +440,11 @@ set_journal_logging() {
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
@@ -389,7 +468,11 @@ set_journal_tag() {
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
@@ -400,6 +483,49 @@ set_journal_tag() {
     # Log to journal if enabled, using the old tag
     if [[ "$USE_JOURNAL" == "true" ]]; then
         logger -p "daemon.notice" -t "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
+    fi
+}
+
+# Function to set color mode
+set_color_mode() {
+    local mode="$1"
+    local old_setting="$USE_COLORS"
+    
+    case "$mode" in
+        true|on|yes|1)
+            USE_COLORS="always"
+            ;;
+        false|off|no|0)
+            USE_COLORS="never"
+            ;;
+        auto)
+            USE_COLORS="auto"
+            ;;
+        *)
+            USE_COLORS="$mode"  # Set directly if it's already "always", "never", or "auto"
+            ;;
+    esac
+    
+    local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
+    local log_entry=$(format_log_message "CONFIG" "$message")
+    
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
+    fi
+    
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+    
+    # Log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -421,30 +547,42 @@ log_message() {
     
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        # Color output for console based on log level
-        case "$level_name" in
-            "DEBUG")
-                echo -e "\e[34m${log_entry}\e[0m"  # Blue
-                ;;
-            "INFO")
-                echo -e "${log_entry}"  # Default color
-                ;;
-            "WARN")
-                echo -e "\e[33m${log_entry}\e[0m"  # Yellow
-                ;;
-            "ERROR")
-                echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
-                ;;
-            "FATAL")
-                echo -e "\e[41m${log_entry}\e[0m" >&2  # Red background, to stderr
-                ;;
-            "INIT")
-                echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
-                ;;
-            "SENSITIVE")
-                echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
-                ;;
-        esac
+        if should_use_colors; then
+            # Color output for console based on log level
+            case "$level_name" in
+                "DEBUG")
+                    echo -e "\e[34m${log_entry}\e[0m"  # Blue
+                    ;;
+                "INFO")
+                    echo -e "${log_entry}"  # Default color
+                    ;;
+                "WARN")
+                    echo -e "\e[33m${log_entry}\e[0m"  # Yellow
+                    ;;
+                "ERROR")
+                    echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
+                    ;;
+                "FATAL")
+                    echo -e "\e[41m${log_entry}\e[0m" >&2  # Red background, to stderr
+                    ;;
+                "INIT")
+                    echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
+                    ;;
+                "SENSITIVE")
+                    echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
+                    ;;
+                *)
+                    echo "${log_entry}"  # Default color for unknown level
+                    ;;
+            esac
+        else
+            # Plain output without colors
+            if [[ "$level_name" == "ERROR" || "$level_name" == "FATAL" ]]; then
+                echo "${log_entry}" >&2  # Error messages to stderr
+            else
+                echo "${log_entry}"
+            fi
+        fi
     fi
     
     # If LOG_FILE is set and not empty, append to the log file (without colors)

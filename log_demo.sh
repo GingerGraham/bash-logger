@@ -6,7 +6,8 @@
 # - Log levels
 # - Formatting options
 # - UTC time
-# - Journal logging (new feature)
+# - Journal logging
+# - Color settings
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,6 +16,7 @@ PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 # Path to logger module
 LOGGER_PATH="${PARENT_DIR}/logging.sh" # logger is in the parent directory
 # LOGGER_PATH="${SCRIPT_DIR}/logging.sh" # uncomment if logger is in same directory
+# LOGGER_PATH="${HOME}/Tools/modules/bash/logging.sh" # uncomment and set path if logger is elsewhere
 
 # Check if logger exists
 if [[ ! -f "$LOGGER_PATH" ]]; then
@@ -230,9 +232,66 @@ else
 fi
 
 # ====================================================
-# PART 5: Combined Features Demo
+# PART 5: Color Settings Demo
 # ====================================================
-echo -e "\n========== PART 5: Combined Features Demo =========="
+echo -e "\n========== PART 5: Color Settings Demo =========="
+
+# Default auto-detection mode
+echo "========== Default color auto-detection mode =========="
+init_logger --log "${LOGGING_FILE}" || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+
+# Show current color mode
+log_info "Current color mode: $USE_COLORS (auto-detection)"
+test_all_log_levels "with auto-detected colors"
+
+# Force colors on with --color
+echo "========== Forcing colors ON with --color =========="
+init_logger --log "${LOGGING_FILE}" --color || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+
+# Show current color mode
+log_info "Current color mode: $USE_COLORS (forced on)"
+test_all_log_levels "with colors forced ON"
+
+# Force colors off with --no-color
+echo "========== Forcing colors OFF with --no-color =========="
+init_logger --log "${LOGGING_FILE}" --no-color || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+
+# Show current color mode
+log_info "Current color mode: $USE_COLORS (forced off)"
+test_all_log_levels "with colors forced OFF"
+
+# Change color mode at runtime
+echo "========== Changing color mode at runtime =========="
+set_color_mode "always"
+log_info "Color mode changed to: $USE_COLORS (always)"
+log_warn "This warning should be colored"
+log_error "This error should be colored"
+
+set_color_mode "never"
+log_info "Color mode changed to: $USE_COLORS (never)"
+log_warn "This warning should NOT be colored"
+log_error "This error should NOT be colored"
+
+set_color_mode "auto"
+log_info "Color mode changed to: $USE_COLORS (auto-detection)"
+log_warn "This warning may be colored depending on terminal capabilities"
+log_error "This error may be colored depending on terminal capabilities"
+
+echo "========== Color Settings Demo Complete =========="
+
+# ====================================================
+# PART 6: Combined Features Demo
+# ====================================================
+echo -e "\n========== PART 6: Combined Features Demo =========="
 
 # Initialize with multiple features enabled
 JOURNAL_PARAM=""
@@ -241,14 +300,14 @@ if [[ "$LOGGER_AVAILABLE" == true ]]; then
 fi
 
 echo "========== Initializing with multiple features =========="
-init_logger --log "${LOGGING_FILE}" --level INFO --format "[%z %d] [%l] %m" --utc $JOURNAL_PARAM || {
+init_logger --log "${LOGGING_FILE}" --level INFO --format "[%z %d] [%l] %m" --utc $JOURNAL_PARAM --color || {
     echo "Failed to initialize logger" >&2
     exit 1
 }
 
 # Log various messages
 log_debug "This is a DEBUG message (shouldn't show with INFO level)"
-log_info "This message combines UTC time, custom format and journal logging"
+log_info "This message combines UTC time, custom format, colors, and journal logging"
 log_warn "This warning also demonstrates multiple features"
 log_error "This error message shows the combined setup"
 log_sensitive "This sensitive message shows only on console"
@@ -256,9 +315,9 @@ log_sensitive "This sensitive message shows only on console"
 echo "========== Combined Features Demo Complete =========="
 
 # ====================================================
-# PART 6: Quiet Mode Demo
+# PART 7: Quiet Mode Demo
 # ====================================================
-echo -e "\n========== PART 6: Quiet Mode Demo =========="
+echo -e "\n========== PART 7: Quiet Mode Demo =========="
 
 # Initialize with quiet mode
 echo "========== Initializing with quiet mode =========="
