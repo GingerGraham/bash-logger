@@ -6,13 +6,14 @@
 # 
 # Usage in other scripts:
 #   source /path/to/logging.sh # Ensure that the path is an absolute path
-#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT]
+#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG] [--color] [--no-color]
 #
 # Functions provided:
-#   log_debug "message"   - Log debug level message
-#   log_info "message"    - Log info level message
-#   log_warn "message"    - Log warning level message
-#   log_error "message"   - Log error level message
+#   log_debug "message"     - Log debug level message
+#   log_info "message"      - Log info level message
+#   log_warn "message"      - Log warning level message
+#   log_error "message"     - Log error level message
+#   log_sensitive "message" - Log sensitive message (console only, never to file or journal)
 #
 # Log Levels:
 #   0 = DEBUG (most verbose)
@@ -25,6 +26,7 @@ LOG_LEVEL_DEBUG=0
 LOG_LEVEL_INFO=1
 LOG_LEVEL_WARN=2
 LOG_LEVEL_ERROR=3
+LOG_LEVEL_FATAL=4
 
 # Default settings (these can be overridden by init_logger)
 CONSOLE_LOG="true"
@@ -33,17 +35,81 @@ VERBOSE="false"
 CURRENT_LOG_LEVEL=$LOG_LEVEL_INFO
 USE_UTC="false" # Set to true to use UTC time in logs
 
+# Journal logging settings
+USE_JOURNAL="true"
+JOURNAL_TAG=""  # Tag for syslog/journal entries
+
+# Color settings
+USE_COLORS="auto"  # Can be "auto", "always", or "never"
+
 # Default log format
 # Format variables:
 #   %d = date and time (YYYY-MM-DD HH:MM:SS)
+#   %z = timezone (UTC or LOCAL)
 #   %l = log level name (DEBUG, INFO, WARN, ERROR)
 #   %s = script name
 #   %m = message
-#   %z = timezone (UTC or LOCAL)
 # Example:
 #   "[%l] %d [%s] %m" => "[INFO] 2025-03-03 12:34:56 [myscript.sh] Hello world"
 #  "%d %z [%l] [%s] %m" => "2025-03-03 12:34:56 UTC [INFO] [myscript.sh] Hello world"
 LOG_FORMAT="%d [%l] [%s] %m"
+
+# Function to detect terminal color support
+detect_color_support() {
+    # Default to no colors if explicitly disabled
+    if [[ -n "$NO_COLOR" || "$CLICOLOR" == "0" ]]; then
+        return 1
+    fi
+    
+    # Force colors if explicitly enabled
+    if [[ "$CLICOLOR_FORCE" == "1" ]]; then
+        return 0
+    fi
+    
+    # Check if stdout is a terminal
+    if [[ ! -t 1 ]]; then
+        return 1
+    fi
+    
+    # Check color capabilities with tput if available
+    if command -v tput >/dev/null 2>&1; then
+        if [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]]; then
+            return 0
+        fi
+    fi
+    
+    # Check TERM as fallback
+    if [[ -n "$TERM" && "$TERM" != "dumb" ]]; then
+        case "$TERM" in
+            xterm*|rxvt*|ansi|linux|screen*|tmux*|vt100|vt220|alacritty)
+                return 0
+                ;;
+        esac
+    fi
+    
+    return 1  # Default to no colors
+}
+
+# Function to determine if colors should be used
+should_use_colors() {
+    case "$USE_COLORS" in
+        "always")
+            return 0
+            ;;
+        "never")
+            return 1
+            ;;
+        "auto"|*)
+            detect_color_support
+            return $?
+            ;;
+    esac
+}
+
+# Check if logger command is available
+check_logger_available() {
+    command -v logger &>/dev/null
+}
 
 # Convert log level name to numeric value
 get_log_level_value() {
@@ -60,6 +126,9 @@ get_log_level_value() {
             ;;
         "ERROR")
             echo $LOG_LEVEL_ERROR
+            ;;
+        "FATAL")
+            echo $LOG_LEVEL_FATAL
             ;;
         *)
             # If it's a number between 0-3, use it directly
@@ -89,8 +158,36 @@ get_log_level_name() {
         $LOG_LEVEL_ERROR)
             echo "ERROR"
             ;;
+        $LOG_LEVEL_FATAL)
+            echo "FATAL"
+            ;;
         *)
             echo "UNKNOWN"
+            ;;
+    esac
+}
+
+# Map log level to syslog priority
+get_syslog_priority() {
+    local level_value="$1"
+    case "$level_value" in
+        $LOG_LEVEL_DEBUG)
+            echo "debug"
+            ;;
+        $LOG_LEVEL_INFO)
+            echo "info"
+            ;;
+        $LOG_LEVEL_WARN)
+            echo "warning"
+            ;;
+        $LOG_LEVEL_ERROR)
+            echo "err"
+            ;;
+        $LOG_LEVEL_FATAL)
+            echo "crit"
+            ;;
+        *)
+            echo "notice"  # Default to notice for unknown levels
             ;;
     esac
 }
@@ -146,6 +243,14 @@ init_logger() {
     # Parse command line arguments
     while [[ "$#" -gt 0 ]]; do
         case $1 in
+            --color|--colour)
+                USE_COLORS="always"
+                shift
+                ;;
+            --no-color|--no-colour)
+                USE_COLORS="never"
+                shift
+                ;;
             -d|--level)
                 local level_value=$(get_log_level_value "$2")
                 CURRENT_LOG_LEVEL=$level_value
@@ -156,6 +261,14 @@ init_logger() {
                 LOG_FORMAT="$2"
                 shift 2
                 ;;
+            -j|--journal)
+                if check_logger_available; then
+                    USE_JOURNAL="true"
+                else
+                    echo "Warning: logger command not found, journal logging disabled" >&2
+                fi
+                shift
+                ;;
             -l|--log)
                 LOG_FILE="$2"
                 shift 2
@@ -163,6 +276,10 @@ init_logger() {
             -q|--quiet)
                 CONSOLE_LOG="false"
                 shift
+                ;;
+            -t|--tag)
+                JOURNAL_TAG="$2"
+                shift 2
                 ;;
             -u|--utc)
                 USE_UTC="true"
@@ -182,6 +299,11 @@ init_logger() {
     
     # Set a global variable for the script name to use in log messages
     SCRIPT_NAME="$caller_script"
+    
+    # Set default journal tag if not specified but journal logging is enabled
+    if [[ "$USE_JOURNAL" == "true" && -z "$JOURNAL_TAG" ]]; then
+        JOURNAL_TAG="$SCRIPT_NAME"
+    fi
     
     # Validate log file path if specified
     if [[ -n "$LOG_FILE" ]]; then
@@ -219,7 +341,7 @@ init_logger() {
     fi
     
     # Log initialization success
-    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, log level=$(get_log_level_name $CURRENT_LOG_LEVEL), format=\"$LOG_FORMAT\""
+    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(get_log_level_name $CURRENT_LOG_LEVEL), format=\"$LOG_FORMAT\""
     return 0
 }
 
@@ -231,31 +353,26 @@ set_log_level() {
     local new_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
     
     # Create a special log entry that bypasses level checks
-    local current_date
-    if [[ "$USE_UTC" == "true" ]]; then
-        current_date=$(date -u '+%Y-%m-%d %H:%M:%S')
-    else
-        current_date=$(date '+%Y-%m-%d %H:%M:%S')
-    fi
-
-    local timezone_str
-    if [[ "$USE_UTC" == "true" ]]; then
-        timezone_str="UTC"
-    else
-        timezone_str="LOCAL"
-    fi
-
     local message="Log level changed from $old_level to $new_level"
     local log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
         echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+    
+    # Always log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -264,32 +381,26 @@ set_timezone_utc() {
     local old_setting="$USE_UTC"
     USE_UTC="$use_utc"
     
-    # Create a special log entry that bypasses level checks
-    local current_date
-    if [[ "$USE_UTC" == "true" ]]; then
-        current_date=$(date -u '+%Y-%m-%d %H:%M:%S')
-    else
-        current_date=$(date '+%Y-%m-%d %H:%M:%S')
-    fi
-
-    local timezone_str
-    if [[ "$USE_UTC" == "true" ]]; then
-        timezone_str="UTC"
-    else
-        timezone_str="LOCAL"
-    fi
-    
     local message="Timezone setting changed from $old_setting to $USE_UTC"
     local log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
         echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+    
+    # Always log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -298,19 +409,134 @@ set_log_format() {
     local old_format="$LOG_FORMAT"
     LOG_FORMAT="$1"
     
-    # Create a special log entry that bypasses level checks
-    local current_date=$(date '+%Y-%m-%d %H:%M:%S')
     local message="Log format changed from \"$old_format\" to \"$LOG_FORMAT\""
     local log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
     fi
     
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
         echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+    
+    # Always log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
+# Function to toggle journal logging
+set_journal_logging() {
+    local old_setting="$USE_JOURNAL"
+    USE_JOURNAL="$1"
+    
+    # Check if logger is available when enabling
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        if ! check_logger_available; then
+            echo "Error: logger command not found, cannot enable journal logging" >&2
+            USE_JOURNAL="$old_setting"
+            return 1
+        fi
+    fi
+    
+    local message="Journal logging changed from $old_setting to $USE_JOURNAL"
+    local log_entry=$(format_log_message "CONFIG" "$message")
+    
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
+    fi
+    
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+    
+    # Log to journal if it was previously enabled or just being enabled
+    if [[ "$old_setting" == "true" || "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
+# Function to set journal tag
+set_journal_tag() {
+    local old_tag="$JOURNAL_TAG"
+    JOURNAL_TAG="$1"
+    
+    local message="Journal tag changed from \"$old_tag\" to \"$JOURNAL_TAG\""
+    local log_entry=$(format_log_message "CONFIG" "$message")
+    
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
+    fi
+    
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+    
+    # Log to journal if enabled, using the old tag
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
+    fi
+}
+
+# Function to set color mode
+set_color_mode() {
+    local mode="$1"
+    local old_setting="$USE_COLORS"
+    
+    case "$mode" in
+        true|on|yes|1)
+            USE_COLORS="always"
+            ;;
+        false|off|no|0)
+            USE_COLORS="never"
+            ;;
+        auto)
+            USE_COLORS="auto"
+            ;;
+        *)
+            USE_COLORS="$mode"  # Set directly if it's already "always", "never", or "auto"
+            ;;
+    esac
+    
+    local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
+    local log_entry=$(format_log_message "CONFIG" "$message")
+    
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        if should_use_colors; then
+            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        else
+            echo "${log_entry}"
+        fi
+    fi
+    
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+    
+    # Log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -319,6 +545,8 @@ log_message() {
     local level_name="$1"
     local level_value="$2"
     local message="$3"
+    local skip_file="${4:-false}"
+    local skip_journal="${5:-false}"
     
     # Skip logging if message level is below current log level
     if [[ "$level_value" -lt "$CURRENT_LOG_LEVEL" ]]; then
@@ -330,28 +558,47 @@ log_message() {
     
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        # Color output for console based on log level
-        case "$level_name" in
-            "DEBUG")
-                echo -e "\e[34m${log_entry}\e[0m"  # Blue
-                ;;
-            "INFO")
-                echo -e "${log_entry}"  # Default color
-                ;;
-            "WARN")
-                echo -e "\e[33m${log_entry}\e[0m"  # Yellow
-                ;;
-            "ERROR")
-                echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
-                ;;
-            "INIT")
-                echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
-                ;;
-        esac
+        if should_use_colors; then
+            # Color output for console based on log level
+            case "$level_name" in
+                "DEBUG")
+                    echo -e "\e[34m${log_entry}\e[0m"  # Blue
+                    ;;
+                "INFO")
+                    echo -e "${log_entry}"  # Default color
+                    ;;
+                "WARN")
+                    echo -e "\e[33m${log_entry}\e[0m"  # Yellow
+                    ;;
+                "ERROR")
+                    echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
+                    ;;
+                "FATAL")
+                    echo -e "\e[41m${log_entry}\e[0m" >&2  # Red background, to stderr
+                    ;;
+                "INIT")
+                    echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
+                    ;;
+                "SENSITIVE")
+                    echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
+                    ;;
+                *)
+                    echo "${log_entry}"  # Default color for unknown level
+                    ;;
+            esac
+        else
+            # Plain output without colors
+            if [[ "$level_name" == "ERROR" || "$level_name" == "FATAL" ]]; then
+                echo "${log_entry}" >&2  # Error messages to stderr
+            else
+                echo "${log_entry}"
+            fi
+        fi
     fi
     
     # If LOG_FILE is set and not empty, append to the log file (without colors)
-    if [[ -n "$LOG_FILE" ]]; then
+    # Skip writing to the file if skip_file is true
+    if [[ -n "$LOG_FILE" && "$skip_file" != "true" ]]; then
         echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null || {
             # Only print the error once to avoid spam
             if [[ -z "$LOGGER_FILE_ERROR_REPORTED" ]]; then
@@ -362,6 +609,20 @@ log_message() {
             # Print the original message to stderr to not lose it
             echo "${log_entry}" >&2
         }
+    fi
+    
+    # If journal logging is enabled and logger is available, log to the system journal
+    # Skip journal logging if skip_journal is true
+    if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" ]]; then
+        if check_logger_available; then
+            # Map our log level to syslog priority
+            local syslog_priority=$(get_syslog_priority "$level_value")
+            
+            # Use the logger command to send to syslog/journal
+            # Strip any ANSI color codes from the message
+            local plain_message="${message//\e\[[0-9;]*m/}"
+            logger -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
+        fi
     fi
 }
 
@@ -382,8 +643,17 @@ log_error() {
     log_message "ERROR" $LOG_LEVEL_ERROR "$1"
 }
 
+log_fatal() {
+    log_message "FATAL" $LOG_LEVEL_FATAL "$1"
+}
+
 log_init() {
     log_message "INIT" -1 "$1"  # Using -1 to ensure it always shows
+}
+
+# Function for sensitive logging - console only, never to file or journal
+log_sensitive() {
+    log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true" "true"
 }
 
 # Only execute initialization if this script is being run directly
