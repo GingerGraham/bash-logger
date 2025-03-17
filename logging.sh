@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # logging.sh - Reusable Bash Logging Module
 # 
@@ -9,24 +9,38 @@
 #   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG] [--color] [--no-color]
 #
 # Functions provided:
-#   log_debug "message"     - Log debug level message
-#   log_info "message"      - Log info level message
-#   log_warn "message"      - Log warning level message
-#   log_error "message"     - Log error level message
-#   log_sensitive "message" - Log sensitive message (console only, never to file or journal)
+#   log_debug "message"      - Log debug level message
+#   log_info "message"       - Log info level message
+#   log_notice "message"     - Log notice level message
+#   log_warn "message"       - Log warning level message
+#   log_error "message"      - Log error level message
+#   log_critical "message"   - Log critical level message
+#   log_alert "message"      - Log alert level message
+#   log_emergency "message"  - Log emergency level message (system unusable)
+#   log_sensitive "message"  - Log sensitive message (console only, never to file or journal)
 #
-# Log Levels:
-#   0 = DEBUG (most verbose)
-#   1 = INFO (default)
-#   2 = WARN
-#   3 = ERROR (least verbose)
+# Log Levels (following complete syslog standard):
+#   7 = DEBUG (most verbose/least severe)
+#   6 = INFO (informational messages)
+#   5 = NOTICE (normal but significant conditions)
+#   4 = WARN/WARNING (warning conditions)
+#   3 = ERROR (error conditions)
+#   2 = CRITICAL (critical conditions)
+#   1 = ALERT (action must be taken immediately)
+#   0 = EMERGENCY (system is unusable)
 
-# Log levels
-LOG_LEVEL_DEBUG=0
-LOG_LEVEL_INFO=1
-LOG_LEVEL_WARN=2
-LOG_LEVEL_ERROR=3
-LOG_LEVEL_FATAL=4
+# Log levels (following complete syslog standard - higher number = less severe)
+LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
+LOG_LEVEL_ALERT=1      # Action must be taken immediately
+LOG_LEVEL_CRITICAL=2   # Critical conditions
+LOG_LEVEL_ERROR=3      # Error conditions
+LOG_LEVEL_WARN=4       # Warning conditions
+LOG_LEVEL_NOTICE=5     # Normal but significant conditions
+LOG_LEVEL_INFO=6       # Informational messages
+LOG_LEVEL_DEBUG=7      # Debug information (least severe)
+
+# Aliases for backward compatibility
+LOG_LEVEL_FATAL=$LOG_LEVEL_EMERGENCY  # Alias for EMERGENCY
 
 # Default settings (these can be overridden by init_logger)
 CONSOLE_LOG="true"
@@ -121,18 +135,27 @@ get_log_level_value() {
         "INFO")
             echo $LOG_LEVEL_INFO
             ;;
+        "NOTICE")
+            echo $LOG_LEVEL_NOTICE
+            ;;
         "WARN" | "WARNING")
             echo $LOG_LEVEL_WARN
             ;;
-        "ERROR")
+        "ERROR" | "ERR")
             echo $LOG_LEVEL_ERROR
             ;;
-        "FATAL")
-            echo $LOG_LEVEL_FATAL
+        "CRITICAL" | "CRIT")
+            echo $LOG_LEVEL_CRITICAL
+            ;;
+        "ALERT")
+            echo $LOG_LEVEL_ALERT
+            ;;
+        "EMERGENCY" | "EMERG" | "FATAL")
+            echo $LOG_LEVEL_EMERGENCY
             ;;
         *)
-            # If it's a number between 0-3, use it directly
-            if [[ "$level_name" =~ ^[0-3]$ ]]; then
+            # If it's a number between 0-7 (valid syslog levels), use it directly
+            if [[ "$level_name" =~ ^[0-7]$ ]]; then
                 echo "$level_name"
             else
                 # Default to INFO if invalid
@@ -152,14 +175,23 @@ get_log_level_name() {
         $LOG_LEVEL_INFO)
             echo "INFO"
             ;;
+        $LOG_LEVEL_NOTICE)
+            echo "NOTICE"
+            ;;
         $LOG_LEVEL_WARN)
             echo "WARN"
             ;;
         $LOG_LEVEL_ERROR)
             echo "ERROR"
             ;;
-        $LOG_LEVEL_FATAL)
-            echo "FATAL"
+        $LOG_LEVEL_CRITICAL)
+            echo "CRITICAL"
+            ;;
+        $LOG_LEVEL_ALERT)
+            echo "ALERT"
+            ;;
+        $LOG_LEVEL_EMERGENCY)
+            echo "EMERGENCY"
             ;;
         *)
             echo "UNKNOWN"
@@ -177,14 +209,23 @@ get_syslog_priority() {
         $LOG_LEVEL_INFO)
             echo "info"
             ;;
+        $LOG_LEVEL_NOTICE)
+            echo "notice"
+            ;;
         $LOG_LEVEL_WARN)
             echo "warning"
             ;;
         $LOG_LEVEL_ERROR)
             echo "err"
             ;;
-        $LOG_LEVEL_FATAL)
+        $LOG_LEVEL_CRITICAL)
             echo "crit"
+            ;;
+        $LOG_LEVEL_ALERT)
+            echo "alert"
+            ;;
+        $LOG_LEVEL_EMERGENCY)
+            echo "emerg"
             ;;
         *)
             echo "notice"  # Default to notice for unknown levels
@@ -548,8 +589,9 @@ log_message() {
     local skip_file="${4:-false}"
     local skip_journal="${5:-false}"
     
-    # Skip logging if message level is below current log level
-    if [[ "$level_value" -lt "$CURRENT_LOG_LEVEL" ]]; then
+    # Skip logging if message level is more verbose than current log level
+    # With syslog-style levels, HIGHER values are LESS severe (more verbose)
+    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]]; then
         return
     fi
     
@@ -567,14 +609,23 @@ log_message() {
                 "INFO")
                     echo -e "${log_entry}"  # Default color
                     ;;
+                "NOTICE")
+                    echo -e "\e[32m${log_entry}\e[0m"  # Green
+                    ;;
                 "WARN")
                     echo -e "\e[33m${log_entry}\e[0m"  # Yellow
                     ;;
                 "ERROR")
                     echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
                     ;;
-                "FATAL")
-                    echo -e "\e[41m${log_entry}\e[0m" >&2  # Red background, to stderr
+                "CRITICAL")
+                    echo -e "\e[31;1m${log_entry}\e[0m" >&2  # Bright Red, to stderr
+                    ;;
+                "ALERT")
+                    echo -e "\e[37;41m${log_entry}\e[0m" >&2  # White on Red background, to stderr
+                    ;;
+                "EMERGENCY"|"FATAL")
+                    echo -e "\e[1;37;41m${log_entry}\e[0m" >&2  # Bold White on Red background, to stderr
                     ;;
                 "INIT")
                     echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
@@ -588,7 +639,7 @@ log_message() {
             esac
         else
             # Plain output without colors
-            if [[ "$level_name" == "ERROR" || "$level_name" == "FATAL" ]]; then
+            if [[ "$level_name" == "ERROR" || "$level_name" == "CRITICAL" || "$level_name" == "ALERT" || "$level_name" == "EMERGENCY" || "$level_name" == "FATAL" ]]; then
                 echo "${log_entry}" >&2  # Error messages to stderr
             else
                 echo "${log_entry}"
@@ -635,6 +686,10 @@ log_info() {
     log_message "INFO" $LOG_LEVEL_INFO "$1"
 }
 
+log_notice() {
+    log_message "NOTICE" $LOG_LEVEL_NOTICE "$1"
+}
+
 log_warn() {
     log_message "WARN" $LOG_LEVEL_WARN "$1"
 }
@@ -643,8 +698,21 @@ log_error() {
     log_message "ERROR" $LOG_LEVEL_ERROR "$1"
 }
 
+log_critical() {
+    log_message "CRITICAL" $LOG_LEVEL_CRITICAL "$1"
+}
+
+log_alert() {
+    log_message "ALERT" $LOG_LEVEL_ALERT "$1"
+}
+
+log_emergency() {
+    log_message "EMERGENCY" $LOG_LEVEL_EMERGENCY "$1"
+}
+
+# Alias for backward compatibility
 log_fatal() {
-    log_message "FATAL" $LOG_LEVEL_FATAL "$1"
+    log_message "FATAL" $LOG_LEVEL_EMERGENCY "$1"
 }
 
 log_init() {
