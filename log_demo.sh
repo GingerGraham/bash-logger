@@ -39,11 +39,17 @@ source "$LOGGER_PATH"
 test_all_log_levels() {
     local reason="$1"
     echo "Testing all log messages ($reason)"
-    log_debug "This is a DEBUG message"
-    log_info "This is an INFO message"
-    log_warn "This is a WARN message"
-    log_error "This is an ERROR message"
-    log_fatal "This is a FATAL message"
+    # All syslog standard levels from least to most severe
+    log_debug "This is a DEBUG message (level 7)"
+    log_info "This is an INFO message (level 6)"
+    log_notice "This is a NOTICE message (level 5)"
+    log_warn "This is a WARN message (level 4)"
+    log_error "This is an ERROR message (level 3)"
+    log_critical "This is a CRITICAL message (level 2)"
+    log_alert "This is an ALERT message (level 1)"
+    log_emergency "This is an EMERGENCY message (level 0)"
+    
+    # Special logging types
     log_sensitive "This is a SENSITIVE message (console only)"
     echo
 }

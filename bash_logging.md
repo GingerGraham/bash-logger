@@ -43,7 +43,7 @@ The `init_logger` function accepts the following options:
 | `-l, --log FILE` | Specify a log file to write logs to |
 | `-q, --quiet` | Disable console output |
 | `-v, --verbose` | Set log level to DEBUG (most verbose) |
-| `-d, --level LEVEL` | Set log level (DEBUG, INFO, WARN, ERROR, FATAL or 0-4) |
+| `-d, --level LEVEL` | Set log level (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY or 0-7) |
 | `-f, --format FORMAT` | Set custom log format |
 | `-u, --utc` | Use UTC time instead of local time |
 | `-j, --journal` | Enable logging to systemd journal |
@@ -60,18 +60,23 @@ init_logger --log "/var/log/myscript.log" --level DEBUG --journal --tag "myapp"
 
 ## Log Levels
 
-The module supports five log levels, from most to least verbose:
+The module supports standard syslog levels, from most to least severe:
 
-| Level | Numeric Value | Function |
-|-------|---------------|----------|
-| DEBUG | 0 | `log_debug` |
-| INFO | 1 | `log_info` |
-| SENSITIVE | 1 | `log_sensitive` |
-| WARN | 2 | `log_warn` |
-| ERROR | 3 | `log_error` |
-| FATAL | 4 | `log_fatal` |
+| Level | Numeric Value | Function | Syslog Priority |
+|-------|---------------|----------|----------------|
+| EMERGENCY | 0 | `log_emergency` | emerg |
+| ALERT | 1 | `log_alert` | alert |
+| CRITICAL | 2 | `log_critical` | crit |
+| ERROR | 3 | `log_error` | err |
+| WARN | 4 | `log_warn` | warning |
+| NOTICE | 5 | `log_notice` | notice |
+| INFO | 6 | `log_info` | info |
+| DEBUG | 7 | `log_debug` | debug |
+| SENSITIVE | - | `log_sensitive` | (not sent to syslog) |
 
 Messages with a level lower than the current log level are suppressed.
+
+Sensitive messages are logged at the INFO level but are not written to log files or the journal. They are only displayed on the console.
 
 ## Custom Log Format
 
@@ -99,8 +104,10 @@ You can change configuration at runtime using these functions:
 
 ```bash
 # Change log level
-set_log_level DEBUG   # Set to DEBUG level
-set_log_level WARN    # Set to WARN level
+set_log_level DEBUG      # Set to DEBUG level
+set_log_level NOTICE     # Set to NOTICE level
+set_log_level WARN       # Set to WARN level
+set_log_level CRITICAL   # Set to CRITICAL level
 
 # Change timezone setting
 set_timezone_utc true   # Use UTC time
@@ -165,9 +172,12 @@ Log levels are mapped to syslog priorities as follows:
 |-----------|----------------|
 | DEBUG | debug |
 | INFO | info |
+| NOTICE | notice |
 | WARN | warning |
 | ERROR | err |
-| FATAL | crit |
+| CRITICAL | crit |
+| ALERT | alert |
+| EMERGENCY | emerg |
 
 ## Example Use Cases
 
