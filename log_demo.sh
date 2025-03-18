@@ -14,9 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Path to logger module
-LOGGER_PATH="${PARENT_DIR}/logging.sh" # logger is in the parent directory
-# LOGGER_PATH="${SCRIPT_DIR}/logging.sh" # uncomment if logger is in same directory
-# LOGGER_PATH="${HOME}/Tools/modules/bash/logging.sh" # uncomment and set path if logger is elsewhere
+LOGGER_PATH="${SCRIPT_DIR}/logging.sh" # uncomment if logger is in same directory
 
 # Check if logger exists
 if [[ ! -f "$LOGGER_PATH" ]]; then
