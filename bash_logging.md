@@ -4,7 +4,7 @@ A flexible, reusable logging module for Bash scripts that provides standardized 
 
 ## Features
 
-- Multiple log levels (DEBUG, INFO, WARN, ERROR, FATAL)
+- Standard syslog log levels (DEBUG, INFO, WARN, ERROR, CRITICAL, etc.)
 - Console output with color-coding by severity
 - Optional file output
 - Optional systemd journal logging
