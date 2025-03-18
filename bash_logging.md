@@ -40,9 +40,9 @@ The `init_logger` function accepts the following options:
 
 | Option | Description |
 |--------|-------------|
-| `-l, --log FILE` | Specify a log file to write logs to |
+| `-l, --log, --logfile, --log-file, --file FILE` | Specify a log file to write logs to |
 | `-q, --quiet` | Disable console output |
-| `-v, --verbose` | Set log level to DEBUG (most verbose) |
+| `-v, --verbose, --debug` | Set log level to DEBUG (most verbose) |
 | `-d, --level LEVEL` | Set log level (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY or 0-7) |
 | `-f, --format FORMAT` | Set custom log format |
 | `-u, --utc` | Use UTC time instead of local time |

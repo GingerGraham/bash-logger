@@ -310,7 +310,7 @@ init_logger() {
                 fi
                 shift
                 ;;
-            -l|--log)
+            -l|--log|--logfile|--log-file|--file)
                 LOG_FILE="$2"
                 shift 2
                 ;;
@@ -326,7 +326,7 @@ init_logger() {
                 USE_UTC="true"
                 shift
                 ;;
-            -v|--verbose)
+            -v|--verbose|--debug)
                 VERBOSE="true"
                 CURRENT_LOG_LEVEL=$LOG_LEVEL_DEBUG
                 shift
