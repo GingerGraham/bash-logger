@@ -76,7 +76,7 @@ detect_color_support() {
     fi
     
     # Force colors if explicitly enabled
-    if [[ "$CLICOLOR_FORCE" == "1" ]]; then
+    if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then
         return 0
     fi
     
@@ -93,8 +93,8 @@ detect_color_support() {
     fi
     
     # Check TERM as fallback
-    if [[ -n "$TERM" && "$TERM" != "dumb" ]]; then
-        case "$TERM" in
+    if [[ -n "${TERM:-}" && "${TERM:-}" != "dumb" ]]; then
+        case "${TERM:-}" in
             xterm*|rxvt*|ansi|linux|screen*|tmux*|vt100|vt220|alacritty)
                 return 0
                 ;;
@@ -275,7 +275,7 @@ format_log_message() {
 init_logger() {
     # Get the calling script's name
     local caller_script
-    if [[ -n "${BASH_SOURCE[1]}" ]]; then
+    if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
         caller_script=$(basename "${BASH_SOURCE[1]}")
     else
         caller_script="unknown"
