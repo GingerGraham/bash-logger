@@ -71,7 +71,7 @@ LOG_FORMAT="%d [%l] [%s] %m"
 # Function to detect terminal color support
 detect_color_support() {
     # Default to no colors if explicitly disabled
-    if [[ -n "$NO_COLOR" || "$CLICOLOR" == "0" ]]; then
+    if [[ -n "${NO_COLOR:-}" || "${CLICOLOR:-}" == "0" ]]; then
         return 1
     fi
     
@@ -169,28 +169,28 @@ get_log_level_value() {
 get_log_level_name() {
     local level_value="$1"
     case "$level_value" in
-        $LOG_LEVEL_DEBUG)
+        "$LOG_LEVEL_DEBUG")
             echo "DEBUG"
             ;;
-        $LOG_LEVEL_INFO)
+        "$LOG_LEVEL_INFO")
             echo "INFO"
             ;;
-        $LOG_LEVEL_NOTICE)
+        "$LOG_LEVEL_NOTICE")
             echo "NOTICE"
             ;;
-        $LOG_LEVEL_WARN)
+        "$LOG_LEVEL_WARN")
             echo "WARN"
             ;;
-        $LOG_LEVEL_ERROR)
+        "$LOG_LEVEL_ERROR")
             echo "ERROR"
             ;;
-        $LOG_LEVEL_CRITICAL)
+        "$LOG_LEVEL_CRITICAL")
             echo "CRITICAL"
             ;;
-        $LOG_LEVEL_ALERT)
+        "$LOG_LEVEL_ALERT")
             echo "ALERT"
             ;;
-        $LOG_LEVEL_EMERGENCY)
+        "$LOG_LEVEL_EMERGENCY")
             echo "EMERGENCY"
             ;;
         *)
@@ -203,28 +203,28 @@ get_log_level_name() {
 get_syslog_priority() {
     local level_value="$1"
     case "$level_value" in
-        $LOG_LEVEL_DEBUG)
+        "$LOG_LEVEL_DEBUG")
             echo "debug"
             ;;
-        $LOG_LEVEL_INFO)
+        "$LOG_LEVEL_INFO")
             echo "info"
             ;;
-        $LOG_LEVEL_NOTICE)
+        "$LOG_LEVEL_NOTICE")
             echo "notice"
             ;;
-        $LOG_LEVEL_WARN)
+        "$LOG_LEVEL_WARN")
             echo "warning"
             ;;
-        $LOG_LEVEL_ERROR)
+        "$LOG_LEVEL_ERROR")
             echo "err"
             ;;
-        $LOG_LEVEL_CRITICAL)
+        "$LOG_LEVEL_CRITICAL")
             echo "crit"
             ;;
-        $LOG_LEVEL_ALERT)
+        "$LOG_LEVEL_ALERT")
             echo "alert"
             ;;
-        $LOG_LEVEL_EMERGENCY)
+        "$LOG_LEVEL_EMERGENCY")
             echo "emerg"
             ;;
         *)
@@ -252,7 +252,7 @@ format_log_message() {
     # Replace format variables - zsh compatible method
     local formatted_message="$LOG_FORMAT"
     # Handle % escaping for zsh compatibility
-    if [[ -n "$ZSH_VERSION" ]]; then
+    if [[ -n "${ZSH_VERSION:-}" ]]; then
         # In zsh, we need a different approach
         formatted_message=${formatted_message:gs/%d/$current_date}
         formatted_message=${formatted_message:gs/%l/$level_name}
@@ -293,7 +293,8 @@ init_logger() {
                 shift
                 ;;
             -d|--level)
-                local level_value=$(get_log_level_value "$2")
+                local level_value
+                level_value=$(get_log_level_value "$2")
                 CURRENT_LOG_LEVEL=$level_value
                 # If both --verbose and --level are specified, --level takes precedence
                 shift 2
@@ -372,7 +373,8 @@ init_logger() {
         fi
         
         # Write the initialization message using the same format
-        local init_message=$(format_log_message "INIT" "Logger initialized by $caller_script")
+        local init_message
+        init_message=$(format_log_message "INIT" "Logger initialized by $caller_script")
         echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
             echo "Error: Failed to write test message to log file" >&2
             return 1
@@ -389,13 +391,16 @@ init_logger() {
 # Function to change log level after initialization
 set_log_level() {
     local level="$1"
-    local old_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
+    local old_level
+    old_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
     CURRENT_LOG_LEVEL=$(get_log_level_value "$level")
-    local new_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
+    local new_level
+    new_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
     
     # Create a special log entry that bypasses level checks
     local message="Log level changed from $old_level to $new_level"
-    local log_entry=$(format_log_message "CONFIG" "$message")
+    local log_entry
+    log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -423,7 +428,8 @@ set_timezone_utc() {
     USE_UTC="$use_utc"
     
     local message="Timezone setting changed from $old_setting to $USE_UTC"
-    local log_entry=$(format_log_message "CONFIG" "$message")
+    local log_entry
+    log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -451,7 +457,8 @@ set_log_format() {
     LOG_FORMAT="$1"
     
     local message="Log format changed from \"$old_format\" to \"$LOG_FORMAT\""
-    local log_entry=$(format_log_message "CONFIG" "$message")
+    local log_entry
+    log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -488,7 +495,8 @@ set_journal_logging() {
     fi
     
     local message="Journal logging changed from $old_setting to $USE_JOURNAL"
-    local log_entry=$(format_log_message "CONFIG" "$message")
+    local log_entry
+    log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -516,7 +524,8 @@ set_journal_tag() {
     JOURNAL_TAG="$1"
     
     local message="Journal tag changed from \"$old_tag\" to \"$JOURNAL_TAG\""
-    local log_entry=$(format_log_message "CONFIG" "$message")
+    local log_entry
+    log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -559,7 +568,8 @@ set_color_mode() {
     esac
     
     local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
-    local log_entry=$(format_log_message "CONFIG" "$message")
+    local log_entry
+    log_entry=$(format_log_message "CONFIG" "$message")
     
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -596,7 +606,8 @@ log_message() {
     fi
     
     # Format the log entry
-    local log_entry=$(format_log_message "$level_name" "$message")
+    local log_entry
+    log_entry=$(format_log_message "$level_name" "$message")
     
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -667,7 +678,8 @@ log_message() {
     if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" ]]; then
         if check_logger_available; then
             # Map our log level to syslog priority
-            local syslog_priority=$(get_syslog_priority "$level_value")
+            local syslog_priority
+            syslog_priority=$(get_syslog_priority "$level_value")
             
             # Use the logger command to send to syslog/journal
             # Strip any ANSI color codes from the message
