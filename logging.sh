@@ -6,7 +6,21 @@
 # 
 # Usage in other scripts:
 #   source /path/to/logging.sh # Ensure that the path is an absolute path
-#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG] [--color] [--no-color]
+#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG] [-e|--stderr-level LEVEL] [--color] [--no-color]
+#
+# Options:
+#   -l, --log FILE          Write logs to FILE
+#   -q, --quiet             Disable console output
+#   -v, --verbose           Enable debug level logging
+#   -d, --level LEVEL       Set minimum log level (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY)
+#   -f, --format FORMAT     Set log message format (see format variables below)
+#   -j, --journal           Enable systemd journal logging
+#   -t, --tag TAG           Set journal/syslog tag
+#   -u, --utc               Use UTC timestamps instead of local time
+#   -e, --stderr-level LEVEL  Set minimum level for stderr output (default: ERROR)
+#                             Messages at this level and above go to stderr, below go to stdout
+#   --color, --colour       Force colored output
+#   --no-color, --no-colour Disable colored output
 #
 # Functions provided:
 #   log_debug "message"      - Log debug level message
@@ -55,6 +69,11 @@ JOURNAL_TAG=""  # Tag for syslog/journal entries
 
 # Color settings
 USE_COLORS="auto"  # Can be "auto", "always", or "never"
+
+# Stream output settings
+# Messages at this level and above (more severe) go to stderr, below go to stdout
+# Default: ERROR (level 3) and above to stderr
+LOG_STDERR_LEVEL=$LOG_LEVEL_ERROR
 
 # Default log format
 # Format variables:
@@ -118,6 +137,14 @@ should_use_colors() {
             return $?
             ;;
     esac
+}
+
+# Function to determine if a log level should output to stderr
+# Returns 0 (true) if the given level should go to stderr
+should_use_stderr() {
+    local level_value="$1"
+    # Lower number = more severe, so use stderr if level <= threshold
+    [[ "$level_value" -le "$LOG_STDERR_LEVEL" ]]
 }
 
 # Check if logger command is available
@@ -332,6 +359,12 @@ init_logger() {
                 CURRENT_LOG_LEVEL=$LOG_LEVEL_DEBUG
                 shift
                 ;;
+            -e|--stderr-level)
+                local stderr_level_value
+                stderr_level_value=$(get_log_level_value "$2")
+                LOG_STDERR_LEVEL=$stderr_level_value
+                shift 2
+                ;;
             *)
                 echo "Unknown parameter for logger: $1" >&2
                 return 1
@@ -384,7 +417,7 @@ init_logger() {
     fi
     
     # Log initialization success
-    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(get_log_level_name $CURRENT_LOG_LEVEL), format=\"$LOG_FORMAT\""
+    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(get_log_level_name "$CURRENT_LOG_LEVEL"), stderr level=$(get_log_level_name "$LOG_STDERR_LEVEL"), format=\"$LOG_FORMAT\""
     return 0
 }
 
@@ -611,47 +644,97 @@ log_message() {
     
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
+        # Determine if output should go to stderr based on configured threshold
+        local use_stderr=false
+        if should_use_stderr "$level_value"; then
+            use_stderr=true
+        fi
+
         if should_use_colors; then
             # Color output for console based on log level
             case "$level_name" in
                 "DEBUG")
-                    echo -e "\e[34m${log_entry}\e[0m"  # Blue
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[34m${log_entry}\e[0m" >&2  # Blue
+                    else
+                        echo -e "\e[34m${log_entry}\e[0m"  # Blue
+                    fi
                     ;;
                 "INFO")
-                    echo -e "${log_entry}"  # Default color
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "${log_entry}" >&2  # Default color
+                    else
+                        echo -e "${log_entry}"  # Default color
+                    fi
                     ;;
                 "NOTICE")
-                    echo -e "\e[32m${log_entry}\e[0m"  # Green
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[32m${log_entry}\e[0m" >&2  # Green
+                    else
+                        echo -e "\e[32m${log_entry}\e[0m"  # Green
+                    fi
                     ;;
                 "WARN")
-                    echo -e "\e[33m${log_entry}\e[0m"  # Yellow
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[33m${log_entry}\e[0m" >&2  # Yellow
+                    else
+                        echo -e "\e[33m${log_entry}\e[0m"  # Yellow
+                    fi
                     ;;
                 "ERROR")
-                    echo -e "\e[31m${log_entry}\e[0m" >&2  # Red, to stderr
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[31m${log_entry}\e[0m" >&2  # Red
+                    else
+                        echo -e "\e[31m${log_entry}\e[0m"  # Red
+                    fi
                     ;;
                 "CRITICAL")
-                    echo -e "\e[31;1m${log_entry}\e[0m" >&2  # Bright Red, to stderr
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[31;1m${log_entry}\e[0m" >&2  # Bright Red
+                    else
+                        echo -e "\e[31;1m${log_entry}\e[0m"  # Bright Red
+                    fi
                     ;;
                 "ALERT")
-                    echo -e "\e[37;41m${log_entry}\e[0m" >&2  # White on Red background, to stderr
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[37;41m${log_entry}\e[0m" >&2  # White on Red background
+                    else
+                        echo -e "\e[37;41m${log_entry}\e[0m"  # White on Red background
+                    fi
                     ;;
                 "EMERGENCY"|"FATAL")
-                    echo -e "\e[1;37;41m${log_entry}\e[0m" >&2  # Bold White on Red background, to stderr
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[1;37;41m${log_entry}\e[0m" >&2  # Bold White on Red background
+                    else
+                        echo -e "\e[1;37;41m${log_entry}\e[0m"  # Bold White on Red background
+                    fi
                     ;;
                 "INIT")
-                    echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[35m${log_entry}\e[0m" >&2  # Purple for init
+                    else
+                        echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
+                    fi
                     ;;
                 "SENSITIVE")
-                    echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
+                    if [[ "$use_stderr" == true ]]; then
+                        echo -e "\e[36m${log_entry}\e[0m" >&2  # Cyan for sensitive
+                    else
+                        echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
+                    fi
                     ;;
                 *)
-                    echo "${log_entry}"  # Default color for unknown level
+                    if [[ "$use_stderr" == true ]]; then
+                        echo "${log_entry}" >&2  # Default color for unknown level
+                    else
+                        echo "${log_entry}"  # Default color for unknown level
+                    fi
                     ;;
             esac
         else
             # Plain output without colors
-            if [[ "$level_name" == "ERROR" || "$level_name" == "CRITICAL" || "$level_name" == "ALERT" || "$level_name" == "EMERGENCY" || "$level_name" == "FATAL" ]]; then
-                echo "${log_entry}" >&2  # Error messages to stderr
+            if [[ "$use_stderr" == true ]]; then
+                echo "${log_entry}" >&2
             else
                 echo "${log_entry}"
             fi
