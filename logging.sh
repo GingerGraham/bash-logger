@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 #
 # logging.sh - Reusable Bash Logging Module
-# 
+#
+# shellcheck disable=SC2034
+# Note: SC2034 (unused variable) is disabled because this script is designed to be
+# sourced by other scripts. Variables like LOG_LEVEL_FATAL, LOG_CONFIG_FILE, VERBOSE,
+# and current_section are intentionally exported for external use or future features.
+#
 # This script provides logging functionality that can be sourced by other scripts
 # 
 # Usage in other scripts:
 #   source /path/to/logging.sh # Ensure that the path is an absolute path
-#   init_logger [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG] [-e|--stderr-level LEVEL] [--color] [--no-color]
+#   init_logger [-c|--config FILE] [-l|--log FILE] [-q|--quiet] [-v|--verbose] [-d|--level LEVEL] [-f|--format FORMAT] [-j|--journal] [-t|--tag TAG] [-e|--stderr-level LEVEL] [--color] [--no-color]
 #
 # Options:
+#   -c, --config FILE       Load configuration from INI file (CLI args override config values)
 #   -l, --log FILE          Write logs to FILE
 #   -q, --quiet             Disable console output
 #   -v, --verbose           Enable debug level logging
@@ -21,6 +27,19 @@
 #                             Messages at this level and above go to stderr, below go to stdout
 #   --color, --colour       Force colored output
 #   --no-color, --no-colour Disable colored output
+#
+# Configuration File Format (INI):
+#   [logging]
+#   level = INFO                    # Log level: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY
+#   format = %d [%l] [%s] %m        # Log format string
+#   log_file = /path/to/file.log   # Log file path (empty to disable)
+#   journal = false                 # Enable systemd journal: true/false
+#   tag = myapp                     # Journal/syslog tag
+#   utc = false                     # Use UTC timestamps: true/false
+#   color = auto                    # Color mode: auto/always/never
+#   stderr_level = ERROR            # Minimum level for stderr output
+#   quiet = false                   # Disable console output: true/false
+#   verbose = false                 # Enable debug logging: true/false
 #
 # Functions provided:
 #   log_debug "message"      - Log debug level message
@@ -150,6 +169,186 @@ should_use_stderr() {
 # Check if logger command is available
 check_logger_available() {
     command -v logger &>/dev/null
+}
+
+# Configuration file path (set by init_logger when using -c option)
+LOG_CONFIG_FILE=""
+
+# Parse an INI-style configuration file
+# Usage: parse_config_file "/path/to/config.ini"
+# Returns 0 on success, 1 on error
+# Config values are applied to global variables; CLI args can override them later
+parse_config_file() {
+    local config_file="$1"
+
+    # Validate file exists and is readable
+    if [[ ! -f "$config_file" ]]; then
+        echo "Error: Configuration file not found: $config_file" >&2
+        return 1
+    fi
+
+    if [[ ! -r "$config_file" ]]; then
+        echo "Error: Configuration file not readable: $config_file" >&2
+        return 1
+    fi
+
+    local line_num=0
+    local current_section=""
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        ((line_num++))
+
+        # Remove leading/trailing whitespace
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[#\;] ]] && continue
+
+        # Handle section headers [section]
+        if [[ "$line" =~ ^\[([^]]+)\]$ ]]; then
+            current_section="${BASH_REMATCH[1]}"
+            continue
+        fi
+
+        # Parse key = value pairs
+        if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+
+            # Trim whitespace from key and value
+            key="${key#"${key%%[![:space:]]*}"}"
+            key="${key%"${key##*[![:space:]]}"}"
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%"${value##*[![:space:]]}"}"
+
+            # Remove surrounding quotes if present
+            if [[ "$value" =~ ^\"(.*)\"$ ]] || [[ "$value" =~ ^\'(.*)\'$ ]]; then
+                value="${BASH_REMATCH[1]}"
+            fi
+
+            # Apply configuration based on key (case-insensitive)
+            case "${key,,}" in
+                level|log_level)
+                    CURRENT_LOG_LEVEL=$(get_log_level_value "$value")
+                    ;;
+                format|log_format)
+                    LOG_FORMAT="$value"
+                    ;;
+                log_file|logfile|file)
+                    LOG_FILE="$value"
+                    ;;
+                journal|use_journal)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            if check_logger_available; then
+                                USE_JOURNAL="true"
+                            else
+                                echo "Warning: logger command not found, journal logging disabled (config line $line_num)" >&2
+                            fi
+                            ;;
+                        false|no|0|off)
+                            USE_JOURNAL="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid journal value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
+                tag|journal_tag)
+                    JOURNAL_TAG="$value"
+                    ;;
+                utc|use_utc)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            USE_UTC="true"
+                            ;;
+                        false|no|0|off)
+                            USE_UTC="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid utc value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
+                color|colour|colors|colours|use_colors)
+                    case "${value,,}" in
+                        auto)
+                            USE_COLORS="auto"
+                            ;;
+                        always|true|yes|1|on)
+                            USE_COLORS="always"
+                            ;;
+                        never|false|no|0|off)
+                            USE_COLORS="never"
+                            ;;
+                        *)
+                            echo "Warning: Invalid color value '$value' at line $line_num, expected auto/always/never" >&2
+                            ;;
+                    esac
+                    ;;
+                stderr_level|stderr-level)
+                    LOG_STDERR_LEVEL=$(get_log_level_value "$value")
+                    ;;
+                quiet|console_log)
+                    case "${key,,}" in
+                        quiet)
+                            # quiet=true means CONSOLE_LOG=false
+                            case "${value,,}" in
+                                true|yes|1|on)
+                                    CONSOLE_LOG="false"
+                                    ;;
+                                false|no|0|off)
+                                    CONSOLE_LOG="true"
+                                    ;;
+                                *)
+                                    echo "Warning: Invalid quiet value '$value' at line $line_num, expected true/false" >&2
+                                    ;;
+                            esac
+                            ;;
+                        console_log)
+                            # console_log=true means CONSOLE_LOG=true (direct mapping)
+                            case "${value,,}" in
+                                true|yes|1|on)
+                                    CONSOLE_LOG="true"
+                                    ;;
+                                false|no|0|off)
+                                    CONSOLE_LOG="false"
+                                    ;;
+                                *)
+                                    echo "Warning: Invalid console_log value '$value' at line $line_num, expected true/false" >&2
+                                    ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                verbose)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            VERBOSE="true"
+                            CURRENT_LOG_LEVEL=$LOG_LEVEL_DEBUG
+                            ;;
+                        false|no|0|off)
+                            VERBOSE="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid verbose value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
+                *)
+                    echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
+                    ;;
+            esac
+        else
+            echo "Warning: Invalid syntax at line $line_num: $line" >&2
+        fi
+    done < "$config_file"
+
+    # Store the config file path for potential reload functionality
+    LOG_CONFIG_FILE="$config_file"
+
+    return 0
 }
 
 # Convert log level name to numeric value
@@ -307,10 +506,35 @@ init_logger() {
     else
         caller_script="unknown"
     fi
-    
-    # Parse command line arguments
+
+    # First pass: look for config file option and process it first
+    # This allows CLI arguments to override config file values
+    local args=("$@")
+    local i=0
+    while [[ $i -lt ${#args[@]} ]]; do
+        case "${args[$i]}" in
+            -c|--config)
+                local config_file="${args[$((i+1))]}"
+                if [[ -z "$config_file" ]]; then
+                    echo "Error: --config requires a file path argument" >&2
+                    return 1
+                fi
+                if ! parse_config_file "$config_file"; then
+                    return 1
+                fi
+                break
+                ;;
+        esac
+        ((i++))
+    done
+
+    # Second pass: parse all command line arguments (overrides config file)
     while [[ "$#" -gt 0 ]]; do
         case $1 in
+            -c|--config)
+                # Already processed in first pass, skip
+                shift 2
+                ;;
             --color|--colour)
                 USE_COLORS="always"
                 shift
@@ -425,10 +649,10 @@ init_logger() {
 set_log_level() {
     local level="$1"
     local old_level
-    old_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
+    old_level=$(get_log_level_name "$CURRENT_LOG_LEVEL")
     CURRENT_LOG_LEVEL=$(get_log_level_value "$level")
     local new_level
-    new_level=$(get_log_level_name $CURRENT_LOG_LEVEL)
+    new_level=$(get_log_level_name "$CURRENT_LOG_LEVEL")
     
     # Create a special log entry that bypasses level checks
     local message="Log level changed from $old_level to $new_level"

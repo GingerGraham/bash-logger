@@ -1,0 +1,68 @@
+# logging.conf.example - Example configuration file for logging.sh
+#
+# Copy this file to logging.conf (or any name) and customize as needed.
+# Use with: init_logger -c /path/to/logging.conf
+#
+# Lines starting with # or ; are comments
+# Blank lines are ignored
+# CLI arguments override values set in this file
+
+[logging]
+
+# Log level (default: INFO)
+# Valid values: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY
+# Can also use numeric values 0-7 (0=EMERGENCY, 7=DEBUG)
+level = INFO
+
+# Log message format (default: %d [%l] [%s] %m)
+# Format variables:
+#   %d = date and time (YYYY-MM-DD HH:MM:SS)
+#   %z = timezone indicator (UTC or LOCAL)
+#   %l = log level name (DEBUG, INFO, WARN, ERROR, etc.)
+#   %s = script name
+#   %m = message
+# Examples:
+#   "[%l] %d [%s] %m"      => "[INFO] 2025-03-03 12:34:56 [myscript.sh] Hello"
+#   "%d %z [%l] %m"        => "2025-03-03 12:34:56 UTC [INFO] Hello"
+format = %d [%l] [%s] %m
+
+# Log file path (default: empty/disabled)
+# Leave empty or comment out to disable file logging
+# The directory will be created if it doesn't exist
+# log_file = /var/log/myapp/app.log
+log_file =
+
+# Enable systemd journal logging (default: false)
+# Requires the 'logger' command to be available
+journal = false
+
+# Journal/syslog tag (default: script name)
+# Used as the identifier in syslog/journal entries
+# tag = myapp
+tag =
+
+# Use UTC timestamps (default: false)
+# Set to true to use UTC time instead of local time
+utc = false
+
+# Color mode for console output (default: auto)
+# Valid values:
+#   auto   - Detect terminal color support automatically
+#   always - Always use colors
+#   never  - Never use colors
+color = auto
+
+# Minimum level for stderr output (default: ERROR)
+# Messages at this level and above (more severe) go to stderr
+# Messages below this level go to stdout
+# Valid values: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY
+stderr_level = ERROR
+
+# Disable console output (default: false)
+# Set to true to suppress all console output (useful for daemon scripts)
+quiet = false
+
+# Enable verbose/debug logging (default: false)
+# When true, sets log level to DEBUG
+# Note: If both 'verbose' and 'level' are set, 'level' takes precedence
+verbose = false

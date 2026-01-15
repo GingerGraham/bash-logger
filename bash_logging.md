@@ -11,6 +11,7 @@ A flexible, reusable logging module for Bash scripts that provides standardized 
 - Optional systemd journal logging
 - Customizable log format
 - UTC or local time support
+- INI configuration file support
 - Runtime configuration changes
 - Special handling for sensitive data
 
@@ -41,6 +42,7 @@ The `init_logger` function accepts the following options:
 
 | Option | Description |
 |--------|-------------|
+| `-c, --config FILE` | Load configuration from an INI file (CLI args override config values) |
 | `-l, --log, --logfile, --log-file, --file FILE` | Specify a log file to write logs to |
 | `-q, --quiet` | Disable console output |
 | `-v, --verbose, --debug` | Set log level to DEBUG (most verbose) |
@@ -51,13 +53,19 @@ The `init_logger` function accepts the following options:
 | `-j, --journal` | Enable logging to systemd journal |
 | `-t, --tag TAG` | Set custom tag for journal logs (default: script name) |
 | `--color --colour` | Explicitly enable color output (default: auto-detect) |
-| `--no-color --no-colour` | Disable color output | 
+| `--no-color --no-colour` | Disable color output |
 
 Example:
 
 ```bash
 # Initialize logger with file output, journal logging, and DEBUG level
 init_logger --log "/var/log/myscript.log" --level DEBUG --journal --tag "myapp"
+
+# Initialize logger from a configuration file
+init_logger --config /etc/myapp/logging.conf
+
+# Config file with CLI overrides (CLI takes precedence)
+init_logger --config logging.conf --level DEBUG --color
 ```
 
 ## Log Levels
@@ -155,6 +163,135 @@ init_logger --stderr-level EMERGENCY
 ```bash
 init_logger --stderr-level DEBUG
 # Now all log messages go to stderr, leaving stdout free for program output
+```
+
+## Configuration File
+
+The logging module supports loading configuration from INI-style files. This is useful for:
+- Centralising logging configuration across multiple scripts
+- Allowing users to customise logging without modifying scripts
+- Separating configuration from code
+
+### Configuration File Format
+
+```ini
+# logging.conf - Example configuration file
+# Lines starting with # or ; are comments
+# Blank lines are ignored
+
+[logging]
+# Log level: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY
+level = INFO
+
+# Log message format
+# Variables: %d=datetime, %z=timezone, %l=level, %s=script, %m=message
+format = %d [%l] [%s] %m
+
+# Log file path (leave empty to disable file logging)
+log_file = /var/log/myapp.log
+
+# Enable systemd journal logging: true/false
+journal = false
+
+# Journal/syslog tag (defaults to script name)
+tag = myapp
+
+# Use UTC timestamps: true/false
+utc = false
+
+# Color mode: auto, always, never
+color = auto
+
+# Minimum level for stderr output
+stderr_level = ERROR
+
+# Disable console output: true/false
+quiet = false
+
+# Enable debug logging: true/false
+verbose = false
+```
+
+### Configuration Keys
+
+| Key | Aliases | Values | Description |
+|-----|---------|--------|-------------|
+| `level` | `log_level` | DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, 0-7 | Minimum log level |
+| `format` | `log_format` | Format string | Log message format |
+| `log_file` | `logfile`, `file` | Path | Log file path |
+| `journal` | `use_journal` | true/false, yes/no, on/off, 1/0 | Enable journal logging |
+| `tag` | `journal_tag` | String | Journal/syslog tag |
+| `utc` | `use_utc` | true/false, yes/no, on/off, 1/0 | Use UTC timestamps |
+| `color` | `colour`, `colors`, `colours`, `use_colors` | auto, always, never | Color mode |
+| `stderr_level` | `stderr-level` | Log level | Minimum level for stderr |
+| `quiet` | - | true/false, yes/no, on/off, 1/0 | Disable console output |
+| `console_log` | - | true/false, yes/no, on/off, 1/0 | Enable console output (inverse of quiet) |
+| `verbose` | - | true/false, yes/no, on/off, 1/0 | Enable DEBUG level |
+
+### Using Configuration Files
+
+```bash
+#!/bin/bash
+source /path/to/logging.sh
+
+# Load configuration from file
+init_logger --config /etc/myapp/logging.conf
+
+# Config file with CLI overrides (CLI arguments take precedence)
+init_logger --config logging.conf --level DEBUG
+
+# Config file with multiple overrides
+init_logger --config logging.conf --level WARN --color --log /tmp/app.log
+```
+
+### Configuration Precedence
+
+When using both a configuration file and CLI arguments:
+1. Default values are set first
+2. Configuration file values override defaults
+3. CLI arguments override configuration file values
+
+This allows you to set baseline configuration in a file while still allowing runtime customisation.
+
+### Example: Application with User-Configurable Logging
+
+```bash
+#!/bin/bash
+source /path/to/logging.sh
+
+# Default config location
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/myapp/logging.conf"
+
+# Allow user to specify different config
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --log-config)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+# Initialize logger (use config if it exists)
+if [[ -f "$CONFIG_FILE" ]]; then
+    init_logger --config "$CONFIG_FILE"
+else
+    # Fall back to defaults
+    init_logger --level INFO
+fi
+
+log_info "Application started"
+```
+
+### Example Configuration File
+
+An example configuration file (`logging.conf.example`) is included with the module. Copy and customise it for your needs:
+
+```bash
+cp logging.conf.example /etc/myapp/logging.conf
 ```
 
 ## Runtime Configuration
@@ -310,6 +447,38 @@ init_logger \
   --level INFO
 
 log_info "Application initialized with comprehensive logging"
+```
+
+### Using a Configuration File
+
+```bash
+#!/bin/bash
+
+# Source the logging module
+source /path/to/logging.sh
+
+# Initialize from configuration file
+# All settings are defined in the INI file
+init_logger --config /etc/myapp/logging.conf
+
+log_info "Application started with config file settings"
+
+# You can still override specific settings via CLI
+# init_logger --config /etc/myapp/logging.conf --level DEBUG
+```
+
+Example configuration file (`/etc/myapp/logging.conf`):
+
+```ini
+[logging]
+level = INFO
+format = %d %z [%l] [%s] %m
+log_file = /var/log/myapp/app.log
+journal = true
+tag = myapp
+utc = true
+color = auto
+stderr_level = ERROR
 ```
 
 ### CLI Tool with Separate Output Streams

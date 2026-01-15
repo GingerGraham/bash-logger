@@ -438,6 +438,86 @@ echo "Messages were logged to file but not displayed on console due to --quiet"
 echo "========== Quiet Mode Demo Complete =========="
 
 # ====================================================
+# PART 9: Configuration File Demo
+# ====================================================
+echo -e "\n========== PART 9: Configuration File Demo =========="
+echo "This demonstrates loading logger configuration from an INI file."
+
+# Create a temporary config file for testing
+CONFIG_FILE="${LOGS_DIR}/test_logging.conf"
+
+echo "========== Creating test configuration file =========="
+cat > "$CONFIG_FILE" << 'EOF'
+# Test configuration file for logging module
+[logging]
+level = DEBUG
+format = [CONFIG] %d [%l] %m
+utc = false
+color = auto
+stderr_level = ERROR
+quiet = false
+EOF
+
+echo "Config file created at: $CONFIG_FILE"
+echo "Contents:"
+cat "$CONFIG_FILE"
+echo
+
+# Initialize logger using config file
+echo "========== Initializing with config file =========="
+init_logger --config "$CONFIG_FILE" --log "${LOGGING_FILE}" || {
+    echo "Failed to initialize logger with config file" >&2
+    exit 1
+}
+
+log_debug "This DEBUG message should appear (config sets level=DEBUG)"
+log_info "This INFO message uses format from config file"
+log_warn "This WARN message also uses the config format"
+log_error "This ERROR message goes to stderr per config"
+
+# Test CLI override of config values
+echo -e "\n========== Testing CLI override of config values =========="
+echo "Config file sets level=DEBUG, but CLI will override to WARN"
+init_logger --config "$CONFIG_FILE" --log "${LOGGING_FILE}" --level WARN || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+
+log_debug "This DEBUG message should NOT appear (CLI override to WARN)"
+log_info "This INFO message should NOT appear (CLI override to WARN)"
+log_warn "This WARN message should appear (matches CLI level)"
+log_error "This ERROR message should appear"
+
+# Test config file with different settings
+echo -e "\n========== Testing config with UTC and custom format =========="
+cat > "$CONFIG_FILE" << 'EOF'
+# Configuration with UTC time and JSON-like format
+[logging]
+level = INFO
+format = {"time":"%d","tz":"%z","level":"%l","msg":"%m"}
+utc = true
+color = never
+EOF
+
+echo "Updated config file:"
+cat "$CONFIG_FILE"
+echo
+
+init_logger --config "$CONFIG_FILE" --log "${LOGGING_FILE}" || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+
+log_info "This message uses JSON-like format with UTC time"
+log_warn "Warning message in JSON format"
+log_error "Error message in JSON format"
+
+# Clean up temporary config file
+rm -f "$CONFIG_FILE"
+
+echo "========== Configuration File Demo Complete =========="
+
+# ====================================================
 # Final Summary
 # ====================================================
 echo -e "\n========== Demo Summary =========="
