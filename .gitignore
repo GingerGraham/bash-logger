@@ -1,3 +1,14 @@
+# .gitignore
+
+# ignore compiled bash scripts
+*.shc
+
 # ignore log files and log directories
 logs/
 *.log
+
+# ignore temporary files
+*.tmp
+
+# ignore user specific vs code settings
+.vscode/
