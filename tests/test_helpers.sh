@@ -34,7 +34,7 @@ cleanup_test_suite() {
 # Setup function - called before each test
 setup_test() {
     # Reset logging module state by re-sourcing
-    # shellcheck source=../logging.sh
+    # shellcheck source=../logging.sh disable=SC1091
     source "$PROJECT_ROOT/logging.sh"
 
     # Create test-specific temp directory
@@ -93,6 +93,7 @@ skip_test() {
 }
 
 # Assertion functions
+# shellcheck disable=SC2016
 
 # Assert that two values are equal
 assert_equals() {

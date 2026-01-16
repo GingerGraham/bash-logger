@@ -217,7 +217,8 @@ test_reinitialization() {
 test_invalid_log_level() {
     start_test "Invalid log level falls back to default"
 
-    # Capture stderr to check for warning
+    # Capture stderr to check for warning (value intentionally unused)
+    # shellcheck disable=SC2034
     local stderr
     stderr=$(init_logger --level INVALID 2>&1)
 

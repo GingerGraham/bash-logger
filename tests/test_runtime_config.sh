@@ -351,6 +351,7 @@ test_set_log_level_invalid() {
     set_log_level "INVALID" 2>/dev/null || true
 
     # Level should remain valid (either unchanged or set to some default)
+    # shellcheck disable=SC2031
     [[ $CURRENT_LOG_LEVEL -ge 0 && $CURRENT_LOG_LEVEL -le 7 ]] || {
         fail_test "Log level should remain valid after invalid input"
         return

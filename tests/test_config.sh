@@ -60,6 +60,7 @@ EOF
 
     init_logger --config "$config_file" --quiet
 
+    # shellcheck disable=SC2153
     assert_equals "$log_file" "$LOG_FILE" || return
 
     log_info "Config test"

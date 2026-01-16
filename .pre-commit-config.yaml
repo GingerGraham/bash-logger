@@ -24,7 +24,7 @@ repos:
         entry: shellcheck
         language: python
         types: [shell]
-        args: [--severity=warning]
+        args: [--severity=warning, --external-sources]
 
   # MarkdownLint - Markdown formatting (with auto-fix)
   - repo: https://github.com/igorshubovych/markdownlint-cli
