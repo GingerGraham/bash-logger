@@ -67,24 +67,20 @@
       {
         "assets": [
           {
-            "path": "release-package/bash-logger-${nextRelease.version}.tar.gz",
-            "label": "bash-logger-${nextRelease.version}.tar.gz",
-            "name": "bash-logger-${nextRelease.version}.tar.gz"
+            "path": "release-package/*.tar.gz",
+            "label": "bash-logger tar.gz package"
           },
           {
-            "path": "release-package/bash-logger-${nextRelease.version}.tar.gz.sha256",
-            "label": "bash-logger-${nextRelease.version}.tar.gz.sha256",
-            "name": "bash-logger-${nextRelease.version}.tar.gz.sha256"
+            "path": "release-package/*.tar.gz.sha256",
+            "label": "bash-logger tar.gz SHA256 checksum"
           },
           {
-            "path": "release-package/bash-logger-${nextRelease.version}.zip",
-            "label": "bash-logger-${nextRelease.version}.zip",
-            "name": "bash-logger-${nextRelease.version}.zip"
+            "path": "release-package/*.zip",
+            "label": "bash-logger zip package"
           },
           {
-            "path": "release-package/bash-logger-${nextRelease.version}.zip.sha256",
-            "label": "bash-logger-${nextRelease.version}.zip.sha256",
-            "name": "bash-logger-${nextRelease.version}.zip.sha256"
+            "path": "release-package/*.zip.sha256",
+            "label": "bash-logger zip SHA256 checksum"
           }
         ]
       }
