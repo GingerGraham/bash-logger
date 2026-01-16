@@ -4,7 +4,8 @@ Thank you for considering contributing to bash-logger! This logging module aims 
 
 ## 🐛 Found a Bug?
 
-Please [open a bug report issue](../../issues/new?template=bug_report.md) with: 
+Please [open a bug report issue](../../issues/new?template=bug_report.md) with:
+
 - A clear description of the problem
 - Steps to reproduce
 - Your bash version (`bash --version`)
@@ -13,6 +14,7 @@ Please [open a bug report issue](../../issues/new?template=bug_report.md) with:
 ## 💡 Have a Feature Idea?
 
 [Open a feature request](../../issues/new?template=feature_request.md) describing:
+
 - Your use case
 - Why this would be useful
 - Any implementation ideas (optional)

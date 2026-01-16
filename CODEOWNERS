@@ -1,21 +1,31 @@
 # CODEOWNERS
-# 
-# This file defines who will be automatically requested for review
-# when pull requests modify certain files.
+
 #
+
+# This file defines who will be automatically requested for review
+
+# when pull requests modify certain files.
+
+#
+
 # More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Default owner for everything in the repo
-* @GingerGraham
+
+- @GingerGraham
 
 # Core logging module
+
 /logging.sh @GingerGraham
 
 # Documentation
+
 /docs/ @GingerGraham
 
 # Tests
+
 /tests/ @GingerGraham
 
 # Configuration
+
 /configuration/ @GingerGraham

@@ -30,7 +30,9 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 
 ## Overview
 
-The bash-logger project includes a comprehensive test suite with 103 tests across 6 test suites, validating all functionality of the logging module. The test framework is built in pure Bash and designed to be:
+The bash-logger project includes a comprehensive test suite with 103 tests across 6 test
+suites, validating all functionality of the logging module. The test framework is built
+in pure Bash and designed to be:
 
 - **Self-contained**: No external test frameworks required
 - **CI-friendly**: Clear exit codes and non-interactive
@@ -333,6 +335,7 @@ fi
    ```
 
 5. **Test Edge Cases**: Include boundary conditions and error cases
+
    ```bash
    test_empty_message()
    test_very_long_message()
@@ -384,13 +387,13 @@ test_feature_works
 test_feature_edge_case
 ```
 
-2. **Make it executable**:
+1. **Make it executable**:
 
 ```bash
 chmod +x tests/test_feature.sh
 ```
 
-3. **Add to test runner**: Edit `tests/run_tests.sh`, add to the test files array:
+1. **Add to test runner**: Edit `tests/run_tests.sh`, add to the test files array:
 
 ```bash
 test_files=(
@@ -404,7 +407,7 @@ test_files=(
 )
 ```
 
-4. **Run your new tests**:
+1. **Run your new tests**:
 
 ```bash
 cd tests
@@ -478,6 +481,7 @@ When a test fails:
    ```
 
 5. **Check the logging module** - source it interactively:
+
    ```bash
    source logging.sh
    init_logger --level DEBUG
