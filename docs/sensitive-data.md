@@ -1,14 +1,15 @@
 # Sensitive Data <!-- omit in toc -->
 
-The Bash Logging Module provides a special function for handling sensitive information that should not be written to persistent storage.
+The Bash Logging Module provides a special function for handling sensitive information that should not be written to
+persistent storage.
 
 ## Table of Contents <!-- omit in toc -->
 
 - [Overview](#overview)
-- [The log\_sensitive Function](#the-log_sensitive-function)
+- [The log_sensitive Function](#the-log_sensitive-function)
   - [Basic Usage](#basic-usage)
   - [What Gets Logged Where](#what-gets-logged-where)
-- [When to Use log\_sensitive](#when-to-use-log_sensitive)
+- [When to Use log_sensitive](#when-to-use-log_sensitive)
   - [Appropriate Use Cases](#appropriate-use-cases)
   - [Example: API Authentication](#example-api-authentication)
   - [Example: Database Connection](#example-database-connection)
@@ -24,7 +25,7 @@ The Bash Logging Module provides a special function for handling sensitive infor
   - [SSH Key Management](#ssh-key-management)
   - [Environment Variable Debugging](#environment-variable-debugging)
   - [User Authentication](#user-authentication)
-- [What log\_sensitive Does NOT Do](#what-log_sensitive-does-not-do)
+- [What log_sensitive Does NOT Do](#what-log_sensitive-does-not-do)
   - [Not a Security Solution](#not-a-security-solution)
   - [Still Need Proper Security Practices](#still-need-proper-security-practices)
 - [Best Practices](#best-practices)

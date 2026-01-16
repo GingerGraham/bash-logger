@@ -1,16 +1,17 @@
 # Runtime Configuration <!-- omit in toc -->
 
-The Bash Logging Module allows you to change configuration settings during script execution, providing flexibility for different phases of operation.
+The Bash Logging Module allows you to change configuration settings during script execution, providing flexibility for
+different phases of operation.
 
 ## Table of Contents <!-- omit in toc -->
 
 - [Overview](#overview)
 - [Available Functions](#available-functions)
-  - [set\_log\_level](#set_log_level)
-  - [set\_timezone\_utc](#set_timezone_utc)
-  - [set\_log\_format](#set_log_format)
-  - [set\_journal\_logging](#set_journal_logging)
-  - [set\_journal\_tag](#set_journal_tag)
+  - [set_log_level](#set_log_level)
+  - [set_timezone_utc](#set_timezone_utc)
+  - [set_log_format](#set_log_format)
+  - [set_journal_logging](#set_journal_logging)
+  - [set_journal_tag](#set_journal_tag)
 - [Use Cases](#use-cases)
   - [Conditional Debug Mode](#conditional-debug-mode)
   - [Phase-Based Logging](#phase-based-logging)
@@ -550,7 +551,8 @@ To change these, you must reinitialize the logger.
 
 ### No Persistence
 
-Runtime changes don't persist across script executions. If you need persistent changes, modify your initialization or configuration file.
+Runtime changes don't persist across script executions. If you need persistent changes, modify your initialization or
+configuration file.
 
 ## Examples
 

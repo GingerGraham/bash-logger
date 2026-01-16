@@ -34,7 +34,8 @@ The repository includes GitHub Actions workflows to ensure code quality and cons
 
 ## Installation
 
-Simply place the `logging.sh` file in a directory of your choice. The module is a single, self-contained script that can be sourced from any location.
+Simply place the `logging.sh` file in a directory of your choice. The module is a single, self-contained script that can
+be sourced from any location.
 
 ### Common Installation Locations
 

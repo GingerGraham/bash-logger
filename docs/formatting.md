@@ -383,7 +383,8 @@ init_logger --stderr-level DEBUG --format "%l: %m"
 
 ## Cloud and Structured Logging Formats
 
-Modern cloud platforms and log aggregation services often prefer structured or semi-structured log formats. Here are examples for common platforms:
+Modern cloud platforms and log aggregation services often prefer structured or semi-structured log formats. Here are
+examples for common platforms:
 
 ### AWS CloudWatch Logs Format
 
@@ -440,7 +441,9 @@ Output:
 - Cloud-native applications
 - Microservices architectures
 
-**Note:** This creates JSON-like output but is not guaranteed to be valid JSON if the message contains special characters like quotes. For production use with strict JSON requirements, consider post-processing logs or using dedicated JSON logging tools.
+**Note:** This creates JSON-like output but is not guaranteed to be valid JSON if the message contains special
+characters like quotes. For production use with strict JSON requirements, consider post-processing logs or using
+dedicated JSON logging tools.
 
 ### Pipe-Delimited Format
 

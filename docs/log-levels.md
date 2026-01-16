@@ -1,6 +1,7 @@
 # Log Levels <!-- omit in toc -->
 
-The Bash Logging Module supports standard syslog log levels, providing a hierarchy of severity from most critical to least critical.
+The Bash Logging Module supports standard syslog log levels, providing a hierarchy of severity from most critical to
+least critical.
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -34,7 +35,8 @@ The Bash Logging Module supports standard syslog log levels, providing a hierarc
 
 ## Overview
 
-Log levels allow you to control the verbosity of your logging output. When you set a log level, only messages at that level or higher (more severe) are displayed.
+Log levels allow you to control the verbosity of your logging output. When you set a log level, only messages at that
+level or higher (more severe) are displayed.
 
 ## Available Log Levels
 

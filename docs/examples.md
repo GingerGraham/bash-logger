@@ -250,7 +250,10 @@ log_debug "Debug mode enabled"  # Only shows if --debug was passed
 log_info "Normal operation"
 ```
 
-**Note:** The logger provides `--verbose` option when called using `init_logger --verbose`, but the provided `set_log_level` function accepts log levels based on their common names (DEBUG, INFO, WARN, ERROR) or their numeric values (0-7). The example above uses a command line parser in the calling script to optionally enable DEBUG logging by accepting a local argument `--debug` and then using the `set_log_level` function.
+**Note:** The logger provides `--verbose` option when called using `init_logger --verbose`, but the provided
+`set_log_level` function accepts log levels based on their common names (DEBUG, INFO, WARN, ERROR) or their numeric
+values (0-7). The example above uses a command line parser in the calling script to optionally enable DEBUG logging by
+accepting a local argument `--debug` and then using the `set_log_level` function.
 
 ### Advanced Usage with Custom Format and UTC Time
 

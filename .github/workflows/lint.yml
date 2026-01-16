@@ -1,4 +1,4 @@
-name: Lint Bash Scripts
+name: Lint Bash Scripts & Markdown Files
 on:
   pull_request:
     branches:

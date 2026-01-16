@@ -1,6 +1,7 @@
 # Journal Logging <!-- omit in toc -->
 
-The Bash Logging Module can integrate with systemd's journal logging system, making it ideal for system services and applications running on modern Linux distributions.
+The Bash Logging Module can integrate with systemd's journal logging system, making it ideal for system services and
+applications running on modern Linux distributions.
 
 ## Table of Contents <!-- omit in toc -->
 

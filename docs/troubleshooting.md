@@ -28,7 +28,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
   - [Logs Going to Wrong Stream](#logs-going-to-wrong-stream)
   - [Cannot Separate Stdout and Stderr](#cannot-separate-stdout-and-stderr)
 - [Runtime Configuration Issues](#runtime-configuration-issues)
-  - [set\_log\_level Not Working](#set_log_level-not-working)
+  - [set_log_level Not Working](#set_log_level-not-working)
   - [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
 - [Format Issues](#format-issues)
   - [Format Not Applied](#format-not-applied)
@@ -42,7 +42,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 - [Performance Issues](#performance-issues)
   - [Slow Logging](#slow-logging)
 - [Common Error Messages](#common-error-messages)
-  - ["command not found: init\_logger"](#command-not-found-init_logger)
+  - ["command not found: init_logger"](#command-not-found-init_logger)
   - ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
   - ["invalid log level"](#invalid-log-level)
 - [Getting Help](#getting-help)
@@ -124,7 +124,7 @@ sudo chown $USER:$USER /var/log/myapp
 init_logger --log "$HOME/logs/app.log"
 ```
 
-2. **No write permission to log file**
+1. **No write permission to log file**
 
 ```bash
 # Check file permissions
@@ -137,7 +137,7 @@ sudo chown $USER:$USER /var/log/myapp.log
 init_logger --log "$HOME/app.log"
 ```
 
-3. **Disk space full**
+1. **Disk space full**
 
 ```bash
 # Check disk space
@@ -644,14 +644,14 @@ init_logger
 log_info "Test message"
 ```
 
-4. **Check your Bash version:**
+1. **Check your Bash version:**
 
 ```bash
 bash --version
 # Module requires Bash 3.0 or later
 ```
 
-5. **Verify file permissions:**
+1. **Verify file permissions:**
 
 ```bash
 ls -l /path/to/logging.sh

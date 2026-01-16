@@ -1,6 +1,7 @@
 # Output Streams <!-- omit in toc -->
 
-The Bash Logging Module intelligently splits console output between stdout and stderr based on message severity, following Unix conventions.
+The Bash Logging Module intelligently splits console output between stdout and stderr based on message severity,
+following Unix conventions.
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -47,7 +48,8 @@ By default, the logging module splits console output:
 - **stdout**: DEBUG, INFO, NOTICE, WARN (normal operation messages)
 - **stderr**: ERROR, CRITICAL, ALERT, EMERGENCY (error messages)
 
-This follows the Unix convention where stdout contains normal output that can be piped or captured, while stderr contains error output that should be visible even when stdout is redirected.
+This follows the Unix convention where stdout contains normal output that can be piped or captured, while stderr
+contains error output that should be visible even when stdout is redirected.
 
 ## Why Split Output Streams?
 
@@ -411,7 +413,8 @@ Verify your script works with common redirections:
 
 ## File and Journal Logging
 
-Note that stream configuration only affects console output. File and journal logging always receive all messages at or above the configured log level, regardless of stderr-level:
+Note that stream configuration only affects console output. File and journal logging always receive all messages at or
+above the configured log level, regardless of stderr-level:
 
 ```bash
 init_logger --log /tmp/app.log --stderr-level ERROR --level DEBUG
