@@ -2,6 +2,13 @@
 #
 # config_demo.sh - Demonstration of INI configuration file support
 #
+# shellcheck disable=SC1090,SC2034
+# Note: SC2034 (unused variable) is disabled because this script is designed to be
+# sourced by other scripts. Variables like LOG_LEVEL_FATAL, LOG_CONFIG_FILE, VERBOSE,
+# and current_section are intentionally exported for external use or future features.
+# Note: SC1090 (source path) is disabled because the logger module path is constructed
+# dynamically based on the script's location.
+#
 # This script demonstrates loading logger configuration from INI files,
 # including CLI argument overrides and error handling.
 
@@ -12,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Path to logger module
-LOGGER_PATH="${SCRIPT_DIR}/logging.sh"
+LOGGER_PATH="${PARENT_DIR}/logging.sh" # updated to reflect new location
 
 # Check if logger exists
 if [[ ! -f "$LOGGER_PATH" ]]; then
@@ -192,7 +199,7 @@ echo "Messages will only go to log file"
 echo
 
 # Clear log file
-> "$LOG_FILE"
+true > "$LOG_FILE"
 
 init_logger --config "$CONFIG_FILE" || exit 1
 

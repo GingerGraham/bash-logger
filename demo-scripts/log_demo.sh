@@ -2,6 +2,13 @@
 #
 # all_demo.sh - Comprehensive demonstration of logging module features
 #
+# shellcheck disable=SC1090,SC2034
+# Note: SC2034 (unused variable) is disabled because this script is designed to be
+# sourced by other scripts. Variables like LOG_LEVEL_FATAL, LOG_CONFIG_FILE, VERBOSE,
+# and current_section are intentionally exported for external use or future features.
+# Note: SC1090 (source path) is disabled because the logger module path is constructed
+# dynamically based on the script's location.
+#
 # This script demonstrates all features of the logging module including:
 # - Log levels
 # - Formatting options
@@ -15,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Path to logger module
-LOGGER_PATH="${SCRIPT_DIR}/logging.sh" # uncomment if logger is in same directory
+LOGGER_PATH="${PARENT_DIR}/logging.sh" # updated to reflect new location
 
 # Check if logger exists
 if [[ ! -f "$LOGGER_PATH" ]]; then
@@ -47,7 +54,7 @@ test_all_log_levels() {
     log_critical "This is a CRITICAL message (level 2)"
     log_alert "This is an ALERT message (level 1)"
     log_emergency "This is an EMERGENCY message (level 0)"
-    
+
     # Special logging types
     log_sensitive "This is a SENSITIVE message (console only)"
     echo
@@ -57,13 +64,13 @@ test_all_log_levels() {
 test_format() {
     local format="$1"
     local description="$2"
-    
+
     echo -e "\n========== Using format: \"$format\" =========="
     echo "$description"
-    
+
     # Update the format
     set_log_format "$format"
-    
+
     # Log example messages
     log_info "This is an example informational message"
     log_error "This is an example error message"
@@ -199,37 +206,37 @@ if [[ "$LOGGER_AVAILABLE" == true ]]; then
         echo "Failed to initialize logger" >&2
         exit 1
     }
-    
+
     # Log with default tag (script name)
     log_info "This message is logged to the journal with default tag"
     log_warn "This warning message is also sent to the journal"
     log_error "This error message should appear in the journal too"
-    
+
     # Test with custom tag
     echo "========== Reinitializing with custom journal tag =========="
     init_logger --log "${LOGGING_FILE}" --journal --tag "demo-logger" || {
         echo "Failed to initialize logger" >&2
         exit 1
     }
-    
+
     log_info "This message is logged with the tag 'demo-logger'"
     log_warn "This warning uses the custom tag in the journal"
-    
+
     # Test sensitive logging (shouldn't go to journal)
     echo "========== Testing sensitive logging with journal enabled =========="
     log_sensitive "This sensitive message should NOT appear in the journal"
-    
+
     # Test disabling journal logging
     echo "========== Disabling journal logging =========="
     set_journal_logging "false"
     log_info "This message should NOT appear in the journal (it's disabled)"
-    
+
     # Re-enable and change tag
     echo "========== Re-enabling journal and changing tag =========="
     set_journal_logging "true"
     set_journal_tag "new-tag"
     log_info "This message should use the 'new-tag' tag in the journal"
-    
+
     echo "========== Journal Demo Complete =========="
     echo "Journal logs can be viewed with: journalctl -t demo-logger -t new-tag"
 else
