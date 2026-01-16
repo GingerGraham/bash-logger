@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/GingerGraham/bash-logger/blob/main/bash_logging.md
+    about: Check the documentation for usage instructions and examples
