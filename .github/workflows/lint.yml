@@ -1,4 +1,4 @@
-name: Lint Bash Scripts & Markdown Files
+name: Linting
 on:
   push:
   pull_request:
