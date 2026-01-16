@@ -92,6 +92,17 @@ init_logger --journal --tag "myapp"
 
 See: [Journal Logging](docs/journal-logging.md)
 
+## Testing
+
+The project includes a comprehensive test suite to verify all functionality. To run the tests:
+
+```bash
+cd tests
+./run_tests.sh
+```
+
+See [tests/README.md](tests/README.md) and [Testing](docs/testing.md) for more information.
+
 ## License
 
 This module is provided under the [MIT License](LICENSE).
