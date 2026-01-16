@@ -33,7 +33,7 @@ Great! Here's the process:
 
 ### Coding Style
 
-- Use 2 spaces for indentation (no tabs)
+- Use 4 spaces for indentation (no tabs)
 - Keep lines under 100 characters where reasonable
 - Use meaningful variable names
 - Prefer `[[ ]]` over `[ ]` for conditionals
@@ -48,7 +48,7 @@ Great! Here's the process:
 
 ## 📋 Code of Conduct
 
-This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+Please be respectful and professional in all interactions. Treat others with kindness and courtesy.
 
 ## ❓ Questions?
 
