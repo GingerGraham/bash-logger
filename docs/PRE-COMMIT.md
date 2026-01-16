@@ -1,8 +1,44 @@
-# Pre-commit Hooks Setup Guide
+# Pre-commit Hooks Setup Guide <!-- omit in toc -->
 
 This guide helps contributors set up pre-commit hooks for the bash-logger project. Pre-commit
 hooks automatically check your code before you commit, catching issues early and ensuring
 pipeline checks pass before you submit pull requests.
+
+## Table of Contents <!-- omit in toc -->
+
+- [Quick Start (Recommended)](#quick-start-recommended)
+- [What Pre-commit Does](#what-pre-commit-does)
+- [Manual Installation (Alternative)](#manual-installation-alternative)
+  - [Prerequisites](#prerequisites)
+  - [Installation Steps](#installation-steps)
+- [Common Commands](#common-commands)
+  - [Run all hooks on all files](#run-all-hooks-on-all-files)
+  - [Run a specific hook](#run-a-specific-hook)
+  - [Skip hooks for a single commit](#skip-hooks-for-a-single-commit)
+  - [Update pre-commit hooks to latest versions](#update-pre-commit-hooks-to-latest-versions)
+  - [Temporarily disable hooks](#temporarily-disable-hooks)
+  - [Re-enable hooks after disabling](#re-enable-hooks-after-disabling)
+- [CI integration](#ci-integration)
+- [Troubleshooting](#troubleshooting)
+  - ["command not found: pre-commit"](#command-not-found-pre-commit)
+  - ["MarkdownLint failed to find Node.js"](#markdownlint-failed-to-find-nodejs)
+  - ["ShellCheck not found"](#shellcheck-not-found)
+  - [Hooks are running but I want to skip them temporarily](#hooks-are-running-but-i-want-to-skip-them-temporarily)
+- [Understanding Hook Failures](#understanding-hook-failures)
+  - [ShellCheck Failures](#shellcheck-failures)
+  - [MarkdownLint Failures](#markdownlint-failures)
+  - [Test Suite Failures](#test-suite-failures)
+  - [Commit Message Format Failures](#commit-message-format-failures)
+- [Hook Configuration](#hook-configuration)
+  - [Understanding the config](#understanding-the-config)
+  - [Updating hooks](#updating-hooks)
+- [Integration with CI/CD](#integration-with-cicd)
+- [For Maintainers: Managing Pre-commit](#for-maintainers-managing-pre-commit)
+  - [Adding a new hook](#adding-a-new-hook)
+  - [Updating hook versions](#updating-hook-versions)
+  - [Skipping a hook for specific files](#skipping-a-hook-for-specific-files)
+- [Additional Resources](#additional-resources)
+- [Questions?](#questions)
 
 ## Quick Start (Recommended)
 
@@ -130,6 +166,11 @@ pre-commit uninstall
 ```bash
 pre-commit install
 ```
+
+## CI integration
+
+The GitHub Actions lint workflow runs `pre-commit` with `--all-files`, so ShellCheck and MarkdownLint versions come from `.pre-commit-config.yaml`.
+When bumping a hook version, update the config (for example with `pre-commit autoupdate`) and commit the change; CI will automatically pick it up.
 
 ## Troubleshooting
 

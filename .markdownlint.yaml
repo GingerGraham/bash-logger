@@ -1,6 +1,6 @@
 # Markdownlint configuration for documentation-heavy projects
 {
-  # Line length - increased for technical documentation
+  # Line length - allow longer lines for better readability in documentation
   "MD013": {
     "line_length": 200,
     "code_blocks": false,

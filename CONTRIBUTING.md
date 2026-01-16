@@ -29,6 +29,7 @@ Great! Here's the process:
    - This ensures your changes pass checks before you push
    - See [Pre-commit Setup Guide](docs/PRE-COMMIT.md) for instructions
    - Quick start: `./scripts/setup-precommit.sh`
+   - Note: The CI lint workflow runs the same pre-commit hooks, so ShellCheck and MarkdownLint versions are centralized in `.pre-commit-config.yaml`
 
 2. **Fork the repository** and create a branch from `main`
 

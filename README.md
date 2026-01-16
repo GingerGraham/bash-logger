@@ -107,6 +107,10 @@ See [tests/README.md](tests/README.md) and [Testing](docs/testing.md) for more i
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+The project uses pre-commit hooks for code quality checks (ShellCheck, MarkdownLint, etc.).
+The CI lint workflow runs these same hooks, so tool versions are centralized in `.pre-commit-config.yaml`.
+See [docs/PRE-COMMIT.md](docs/PRE-COMMIT.md) for setup instructions.
+
 ### Maintainers
 
 This project is currently maintained by [@GingerGraham](https://github.com/GingerGraham).
