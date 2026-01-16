@@ -50,3 +50,12 @@ repos:
         # This hook runs before every commit by default
         # To skip: git commit --no-verify
         # To run manually: pre-commit run bash-logger-tests --all-files
+
+      - id: commit-msg-semantic
+        name: Semantic Commit Message
+        description: Validate commit message follows semantic versioning format
+        entry: scripts/validate-commit-msg.sh
+        language: script
+        stages: [commit-msg]
+        # This hook validates the commit message at the right stage
+        # It provides clear feedback if the message doesn't match the pattern

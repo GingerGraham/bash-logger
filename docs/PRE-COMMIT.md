@@ -39,8 +39,15 @@ Pre-commit hooks run automatically before each commit. They check:
    - Runs on all `.md` files
 
 3. **Bash Logger Tests** - Runs the test suite
+
    - Verifies all changes pass the test suite
    - Prevents committing broken code
+
+4. **Commit Message Format** - Validates semantic versioning format
+   - Ensures commit messages follow the pattern: `<type>(<scope>): <subject>`
+   - Enables automated release and version management
+   - Provides clear feedback if message format is incorrect
+   - Examples: `feat(logging): add color support`, `fix: prevent race condition`
 
 When hooks run and auto-fix formatting (like MarkdownLint), the modified files will be
 staged and your commit will proceed. If any check fails and can't be auto-fixed, your
@@ -207,6 +214,38 @@ If tests fail, it means your changes broke existing functionality. Run tests loc
 ```
 
 Check the output to understand what's failing and fix accordingly.
+
+### Commit Message Format Failures
+
+If your commit message doesn't follow semantic versioning format, the commit will be blocked
+with a helpful error message.
+
+**Common issues:**
+
+- Missing type: Use `feat:`, `fix:`, `docs:`, etc. at the start
+- Missing colon: Ensure format is `type(scope): message`
+- Invalid type: Must be one of: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
+  `chore`, `ci`
+
+**To fix:**
+
+1. Review the error message and examples provided
+2. Reword your commit message to match the format
+3. Amend the commit: `git commit --amend`
+4. Try committing again
+
+**Examples of valid commit messages:**
+
+```
+feat(config): add support for custom log format
+fix: prevent logger initialization without level
+docs: update contribution guidelines
+refactor(tests): simplify test runner
+chore: update dependencies
+```
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md#commit-messages) for more details on the commit
+message format and why we use semantic versioning.
 
 ## Hook Configuration
 

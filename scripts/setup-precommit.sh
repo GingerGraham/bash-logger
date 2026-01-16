@@ -139,7 +139,7 @@ main() {
     print_step "Installing git pre-commit hooks..."
     cd "$PROJECT_ROOT"
 
-    if pre-commit install; then
+    if pre-commit install && pre-commit install --hook-type commit-msg; then
         print_success "Git hooks installed successfully"
     else
         print_error "Failed to install git hooks"
