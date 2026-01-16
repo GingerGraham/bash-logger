@@ -7,6 +7,7 @@ This document provides guidance for GitHub Copilot when contributing to the bash
 All code changes **MUST** pass the linting requirements defined in `.pre-commit-config.yaml`:
 
 ### ShellCheck Linting
+
 - **Tool**: ShellCheck v0.11.0.1
 - **Configuration**: `--severity=warning --external-sources`
 - **Scope**: All shell scripts (`.sh` files)
@@ -17,6 +18,7 @@ All code changes **MUST** pass the linting requirements defined in `.pre-commit-
   - Example: `# shellcheck disable=SC2034` with comment explaining why
 
 ### MarkdownLint
+
 - **Tool**: MarkdownLint v0.47.0
 - **Scope**: All Markdown documentation files
 - **Requirements**:
@@ -25,6 +27,7 @@ All code changes **MUST** pass the linting requirements defined in `.pre-commit-
   - Maintain consistent formatting across documentation
 
 ### Test Suite
+
 - **Tool**: `tests/run_tests.sh`
 - **Requirement**: All changes must not break existing tests
 - **Scope**: Any code changes affecting core functionality must have tests added or updated
@@ -44,7 +47,9 @@ All commit messages **MUST** comply with **Semantic Versioning (Semantic Release
 ```
 
 ### Type (Required)
+
 Must be one of:
+
 - `feat`: A new feature (triggers minor version bump)
 - `fix`: A bug fix (triggers patch version bump)
 - `docs`: Documentation-only changes
@@ -56,7 +61,9 @@ Must be one of:
 - `ci`: CI/CD configuration changes
 
 ### Scope (Optional)
+
 Indicate the area of the codebase affected. Common examples:
+
 - `logging`: Changes to core logging functionality
 - `config`: Configuration-related changes
 - `tests`: Test files and test infrastructure
@@ -64,26 +71,33 @@ Indicate the area of the codebase affected. Common examples:
 - `scripts`: Utility scripts or demo scripts
 
 ### Subject (Required)
+
 Brief, descriptive summary:
+
 - Use **imperative mood** ("add" not "adds" or "added")
 - **Do not capitalize** the first letter
 - **No period** at the end
 - Keep under **50 characters**
 
 ### Body (Optional)
+
 Detailed explanation of the change:
+
 - Explain **why** the change was made
 - Explain **what** the change does
 - Describe any side effects or related issues
 
 ### Footer (Optional)
+
 Reference issue numbers and breaking changes:
+
 - `Fixes #123` or `Closes #456` to link to issues
 - `BREAKING CHANGE: description` for backwards-incompatible changes
 
 ### Examples
 
 **Simple feature:**
+
 ```
 feat(config): add support for custom log format
 
@@ -92,6 +106,7 @@ This enables better integration with existing logging systems.
 ```
 
 **Bug fix:**
+
 ```
 fix(logging): prevent logger initialization without level
 
@@ -102,11 +117,13 @@ Fixes #42
 ```
 
 **Documentation only:**
+
 ```
 docs: update getting started guide with zsh example
 ```
 
 **Performance improvement:**
+
 ```
 perf(output): cache color code lookups
 
@@ -119,9 +136,11 @@ Benchmarks show 15% improvement on large log files.
 The bash-logger project aims to support common Linux/Unix shells while maintaining code quality and clarity.
 
 ### Shell-Agnostic Approach (Preferred)
+
 When possible, write code compatible with multiple shells:
 
 **Supported shells** (in order of priority):
+
 1. POSIX shell (`sh`) - Most compatible
 2. Bash (4.x and 5.x)
 3. Zsh
@@ -131,6 +150,7 @@ When possible, write code compatible with multiple shells:
 ### Guidance for Shell-Agnostic Code
 
 **DO:**
+
 - Use POSIX-compatible syntax whenever possible
 - Use `[ ]` instead of `[[ ]]` for maximum compatibility
 - Use `$(...)` instead of backticks (works everywhere)
@@ -140,6 +160,7 @@ When possible, write code compatible with multiple shells:
 - Document shell requirements in comments
 
 **DON'T:**
+
 - Use bash-only features like `[[ ]]`, `(( ))`, or `=~` unless necessary
 - Use bash arrays or associative arrays unless truly needed
 - Rely on bash-specific string manipulation
@@ -148,6 +169,7 @@ When possible, write code compatible with multiple shells:
 ### Bash-Specific Code Exception
 
 When conflicts are unavoidable and shell-agnostic code is not feasible:
+
 - **Default to Bash** as the target shell
 - Clearly document why POSIX compatibility is not possible
 - Add a comment explaining the Bash-specific requirement
@@ -157,6 +179,7 @@ When conflicts are unavoidable and shell-agnostic code is not feasible:
 ### Current Project Approach
 
 The main `logging.sh` file uses:
+
 - Shebang: `#!/usr/bin/env bash` - explicitly targets Bash
 - This allows for some Bash-specific optimizations while remaining readable
 - Configuration and demo scripts should maintain broader compatibility
@@ -164,6 +187,7 @@ The main `logging.sh` file uses:
 ### Testing Across Shells
 
 When making significant changes:
+
 - Test with at least Bash 4.x and Bash 5.x
 - Ideally test with `sh` and `zsh` if modifying shared functionality
 - Use the test suite: `./tests/run_tests.sh`
@@ -200,6 +224,7 @@ Before proposing or generating code:
 ## Questions?
 
 For more information, see:
+
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - General contribution guidelines
 - [docs/PRE-COMMIT.md](../docs/PRE-COMMIT.md) - Pre-commit hooks setup
 - [docs/testing.md](../docs/testing.md) - Testing guidelines
