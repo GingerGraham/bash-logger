@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0](https://github.com/GingerGraham/bash-logger/compare/0.9.0...0.10.0) (2026-01-16)
+
+### Features
+
+* implement automated release workflow with semantic-release ([0cb89ca](https://github.com/GingerGraham/bash-logger/commit/0cb89ca75baf53374d91878a66bd1c2491111ee7))
+
 ## [Unreleased]
 
 ### Added
