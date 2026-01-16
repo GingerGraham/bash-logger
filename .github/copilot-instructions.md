@@ -200,7 +200,7 @@ Before proposing or generating code:
 ## Questions?
 
 For more information, see:
-- [CONTRIBUTING.md](CONTRIBUTING.md) - General contribution guidelines
-- [docs/PRE-COMMIT.md](docs/PRE-COMMIT.md) - Pre-commit hooks setup
-- [docs/testing.md](docs/testing.md) - Testing guidelines
-- [.pre-commit-config.yaml](.pre-commit-config.yaml) - Linting configuration
+- [CONTRIBUTING.md](../CONTRIBUTING.md) - General contribution guidelines
+- [docs/PRE-COMMIT.md](../docs/PRE-COMMIT.md) - Pre-commit hooks setup
+- [docs/testing.md](../docs/testing.md) - Testing guidelines
+- [.pre-commit-config.yaml](../.pre-commit-config.yaml) - Linting configuration
