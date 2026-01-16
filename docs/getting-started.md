@@ -4,6 +4,8 @@ This guide will help you get started with the Bash Logging Module quickly.
 
 ## Table of Contents <!-- omit in toc -->
 
+- [Workflows](#workflows)
+  - [Linting Workflows](#linting-workflows)
 - [Installation](#installation)
   - [Common Installation Locations](#common-installation-locations)
   - [Example Installation](#example-installation)
@@ -18,6 +20,16 @@ This guide will help you get started with the Bash Logging Module quickly.
   - [Logging Functions](#logging-functions)
   - [Common Initialization Patterns](#common-initialization-patterns)
 - [Exit Codes](#exit-codes)
+- [Next Steps](#next-steps)
+
+## Workflows
+
+The repository includes GitHub Actions workflows to ensure code quality and consistency.
+
+### Linting Workflows
+
+- **Lint Bash Scripts**: Applies ShellCheck linting for all bash scripts in pull requests destined for the main branch.
+- **Lint Markdown Files**: Applies MarkdownLint for all markdown files in pull requests destined for the main branch.
 - [Next Steps](#next-steps)
 
 ## Installation

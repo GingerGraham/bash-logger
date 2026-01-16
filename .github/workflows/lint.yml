@@ -1,0 +1,37 @@
+name: Lint Bash Scripts
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install ShellCheck
+        run: sudo apt-get install shellcheck
+      - name: Run ShellCheck
+        run: find . -name '*.sh' -exec shellcheck {} +
+
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install MarkdownLint
+        run: |
+          sudo apt-get install npm
+          sudo npm install -g markdownlint-cli
+      - name: Run MarkdownLint
+        run: markdownlint **/*.md
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install MarkdownLint
+        run: |
+          sudo apt-get install npm
+          sudo npm install -g markdownlint-cli
+      - name: Run MarkdownLint
+        run: markdownlint **/*.md
