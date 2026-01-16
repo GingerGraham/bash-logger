@@ -1,8 +1,7 @@
 name: Lint Bash Scripts & Markdown Files
 on:
+  push:
   pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
