@@ -12,3 +12,6 @@ logs/
 
 # ignore user specific vs code settings
 .vscode/
+# Release packages (generated during CI)
+release-package/
+

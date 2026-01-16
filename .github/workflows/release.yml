@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect logging.sh changes since last tag
+        id: logging_change
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+
+          # No tags yet → allow release
+          if [ -z "$LAST_TAG" ]; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+
+          if git diff --name-only "$LAST_TAG"..HEAD -- logging.sh | grep -q .; then
+              echo "logging.sh changed since $LAST_TAG"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+              echo "No logging.sh changes since $LAST_TAG; skipping release."
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install dependencies
+        run: |
+          npm install -g \
+            semantic-release@24 \
+            @semantic-release/changelog@6 \
+            @semantic-release/git@10 \
+            @semantic-release/exec@6 \
+            conventional-changelog-conventionalcommits@8
+
+      - name: Verify dependencies
+        run: |
+          echo "Node version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          semantic-release --version
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.logging_change.outputs.changed == 'true'
+        run: npx semantic-release

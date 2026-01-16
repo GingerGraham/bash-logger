@@ -18,6 +18,9 @@
 #   - Advanced features: docs/journal-logging.md, docs/runtime-configuration.md
 #   - Troubleshooting: docs/troubleshooting.md
 
+# Version (updated by release workflow)
+readonly BASH_LOGGER_VERSION="0.9.0"
+
 # Log levels (following complete syslog standard - higher number = less severe)
 LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
 LOG_LEVEL_ALERT=1      # Action must be taken immediately
