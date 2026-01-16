@@ -1,0 +1,50 @@
+# Markdownlint configuration for documentation-heavy projects
+{
+  # Line length - more lenient for technical documentation
+  "MD013": {
+    "line_length": 120,
+    "code_blocks": false,
+    "tables": false
+  },
+
+  # Allow raw HTML (useful for complex documentation)
+  "MD033": false,
+
+  # Allow duplicate headings (common in documentation sections)
+  "MD024": {
+    "siblings_only": true
+  },
+
+  # Allow emphasis as headers (for FAQ sections, etc.)
+  "MD036": false,
+
+  # Fenced code blocks - encourage language specification but don't require it
+  "MD040": false,
+
+  # Allow trailing punctuation in headers
+  "MD026": false,
+
+  # First line in file - allow any format
+  "MD041": false,
+
+  # Blanks around headers - more flexible
+  "MD022": {
+    "lines_above": 1,
+    "lines_below": 1
+  },
+
+  # List marker style - consistent but flexible
+  "MD004": {
+    "style": "consistent"
+  },
+
+  # List indentation
+  "MD007": {
+    "indent": 2
+  },
+
+  # Allow both ordered and unordered lists to start with 1
+  "MD029": {
+    "style": "one_or_ordered"
+  }
+}

@@ -408,7 +408,7 @@ if [[ "$LOGGER_AVAILABLE" == true ]]; then
 fi
 
 echo "========== Initializing with multiple features =========="
-init_logger --log "${LOGGING_FILE}" --level INFO --format "[%z %d] [%l] %m" --utc $JOURNAL_PARAM --color || {
+init_logger --log "${LOGGING_FILE}" --level INFO --format "[%z %d] [%l] %m" --utc "$JOURNAL_PARAM" --color || {
     echo "Failed to initialize logger" >&2
     exit 1
 }
@@ -429,7 +429,7 @@ echo -e "\n========== PART 8: Quiet Mode Demo =========="
 
 # Initialize with quiet mode
 echo "========== Initializing with quiet mode =========="
-init_logger --log "${LOGGING_FILE}" --quiet $JOURNAL_PARAM || {
+init_logger --log "${LOGGING_FILE}" --quiet "$JOURNAL_PARAM" || {
     echo "Failed to initialize logger" >&2
     exit 1
 }
