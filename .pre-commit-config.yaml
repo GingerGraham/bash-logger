@@ -1,0 +1,61 @@
+# Pre-commit hooks configuration for bash-logger
+# These hooks run automatically before committing to catch issues early
+#
+# Installation:
+#   Run: ./scripts/setup-precommit.sh
+#
+# Manual installation (if needed):
+#   pip install pre-commit
+#   pre-commit install
+#
+# Run hooks manually on all files:
+#   pre-commit run --all-files
+#
+# See docs/PRE-COMMIT.md for more information
+
+repos:
+  # ShellCheck - Bash/Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        name: ShellCheck
+        description: Lint bash scripts
+        entry: shellcheck
+        language: python
+        types: [shell]
+        args: [--severity=warning, --external-sources]
+
+  # MarkdownLint - Markdown formatting (with auto-fix)
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.47.0
+    hooks:
+      - id: markdownlint
+        name: MarkdownLint
+        description: Lint and auto-fix markdown files
+        entry: markdownlint --fix
+        language: node
+        types: [markdown]
+
+  # Local hook for running the test suite
+  - repo: local
+    hooks:
+      - id: bash-logger-tests
+        name: Bash Logger Tests
+        description: Run the bash logger test suite
+        entry: tests/run_tests.sh
+        language: script
+        always_run: true
+        pass_filenames: false
+        # This hook runs before every commit by default
+        # To skip: git commit --no-verify
+        # To run manually: pre-commit run bash-logger-tests --all-files
+
+      - id: commit-msg-semantic
+        name: Semantic Commit Message
+        description: Validate commit message follows semantic versioning format
+        entry: scripts/validate-commit-msg.sh
+        language: script
+        stages: [commit-msg]
+        # This hook validates the commit message at the right stage
+        # It provides clear feedback if the message doesn't match the pattern

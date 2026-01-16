@@ -1,37 +1,22 @@
-name: Lint Bash Scripts & Markdown Files
+name: Linting
 on:
+  push:
   pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
-  shellcheck:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install ShellCheck
-        run: sudo apt-get install shellcheck
-      - name: Run ShellCheck
-        run: find . -name '*.sh' -exec shellcheck {} +
+        uses: actions/checkout@v4
 
-  markdownlint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install MarkdownLint
-        run: |
-          sudo apt-get install npm
-          sudo npm install -g markdownlint-cli
-      - name: Run MarkdownLint
-        run: markdownlint **/*.md
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install MarkdownLint
-        run: |
-          sudo apt-get install npm
-          sudo npm install -g markdownlint-cli
-      - name: Run MarkdownLint
-        run: markdownlint **/*.md
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files
