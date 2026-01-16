@@ -103,6 +103,14 @@ cd tests
 
 See [tests/README.md](tests/README.md) and [Testing](docs/testing.md) for more information.
 
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Maintainers
+
+This project is currently maintained by [@GingerGraham](https://github.com/GingerGraham).
+
 ## License
 
 This module is provided under the [MIT License](LICENSE).
