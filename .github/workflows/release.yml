@@ -23,6 +23,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Detect logging.sh changes since last tag
         id: logging_change
@@ -65,6 +66,6 @@ jobs:
 
       - name: Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         if: steps.logging_change.outputs.changed == 'true'
         run: npx semantic-release
