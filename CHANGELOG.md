@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.4](https://github.com/GingerGraham/bash-logger/compare/0.10.3...0.10.4) (2026-01-17)
+
+### Bug Fixes
+
+* trigger manual patch release [skip ci] ([0fe47c6](https://github.com/GingerGraham/bash-logger/commit/0fe47c6494d84869715f7be969e49ab4a450dc6c))
+
+### Code Refactoring
+
+* documentation for consistency and clarity ([4f3ff26](https://github.com/GingerGraham/bash-logger/commit/4f3ff26ac1c524a0eaeac325d212578258d7ba7e))
+
+### Documentation
+
+* enhance issue templates and add security policy documentation ([cd2b145](https://github.com/GingerGraham/bash-logger/commit/cd2b145c3ce7ee04aeb323f212ca2b74141c6d73))
+
 ## [0.10.3](https://github.com/GingerGraham/bash-logger/compare/0.10.2...0.10.3) (2026-01-17)
 
 ### Bug Fixes
