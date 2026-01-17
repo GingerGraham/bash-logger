@@ -19,7 +19,7 @@
 #   - Troubleshooting: docs/troubleshooting.md
 
 # Version (updated by release workflow)
-readonly BASH_LOGGER_VERSION="0.10.4"
+readonly BASH_LOGGER_VERSION="0.11.0"
 
 # Log levels (following complete syslog standard - higher number = less severe)
 LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)

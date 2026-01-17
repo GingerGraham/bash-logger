@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0](https://github.com/GingerGraham/bash-logger/compare/0.10.4...0.11.0) (2026-01-17)
+
+### ⚠ BREAKING CHANGES
+
+* mark the public API stable and start the 1.x support window.
+
+### Features
+
+* declare stable 1.0 API ([0cb133f](https://github.com/GingerGraham/bash-logger/commit/0cb133f56c1a2f53118fdc9b557567fa9a300bc4))
+
 ## [0.10.4](https://github.com/GingerGraham/bash-logger/compare/0.10.3...0.10.4) (2026-01-17)
 
 ### Bug Fixes
