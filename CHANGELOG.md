@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2](https://github.com/GingerGraham/bash-logger/compare/0.10.1...0.10.2) (2026-01-17)
+
+### Bug Fixes
+
+* **docs:** clean up duplicate CHANGELOG entries from failed releases ([456f81d](https://github.com/GingerGraham/bash-logger/commit/456f81d5ff85c055ec8008edc0a0291c6dfeefd7))
+* remove redundant comments in parse_config_file function ([66414f2](https://github.com/GingerGraham/bash-logger/commit/66414f21ca93b464fa9a771ac2f71162fd93af76))
+
 ## [Unreleased]
 
 ### Added
