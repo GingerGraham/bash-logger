@@ -443,7 +443,7 @@ format_log_message() {
         formatted_message=${formatted_message:gs/%m/$message}
         formatted_message=${formatted_message:gs/%z/$timezone_str}
     else
-        # Bash version (original)
+        # Bash version
         formatted_message="${formatted_message//%d/$current_date}"
         formatted_message="${formatted_message//%l/$level_name}"
         formatted_message="${formatted_message//%s/${SCRIPT_NAME:-unknown}}"

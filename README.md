@@ -5,6 +5,13 @@ A flexible, reusable logging module for Bash scripts that provides standardized 
 > [!NOTE]
 > This is a expansion of the originally published [bash_logging GitHub gist](https://gist.github.com/GingerGraham/99af97eed2cd89cd047a2088947a5405) published by @GingerGraham.
 
+## Primary artifact
+
+The core deliverable of this repository is **[logging.sh](logging.sh)**. It is intentionally kept
+as a single, self-contained (and yes, long) Bash file so you can drop it next to your
+scripts and `source` it without any packaging steps. Everything else in the repo - docs,
+demos, and pipeline scripts - exists to support using that file.
+
 ## Features
 
 * Standard syslog log levels (DEBUG, INFO, WARN, ERROR, CRITICAL, etc.)
