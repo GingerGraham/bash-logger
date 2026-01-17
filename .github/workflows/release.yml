@@ -42,7 +42,11 @@ jobs:
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
               git commit --allow-empty -m "fix: trigger manual patch release [skip ci]"
+
+              # Set up credentials for push
+              git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
               git push origin main
+
               echo "changed=true" >> "$GITHUB_OUTPUT"
               exit 0
           fi
