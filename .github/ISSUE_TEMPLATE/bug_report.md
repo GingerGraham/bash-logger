@@ -1,9 +1,9 @@
 ---
 name: Bug Report
 about: Report a problem with bash-logger
-title: '[BUG] '
+title: "[BUG] "
 labels: bug
-assignees: ''
+assignees: ""
 ---
 
 ## Description
@@ -27,8 +27,16 @@ What actually happened.
 ## Environment
 
 * **Bash Version**: (output of `bash --version`)
-* **OS**: (e.g., Ubuntu 22.04, macOS 13, etc.)
-* **bash-logger Version/Commit**: (if known)
+* **Shell**: (bash/zsh/sh - output of `echo $SHELL`)
+* **OS**: (e.g., Ubuntu 22.04, macOS 13, RHEL 9, etc.)
+* **bash-logger Version**: (check `echo "$BASH_LOGGER_VERSION"` or git commit)
+* **Installation Method**: (sourced directly, copied, package manager, etc.)
+
+## Logger Configuration
+
+* **Initialization Command**: (e.g., `init_logger --level DEBUG --log /tmp/test.log`)
+* **Config File Used**: (yes/no, and path if applicable)
+* **Output Targets**: (console, file, journal)
 
 ## Additional Context
 

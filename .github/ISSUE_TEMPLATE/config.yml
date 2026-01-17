@@ -1,5 +1,17 @@
 blank_issues_enabled: true
 contact_links:
   - name: 📖 Documentation
-    url: https://github.com/GingerGraham/bash-logger/blob/main/bash_logging.md
-    about: Check the documentation for usage instructions and examples
+    url: https://github.com/GingerGraham/bash-logger/blob/main/docs/README.md
+    about: Complete documentation index with guides and examples
+  - name: 🚀 Getting Started
+    url: https://github.com/GingerGraham/bash-logger/blob/main/docs/getting-started.md
+    about: Installation instructions and basic usage
+  - name: 💡 Examples
+    url: https://github.com/GingerGraham/bash-logger/blob/main/docs/examples.md
+    about: Code examples for common use cases
+  - name: 🔧 Troubleshooting
+    url: https://github.com/GingerGraham/bash-logger/blob/main/docs/troubleshooting.md
+    about: Common issues and solutions
+  - name: 💬 Discussions
+    url: https://github.com/GingerGraham/bash-logger/discussions
+    about: Ask questions and discuss with the community
