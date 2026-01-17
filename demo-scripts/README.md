@@ -40,11 +40,11 @@ Each demo is self-contained and can be run independently.
 
 Demonstrates how to use and configure different log levels:
 
-- Default INFO level behavior
-- Changing levels dynamically with `set_log_level()`
-- Using `--level` parameter during initialization
-- Using `--verbose` flag for DEBUG level
-- All 8 syslog standard levels (DEBUG through EMERGENCY)
+* Default INFO level behavior
+* Changing levels dynamically with `set_log_level()`
+* Using `--level` parameter during initialization
+* Using `--verbose` flag for DEBUG level
+* All 8 syslog standard levels (DEBUG through EMERGENCY)
 
 **Run:** `./demo_log_levels.sh` or `./run_demos.sh log-levels`
 
@@ -52,11 +52,11 @@ Demonstrates how to use and configure different log levels:
 
 Shows various log format customization options:
 
-- Default format
-- Custom format templates
-- Format placeholders (%d, %l, %s, %m, %z)
-- JSON-like formats
-- Runtime format changes with `set_log_format()`
+* Default format
+* Custom format templates
+* Format placeholders (%d, %l, %s, %m, %z)
+* JSON-like formats
+* Runtime format changes with `set_log_format()`
 
 **Run:** `./demo_formatting.sh` or `./run_demos.sh formatting`
 
@@ -64,9 +64,9 @@ Shows various log format customization options:
 
 Demonstrates UTC vs local time in log messages:
 
-- Enabling UTC timestamps with `--utc` flag
-- Switching between UTC and local time at runtime
-- Displaying timezone information in log format
+* Enabling UTC timestamps with `--utc` flag
+* Switching between UTC and local time at runtime
+* Displaying timezone information in log format
 
 **Run:** `./demo_timezone.sh` or `./run_demos.sh timezone`
 
@@ -74,10 +74,10 @@ Demonstrates UTC vs local time in log messages:
 
 Shows systemd journal integration:
 
-- Enabling journal logging with `--journal` flag
-- Using custom journal tags
-- Dynamic journal logging control
-- Verifying sensitive messages don't go to journal
+* Enabling journal logging with `--journal` flag
+* Using custom journal tags
+* Dynamic journal logging control
+* Verifying sensitive messages don't go to journal
 
 **Note:** Requires the `logger` command to be available.
 
@@ -87,10 +87,10 @@ Shows systemd journal integration:
 
 Demonstrates color output configuration:
 
-- Auto-detection of terminal color support
-- Forcing colors on with `--color`
-- Forcing colors off with `--no-color`
-- Runtime color mode changes
+* Auto-detection of terminal color support
+* Forcing colors on with `--color`
+* Forcing colors off with `--no-color`
+* Runtime color mode changes
 
 **Run:** `./demo_colors.sh` or `./run_demos.sh colors`
 
@@ -98,10 +98,10 @@ Demonstrates color output configuration:
 
 Shows how to control which messages go to stderr vs stdout:
 
-- Default stderr behavior (ERROR and above)
-- Configuring stderr level with `--stderr-level`
-- Testing output stream separation
-- Redirecting specific log levels
+* Default stderr behavior (ERROR and above)
+* Configuring stderr level with `--stderr-level`
+* Testing output stream separation
+* Redirecting specific log levels
 
 **Run:** `./demo_stderr.sh` or `./run_demos.sh stderr`
 
@@ -109,8 +109,8 @@ Shows how to control which messages go to stderr vs stdout:
 
 Demonstrates using multiple features together:
 
-- UTC time + custom format + colors + journal logging
-- Initializing with multiple options at once
+* UTC time + custom format + colors + journal logging
+* Initializing with multiple options at once
 
 **Run:** `./demo_combined.sh` or `./run_demos.sh combined`
 
@@ -118,9 +118,9 @@ Demonstrates using multiple features together:
 
 Shows how to suppress console output:
 
-- Using `--quiet` flag
-- Verifying logs still go to file and journal
-- Useful for background scripts
+* Using `--quiet` flag
+* Verifying logs still go to file and journal
+* Useful for background scripts
 
 **Run:** `./demo_quiet.sh` or `./run_demos.sh quiet`
 
@@ -128,10 +128,10 @@ Shows how to suppress console output:
 
 Demonstrates loading settings from INI files:
 
-- Creating and using configuration files
-- Loading config with `--config` parameter
-- CLI options overriding config file settings
-- Multiple configuration profiles
+* Creating and using configuration files
+* Loading config with `--config` parameter
+* CLI options overriding config file settings
+* Multiple configuration profiles
 
 **Run:** `./demo_config.sh` or `./run_demos.sh config`
 
@@ -139,15 +139,15 @@ Demonstrates loading settings from INI files:
 
 All demos create log files in the `../logs/` directory:
 
-- `demo_log_levels.log`
-- `demo_formatting.log`
-- `demo_timezone.log`
-- `demo_journal.log`
-- `demo_colors.log`
-- `demo_stderr.log`
-- `demo_combined.log`
-- `demo_quiet.log`
-- `demo_config.log`
+* `demo_log_levels.log`
+* `demo_formatting.log`
+* `demo_timezone.log`
+* `demo_journal.log`
+* `demo_colors.log`
+* `demo_stderr.log`
+* `demo_combined.log`
+* `demo_quiet.log`
+* `demo_config.log`
 
 ## Original Comprehensive Demo
 
@@ -201,6 +201,6 @@ The demos automatically create the `../logs/` directory if it doesn't exist.
 
 For complete documentation, see:
 
-- [Getting Started Guide](../docs/getting-started.md)
-- [Configuration Documentation](../docs/configuration.md)
-- [Examples](../docs/examples.md)
+* [Getting Started Guide](../docs/getting-started.md)
+* [Configuration Documentation](../docs/configuration.md)
+* [Examples](../docs/examples.md)

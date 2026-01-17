@@ -14,25 +14,25 @@ When commits are pushed to the `main` branch:
 
 1. **Analyze commits** - Examines commit messages since the last release
 2. **Determine version** - Calculates the next version based on commit types:
-   - `feat:` → Minor version bump (0.9.0 → 0.10.0)
-   - `fix:`, `perf:`, `refactor:` → Patch version bump (0.9.0 → 0.9.1)
-   - `BREAKING CHANGE:` in commit footer → Major version bump (0.9.0 → 1.0.0)
-   - `docs:`, `style:`, `test:`, `chore:`, `ci:` → No release
+   * `feat:` → Minor version bump (0.9.0 → 0.10.0)
+   * `fix:`, `perf:`, `refactor:` → Patch version bump (0.9.0 → 0.9.1)
+   * `BREAKING CHANGE:` in commit footer → Major version bump (0.9.0 → 1.0.0)
+   * `docs:`, `style:`, `test:`, `chore:`, `ci:` → No release
 3. **Update files** - Automatically updates:
-   - `BASH_LOGGER_VERSION` in [logging.sh](../logging.sh)
-   - [CHANGELOG.md](../CHANGELOG.md) with release notes
+   * `BASH_LOGGER_VERSION` in [logging.sh](../logging.sh)
+   * [CHANGELOG.md](../CHANGELOG.md) with release notes
 4. **Package for consumers** - Creates distribution packages with:
-   - logging.sh (main module)
-   - configuration/ (example configs)
-   - demo-scripts/ (usage examples)
-   - docs/ (user documentation only)
-   - README.md, LICENSE, CHANGELOG.md
-   - Available as .tar.gz and .zip with SHA256 checksums
+   * logging.sh (main module)
+   * configuration/ (example configs)
+   * demo-scripts/ (usage examples)
+   * docs/ (user documentation only)
+   * README.md, LICENSE, CHANGELOG.md
+   * Available as .tar.gz and .zip with SHA256 checksums
 5. **Create release** - Creates GitHub release with:
-   - Git tag
-   - Release notes generated from commits
-   - Downloadable packages (.tar.gz and .zip)
-   - SHA256 checksums for verification
+   * Git tag
+   * Release notes generated from commits
+   * Downloadable packages (.tar.gz and .zip)
+   * SHA256 checksums for verification
 6. **Commit changes** - Commits updated files back to repository
 
 ### Version Tracking
@@ -159,8 +159,8 @@ git tag -l
 
 ### From GitHub
 
-- View releases: [Releases page](../../releases)
-- Download specific version: [Tags page](../../tags)
+* View releases: [Releases page](../../releases)
+* Download specific version: [Tags page](../../tags)
 
 ### Downloading Release Packages
 
@@ -171,8 +171,8 @@ Each release provides consumer-friendly packages:
 1. Go to [Releases page](../../releases)
 2. Choose a version
 3. Download either:
-   - `bash-logger-X.Y.Z.tar.gz` (Linux/Mac)
-   - `bash-logger-X.Y.Z.zip` (Windows/any)
+   * `bash-logger-X.Y.Z.tar.gz` (Linux/Mac)
+   * `bash-logger-X.Y.Z.zip` (Windows/any)
 4. Verify with SHA256 checksum file
 
 **Package contents:**
@@ -228,17 +228,17 @@ git push origin main
 
 **Check:**
 
-- Commit message contains `[skip ci]`? This prevents the workflow from running
-- Commits use semantic format? Non-semantic commits won't trigger releases
-- Workflow file exists at `.github/workflows/release.yml`?
+* Commit message contains `[skip ci]`? This prevents the workflow from running
+* Commits use semantic format? Non-semantic commits won't trigger releases
+* Workflow file exists at `.github/workflows/release.yml`?
 
 ### Release Created But Files Not Updated
 
 **Check:**
 
-- GitHub token has write permissions (set in workflow)
-- No conflicts in CHANGELOG.md
-- `logging.sh` not modified locally
+* GitHub token has write permissions (set in workflow)
+* No conflicts in CHANGELOG.md
+* `logging.sh` not modified locally
 
 ### Version Skipped Expected Number
 
@@ -260,19 +260,19 @@ The release behavior is controlled by [.releaserc.json](../.releaserc.json).
 
 **Key settings:**
 
-- `branches: ["main"]` - Only releases from main branch
-- `tagFormat` - Version tag format (no 'v' prefix)
-- Release rules mapping commit types to version bumps
-- Files to update on release
-- GitHub release asset configuration
+* `branches: ["main"]` - Only releases from main branch
+* `tagFormat` - Version tag format (no 'v' prefix)
+* Release rules mapping commit types to version bumps
+* Files to update on release
+* GitHub release asset configuration
 
 ## Resources
 
-- [Semantic Release Documentation](https://semantic-release.gitbook.io/)
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [Keep a Changelog](https://keepachangelog.com/)
-- [Semantic Versioning](https://semver.org/)
-- [Project Contributing Guide](../CONTRIBUTING.md)
+* [Semantic Release Documentation](https://semantic-release.gitbook.io/)
+* [Conventional Commits](https://www.conventionalcommits.org/)
+* [Keep a Changelog](https://keepachangelog.com/)
+* [Semantic Versioning](https://semver.org/)
+* [Project Contributing Guide](../CONTRIBUTING.md)
 
 ## Questions?
 

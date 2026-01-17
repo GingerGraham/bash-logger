@@ -8,29 +8,29 @@ All code changes **MUST** pass the linting requirements defined in `.pre-commit-
 
 ### ShellCheck Linting
 
-- **Tool**: ShellCheck v0.11.0.1
-- **Configuration**: `--severity=warning --external-sources`
-- **Scope**: All shell scripts (`.sh` files)
-- **Requirements**:
-  - All shell scripts must pass ShellCheck with no warnings or errors
-  - External sources should be analyzed properly
-  - When ShellCheck flags an issue, fix it or add a justified `shellcheck disable` comment with explanation
-  - Example: `# shellcheck disable=SC2034` with comment explaining why
+* **Tool**: ShellCheck v0.11.0.1
+* **Configuration**: `--severity=warning --external-sources`
+* **Scope**: All shell scripts (`.sh` files)
+* **Requirements**:
+  * All shell scripts must pass ShellCheck with no warnings or errors
+  * External sources should be analyzed properly
+  * When ShellCheck flags an issue, fix it or add a justified `shellcheck disable` comment with explanation
+  * Example: `# shellcheck disable=SC2034` with comment explaining why
 
 ### MarkdownLint
 
-- **Tool**: MarkdownLint v0.47.0
-- **Scope**: All Markdown documentation files
-- **Requirements**:
-  - All Markdown files must follow MarkdownLint rules
-  - Auto-fix formatting issues when possible
-  - Maintain consistent formatting across documentation
+* **Tool**: MarkdownLint v0.47.0
+* **Scope**: All Markdown documentation files
+* **Requirements**:
+  * All Markdown files must follow MarkdownLint rules
+  * Auto-fix formatting issues when possible
+  * Maintain consistent formatting across documentation
 
 ### Test Suite
 
-- **Tool**: `tests/run_tests.sh`
-- **Requirement**: All changes must not break existing tests
-- **Scope**: Any code changes affecting core functionality must have tests added or updated
+* **Tool**: `tests/run_tests.sh`
+* **Requirement**: All changes must not break existing tests
+* **Scope**: Any code changes affecting core functionality must have tests added or updated
 
 ## Commit Message Standards
 
@@ -50,49 +50,49 @@ All commit messages **MUST** comply with **Semantic Versioning (Semantic Release
 
 Must be one of:
 
-- `feat`: A new feature (triggers minor version bump)
-- `fix`: A bug fix (triggers patch version bump)
-- `docs`: Documentation-only changes
-- `style`: Code style changes (formatting, whitespace, missing semicolons)
-- `refactor`: Code refactoring without feature or bug fix changes
-- `perf`: Performance improvements
-- `test`: Test additions or updates
-- `chore`: Build, dependency, or tooling changes
-- `ci`: CI/CD configuration changes
+* `feat`: A new feature (triggers minor version bump)
+* `fix`: A bug fix (triggers patch version bump)
+* `docs`: Documentation-only changes
+* `style`: Code style changes (formatting, whitespace, missing semicolons)
+* `refactor`: Code refactoring without feature or bug fix changes
+* `perf`: Performance improvements
+* `test`: Test additions or updates
+* `chore`: Build, dependency, or tooling changes
+* `ci`: CI/CD configuration changes
 
 ### Scope (Optional)
 
 Indicate the area of the codebase affected. Common examples:
 
-- `logging`: Changes to core logging functionality
-- `config`: Configuration-related changes
-- `tests`: Test files and test infrastructure
-- `docs`: Documentation changes
-- `scripts`: Utility scripts or demo scripts
+* `logging`: Changes to core logging functionality
+* `config`: Configuration-related changes
+* `tests`: Test files and test infrastructure
+* `docs`: Documentation changes
+* `scripts`: Utility scripts or demo scripts
 
 ### Subject (Required)
 
 Brief, descriptive summary:
 
-- Use **imperative mood** ("add" not "adds" or "added")
-- **Do not capitalize** the first letter
-- **No period** at the end
-- Keep under **50 characters**
+* Use **imperative mood** ("add" not "adds" or "added")
+* **Do not capitalize** the first letter
+* **No period** at the end
+* Keep under **50 characters**
 
 ### Body (Optional)
 
 Detailed explanation of the change:
 
-- Explain **why** the change was made
-- Explain **what** the change does
-- Describe any side effects or related issues
+* Explain **why** the change was made
+* Explain **what** the change does
+* Describe any side effects or related issues
 
 ### Footer (Optional)
 
 Reference issue numbers and breaking changes:
 
-- `Fixes #123` or `Closes #456` to link to issues
-- `BREAKING CHANGE: description` for backwards-incompatible changes
+* `Fixes #123` or `Closes #456` to link to issues
+* `BREAKING CHANGE: description` for backwards-incompatible changes
 
 ### Examples
 
@@ -151,81 +151,81 @@ When possible, write code compatible with multiple shells:
 
 **DO:**
 
-- Use POSIX-compatible syntax whenever possible
-- Use `[ ]` instead of `[[ ]]` for maximum compatibility
-- Use `$(...)` instead of backticks (works everywhere)
-- Use `.` or `source` for sourcing files (both POSIX)
-- Avoid bash-specific features like arrays, associative arrays, etc.
-- Test code across multiple shells if significant changes are made
-- Document shell requirements in comments
+* Use POSIX-compatible syntax whenever possible
+* Use `[ ]` instead of `[[ ]]` for maximum compatibility
+* Use `$(...)` instead of backticks (works everywhere)
+* Use `.` or `source` for sourcing files (both POSIX)
+* Avoid bash-specific features like arrays, associative arrays, etc.
+* Test code across multiple shells if significant changes are made
+* Document shell requirements in comments
 
 **DON'T:**
 
-- Use bash-only features like `[[ ]]`, `(( ))`, or `=~` unless necessary
-- Use bash arrays or associative arrays unless truly needed
-- Rely on bash-specific string manipulation
-- Use `<<` heredocs without considering portability
+* Use bash-only features like `[[ ]]`, `(( ))`, or `=~` unless necessary
+* Use bash arrays or associative arrays unless truly needed
+* Rely on bash-specific string manipulation
+* Use `<<` heredocs without considering portability
 
 ### Bash-Specific Code Exception
 
 When conflicts are unavoidable and shell-agnostic code is not feasible:
 
-- **Default to Bash** as the target shell
-- Clearly document why POSIX compatibility is not possible
-- Add a comment explaining the Bash-specific requirement
-- Use ShellCheck directives to suppress non-critical warnings
-- Example: `# shellcheck disable=SC3010 -- Bash-specific feature required for performance`
+* **Default to Bash** as the target shell
+* Clearly document why POSIX compatibility is not possible
+* Add a comment explaining the Bash-specific requirement
+* Use ShellCheck directives to suppress non-critical warnings
+* Example: `# shellcheck disable=SC3010 -- Bash-specific feature required for performance`
 
 ### Current Project Approach
 
 The main `logging.sh` file uses:
 
-- Shebang: `#!/usr/bin/env bash` - explicitly targets Bash
-- This allows for some Bash-specific optimizations while remaining readable
-- Configuration and demo scripts should maintain broader compatibility
+* Shebang: `#!/usr/bin/env bash` - explicitly targets Bash
+* This allows for some Bash-specific optimizations while remaining readable
+* Configuration and demo scripts should maintain broader compatibility
 
 ### Testing Across Shells
 
 When making significant changes:
 
-- Test with at least Bash 4.x and Bash 5.x
-- Ideally test with `sh` and `zsh` if modifying shared functionality
-- Use the test suite: `./tests/run_tests.sh`
-- Document any shell-specific behavior differences
+* Test with at least Bash 4.x and Bash 5.x
+* Ideally test with `sh` and `zsh` if modifying shared functionality
+* Use the test suite: `./tests/run_tests.sh`
+* Document any shell-specific behavior differences
 
 ## Code Style Standards
 
 In addition to linting requirements, follow these style guidelines:
 
-- **Indentation**: 4 spaces (no tabs)
-- **Line length**: Keep under 100 characters where reasonable
-- **Variable names**: Use meaningful, descriptive names
-- **Comments**: Add comments for complex logic or non-obvious behavior
-- **Naming conventions**: Follow existing patterns in the codebase
-  - Constants: `UPPERCASE_WITH_UNDERSCORES`
-  - Functions: `lowercase_with_underscores`
-  - Local variables: `lowercase_with_underscores`
+* **Indentation**: 4 spaces (no tabs)
+* **Line length**: Keep under 100 characters where reasonable
+* **Variable names**: Use meaningful, descriptive names
+* **Comments**: Add comments for complex logic or non-obvious behavior
+* **Naming conventions**: Follow existing patterns in the codebase
+  * Constants: `UPPERCASE_WITH_UNDERSCORES`
+  * Functions: `lowercase_with_underscores`
+  * Local variables: `lowercase_with_underscores`
 
 ## Summary Checklist for Copilot
 
 Before proposing or generating code:
 
-- [ ] Code passes ShellCheck (`--severity=warning --external-sources`)
-- [ ] Markdown passes MarkdownLint
-- [ ] Existing tests still pass
-- [ ] New tests added for new functionality
-- [ ] Commit message follows Semantic Versioning format
-- [ ] Code is shell-agnostic when possible, with Bash as fallback
-- [ ] Lines are under 100 characters where reasonable
-- [ ] Comments explain complex logic
-- [ ] Variable names are meaningful
-- [ ] 4-space indentation is used throughout
+* [ ] Code passes ShellCheck (`--severity=warning --external-sources`)
+* [ ] Markdown passes MarkdownLint
+* [ ] Existing tests still pass
+* [ ] New tests added for new functionality
+* [ ] Commit message follows Semantic Versioning format
+* [ ] Code is shell-agnostic when possible, with Bash as fallback
+* [ ] Lines are under 100 characters where reasonable
+* [ ] Comments explain complex logic
+* [ ] Variable names are meaningful
+* [ ] 4-space indentation is used throughout
 
 ## Questions?
 
 For more information, see:
 
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - General contribution guidelines
-- [docs/PRE-COMMIT.md](../docs/PRE-COMMIT.md) - Pre-commit hooks setup
-- [docs/testing.md](../docs/testing.md) - Testing guidelines
-- [.pre-commit-config.yaml](../.pre-commit-config.yaml) - Linting configuration
+* [CONTRIBUTING.md](../CONTRIBUTING.md) - General contribution guidelines
+* [docs/PRE-COMMIT.md](../docs/PRE-COMMIT.md) - Pre-commit hooks setup
+* [docs/testing.md](../docs/testing.md) - Testing guidelines
+* [.pre-commit-config.yaml](../.pre-commit-config.yaml) - Linting configuration

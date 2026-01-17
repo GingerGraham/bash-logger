@@ -26,9 +26,9 @@ What actually happened.
 
 ## Environment
 
-- **Bash Version**: (output of `bash --version`)
-- **OS**: (e.g., Ubuntu 22.04, macOS 13, etc.)
-- **bash-logger Version/Commit**: (if known)
+* **Bash Version**: (output of `bash --version`)
+* **OS**: (e.g., Ubuntu 22.04, macOS 13, etc.)
+* **bash-logger Version/Commit**: (if known)
 
 ## Additional Context
 

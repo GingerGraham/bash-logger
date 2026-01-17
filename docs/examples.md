@@ -4,40 +4,40 @@ This document provides comprehensive examples demonstrating various use cases fo
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Basic Examples](#basic-examples)
-  - [Simple Script Logging](#simple-script-logging)
-  - [Logging to File with Verbose Output](#logging-to-file-with-verbose-output)
-  - [Comprehensive Logging Configuration](#comprehensive-logging-configuration)
-- [Configuration File Examples](#configuration-file-examples)
-  - [Using a Configuration File](#using-a-configuration-file)
-  - [Environment-Specific Configuration](#environment-specific-configuration)
-- [CLI Tool Examples](#cli-tool-examples)
-  - [CLI Tool with Separate Output Streams](#cli-tool-with-separate-output-streams)
-  - [Script with Configurable Error Verbosity](#script-with-configurable-error-verbosity)
-- [Dynamic Configuration Examples](#dynamic-configuration-examples)
-  - [Changing Log Level Based on Command-line Arguments](#changing-log-level-based-on-command-line-arguments)
-  - [Advanced Usage with Custom Format and UTC Time](#advanced-usage-with-custom-format-and-utc-time)
-- [Function-Based Examples](#function-based-examples)
-  - [Logging in Functions](#logging-in-functions)
-  - [Error Recovery with Debug Mode](#error-recovery-with-debug-mode)
-- [System Service Examples](#system-service-examples)
-  - [Logging to System Journal (for systemd-based systems)](#logging-to-system-journal-for-systemd-based-systems)
-  - [Systemd Service with Combined Logging](#systemd-service-with-combined-logging)
-- [Cron Job Examples](#cron-job-examples)
-  - [Cron Job with Error-Only Output](#cron-job-with-error-only-output)
-- [Data Processing Examples](#data-processing-examples)
-  - [Data Pipeline with Stream Separation](#data-pipeline-with-stream-separation)
-  - [Batch Processing with Progress Logging](#batch-processing-with-progress-logging)
-- [Security Examples](#security-examples)
-  - [Handling Sensitive Data](#handling-sensitive-data)
-  - [Secure Configuration Loading](#secure-configuration-loading)
-- [Testing Examples](#testing-examples)
-  - [Test Script with Verbose Output](#test-script-with-verbose-output)
-- [Multi-Environment Examples](#multi-environment-examples)
-  - [Environment-Aware Script](#environment-aware-script)
-- [Complex Integration Example](#complex-integration-example)
-  - [Full-Featured Application](#full-featured-application)
-- [Related Documentation](#related-documentation)
+* [Basic Examples](#basic-examples)
+  * [Simple Script Logging](#simple-script-logging)
+  * [Logging to File with Verbose Output](#logging-to-file-with-verbose-output)
+  * [Comprehensive Logging Configuration](#comprehensive-logging-configuration)
+* [Configuration File Examples](#configuration-file-examples)
+  * [Using a Configuration File](#using-a-configuration-file)
+  * [Environment-Specific Configuration](#environment-specific-configuration)
+* [CLI Tool Examples](#cli-tool-examples)
+  * [CLI Tool with Separate Output Streams](#cli-tool-with-separate-output-streams)
+  * [Script with Configurable Error Verbosity](#script-with-configurable-error-verbosity)
+* [Dynamic Configuration Examples](#dynamic-configuration-examples)
+  * [Changing Log Level Based on Command-line Arguments](#changing-log-level-based-on-command-line-arguments)
+  * [Advanced Usage with Custom Format and UTC Time](#advanced-usage-with-custom-format-and-utc-time)
+* [Function-Based Examples](#function-based-examples)
+  * [Logging in Functions](#logging-in-functions)
+  * [Error Recovery with Debug Mode](#error-recovery-with-debug-mode)
+* [System Service Examples](#system-service-examples)
+  * [Logging to System Journal (for systemd-based systems)](#logging-to-system-journal-for-systemd-based-systems)
+  * [Systemd Service with Combined Logging](#systemd-service-with-combined-logging)
+* [Cron Job Examples](#cron-job-examples)
+  * [Cron Job with Error-Only Output](#cron-job-with-error-only-output)
+* [Data Processing Examples](#data-processing-examples)
+  * [Data Pipeline with Stream Separation](#data-pipeline-with-stream-separation)
+  * [Batch Processing with Progress Logging](#batch-processing-with-progress-logging)
+* [Security Examples](#security-examples)
+  * [Handling Sensitive Data](#handling-sensitive-data)
+  * [Secure Configuration Loading](#secure-configuration-loading)
+* [Testing Examples](#testing-examples)
+  * [Test Script with Verbose Output](#test-script-with-verbose-output)
+* [Multi-Environment Examples](#multi-environment-examples)
+  * [Environment-Aware Script](#environment-aware-script)
+* [Complex Integration Example](#complex-integration-example)
+  * [Full-Featured Application](#full-featured-application)
+* [Related Documentation](#related-documentation)
 
 ## Basic Examples
 
@@ -768,12 +768,12 @@ main "$@"
 
 ## Related Documentation
 
-- [Getting Started](getting-started.md) - Basic usage
-- [Initialization](initialization.md) - Configuration options
-- [Configuration](configuration.md) - Config file usage
-- [Log Levels](log-levels.md) - Understanding severity levels
-- [Output Streams](output-streams.md) - Stream redirection
-- [Formatting](formatting.md) - Custom formats
-- [Journal Logging](journal-logging.md) - Systemd integration
-- [Runtime Configuration](runtime-configuration.md) - Dynamic changes
-- [Sensitive Data](sensitive-data.md) - Security considerations
+* [Getting Started](getting-started.md) - Basic usage
+* [Initialization](initialization.md) - Configuration options
+* [Configuration](configuration.md) - Config file usage
+* [Log Levels](log-levels.md) - Understanding severity levels
+* [Output Streams](output-streams.md) - Stream redirection
+* [Formatting](formatting.md) - Custom formats
+* [Journal Logging](journal-logging.md) - Systemd integration
+* [Runtime Configuration](runtime-configuration.md) - Dynamic changes
+* [Sensitive Data](sensitive-data.md) - Security considerations

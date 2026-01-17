@@ -5,48 +5,48 @@ different phases of operation.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Overview](#overview)
-- [Available Functions](#available-functions)
-  - [set_log_level](#set_log_level)
-  - [set_timezone_utc](#set_timezone_utc)
-  - [set_log_format](#set_log_format)
-  - [set_journal_logging](#set_journal_logging)
-  - [set_journal_tag](#set_journal_tag)
-- [Use Cases](#use-cases)
-  - [Conditional Debug Mode](#conditional-debug-mode)
-  - [Phase-Based Logging](#phase-based-logging)
-  - [Dynamic Format Changes](#dynamic-format-changes)
-  - [Conditional Journal Logging](#conditional-journal-logging)
-  - [Timezone Switching](#timezone-switching)
-  - [Environment-Based Settings](#environment-based-settings)
-  - [Error Recovery](#error-recovery)
-  - [Temporary Format Change](#temporary-format-change)
-  - [Tag-Based Component Logging](#tag-based-component-logging)
-- [Runtime vs. Initialization](#runtime-vs-initialization)
-  - [When to Use Initialization Options](#when-to-use-initialization-options)
-  - [When to Use Runtime Functions](#when-to-use-runtime-functions)
-- [Best Practices](#best-practices)
-  - [1. Document Runtime Changes](#1-document-runtime-changes)
-  - [2. Restore Original Settings](#2-restore-original-settings)
-  - [3. Use Functions for Common Patterns](#3-use-functions-for-common-patterns)
-  - [4. Be Cautious with Production Changes](#4-be-cautious-with-production-changes)
-  - [5. Log Configuration Changes](#5-log-configuration-changes)
-- [Limitations](#limitations)
-  - [Cannot Change After Initialization](#cannot-change-after-initialization)
-  - [No Persistence](#no-persistence)
-- [Examples](#examples)
-  - [Debug Mode Toggle](#debug-mode-toggle)
-  - [Adaptive Logging](#adaptive-logging)
-- [Related Documentation](#related-documentation)
+* [Overview](#overview)
+* [Available Functions](#available-functions)
+  * [set_log_level](#set_log_level)
+  * [set_timezone_utc](#set_timezone_utc)
+  * [set_log_format](#set_log_format)
+  * [set_journal_logging](#set_journal_logging)
+  * [set_journal_tag](#set_journal_tag)
+* [Use Cases](#use-cases)
+  * [Conditional Debug Mode](#conditional-debug-mode)
+  * [Phase-Based Logging](#phase-based-logging)
+  * [Dynamic Format Changes](#dynamic-format-changes)
+  * [Conditional Journal Logging](#conditional-journal-logging)
+  * [Timezone Switching](#timezone-switching)
+  * [Environment-Based Settings](#environment-based-settings)
+  * [Error Recovery](#error-recovery)
+  * [Temporary Format Change](#temporary-format-change)
+  * [Tag-Based Component Logging](#tag-based-component-logging)
+* [Runtime vs. Initialization](#runtime-vs-initialization)
+  * [When to Use Initialization Options](#when-to-use-initialization-options)
+  * [When to Use Runtime Functions](#when-to-use-runtime-functions)
+* [Best Practices](#best-practices)
+  * [1. Document Runtime Changes](#1-document-runtime-changes)
+  * [2. Restore Original Settings](#2-restore-original-settings)
+  * [3. Use Functions for Common Patterns](#3-use-functions-for-common-patterns)
+  * [4. Be Cautious with Production Changes](#4-be-cautious-with-production-changes)
+  * [5. Log Configuration Changes](#5-log-configuration-changes)
+* [Limitations](#limitations)
+  * [Cannot Change After Initialization](#cannot-change-after-initialization)
+  * [No Persistence](#no-persistence)
+* [Examples](#examples)
+  * [Debug Mode Toggle](#debug-mode-toggle)
+  * [Adaptive Logging](#adaptive-logging)
+* [Related Documentation](#related-documentation)
 
 ## Overview
 
 Runtime configuration functions let you modify logging behavior without reinitializing the logger. This is useful for:
 
-- Enabling debug mode for specific operations
-- Changing log format for different sections
-- Temporarily disabling journal logging
-- Adjusting settings based on conditions
+* Enabling debug mode for specific operations
+* Changing log format for different sections
+* Temporarily disabling journal logging
+* Adjusting settings based on conditions
 
 ## Available Functions
 
@@ -62,7 +62,7 @@ set_log_level LEVEL
 
 **Parameters:**
 
-- `LEVEL` - DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, or 0-7
+* `LEVEL` - DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, or 0-7
 
 **Examples:**
 
@@ -93,7 +93,7 @@ set_timezone_utc BOOLEAN
 
 **Parameters:**
 
-- `BOOLEAN` - `true` to use UTC, `false` to use local time
+* `BOOLEAN` - `true` to use UTC, `false` to use local time
 
 **Examples:**
 
@@ -117,7 +117,7 @@ set_log_format FORMAT
 
 **Parameters:**
 
-- `FORMAT` - Format string with placeholders
+* `FORMAT` - Format string with placeholders
 
 **Examples:**
 
@@ -146,7 +146,7 @@ set_journal_logging BOOLEAN
 
 **Parameters:**
 
-- `BOOLEAN` - `true` to enable, `false` to disable
+* `BOOLEAN` - `true` to enable, `false` to disable
 
 **Examples:**
 
@@ -170,7 +170,7 @@ set_journal_tag TAG
 
 **Parameters:**
 
-- `TAG` - String identifier for journal entries
+* `TAG` - String identifier for journal entries
 
 **Examples:**
 
@@ -438,10 +438,10 @@ log_info "Application complete"
 
 Use initialization options (`init_logger`) for:
 
-- Default configuration
-- Settings that apply to entire script
-- Static configuration from files
-- Initial setup
+* Default configuration
+* Settings that apply to entire script
+* Static configuration from files
+* Initial setup
 
 ```bash
 # Set baseline configuration
@@ -452,10 +452,10 @@ init_logger --log "/var/log/app.log" --level INFO --journal
 
 Use runtime functions for:
 
-- Dynamic changes during execution
-- Conditional settings
-- Temporary changes
-- Phase-based configuration
+* Dynamic changes during execution
+* Conditional settings
+* Temporary changes
+* Phase-based configuration
 
 ```bash
 # Change during execution
@@ -542,10 +542,10 @@ set_log_level INFO
 
 Some settings can only be set at initialization:
 
-- Log file path (`--log`)
-- Console output (`--quiet`)
-- Stderr level (`--stderr-level`)
-- Color mode (`--color` / `--no-color`)
+* Log file path (`--log`)
+* Console output (`--quiet`)
+* Stderr level (`--stderr-level`)
+* Color mode (`--color` / `--no-color`)
 
 To change these, you must reinitialize the logger.
 
@@ -615,8 +615,8 @@ function process_item() {
 
 ## Related Documentation
 
-- [Initialization](initialization.md) - Setting initial configuration
-- [Log Levels](log-levels.md) - Understanding log levels
-- [Formatting](formatting.md) - Format string options
-- [Journal Logging](journal-logging.md) - Journal configuration
-- [Examples](examples.md) - Complete examples
+* [Initialization](initialization.md) - Setting initial configuration
+* [Log Levels](log-levels.md) - Understanding log levels
+* [Formatting](formatting.md) - Format string options
+* [Journal Logging](journal-logging.md) - Journal configuration
+* [Examples](examples.md) - Complete examples

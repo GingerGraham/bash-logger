@@ -6,39 +6,39 @@ pipeline checks pass before you submit pull requests.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Quick Start (Recommended)](#quick-start-recommended)
-- [What Pre-commit Does](#what-pre-commit-does)
-- [Manual Installation (Alternative)](#manual-installation-alternative)
-  - [Prerequisites](#prerequisites)
-  - [Installation Steps](#installation-steps)
-- [Common Commands](#common-commands)
-  - [Run all hooks on all files](#run-all-hooks-on-all-files)
-  - [Run a specific hook](#run-a-specific-hook)
-  - [Skip hooks for a single commit](#skip-hooks-for-a-single-commit)
-  - [Update pre-commit hooks to latest versions](#update-pre-commit-hooks-to-latest-versions)
-  - [Temporarily disable hooks](#temporarily-disable-hooks)
-  - [Re-enable hooks after disabling](#re-enable-hooks-after-disabling)
-- [CI integration](#ci-integration)
-- [Troubleshooting](#troubleshooting)
-  - ["command not found: pre-commit"](#command-not-found-pre-commit)
-  - ["MarkdownLint failed to find Node.js"](#markdownlint-failed-to-find-nodejs)
-  - ["ShellCheck not found"](#shellcheck-not-found)
-  - [Hooks are running but I want to skip them temporarily](#hooks-are-running-but-i-want-to-skip-them-temporarily)
-- [Understanding Hook Failures](#understanding-hook-failures)
-  - [ShellCheck Failures](#shellcheck-failures)
-  - [MarkdownLint Failures](#markdownlint-failures)
-  - [Test Suite Failures](#test-suite-failures)
-  - [Commit Message Format Failures](#commit-message-format-failures)
-- [Hook Configuration](#hook-configuration)
-  - [Understanding the config](#understanding-the-config)
-  - [Updating hooks](#updating-hooks)
-- [Integration with CI/CD](#integration-with-cicd)
-- [For Maintainers: Managing Pre-commit](#for-maintainers-managing-pre-commit)
-  - [Adding a new hook](#adding-a-new-hook)
-  - [Updating hook versions](#updating-hook-versions)
-  - [Skipping a hook for specific files](#skipping-a-hook-for-specific-files)
-- [Additional Resources](#additional-resources)
-- [Questions?](#questions)
+* [Quick Start (Recommended)](#quick-start-recommended)
+* [What Pre-commit Does](#what-pre-commit-does)
+* [Manual Installation (Alternative)](#manual-installation-alternative)
+  * [Prerequisites](#prerequisites)
+  * [Installation Steps](#installation-steps)
+* [Common Commands](#common-commands)
+  * [Run all hooks on all files](#run-all-hooks-on-all-files)
+  * [Run a specific hook](#run-a-specific-hook)
+  * [Skip hooks for a single commit](#skip-hooks-for-a-single-commit)
+  * [Update pre-commit hooks to latest versions](#update-pre-commit-hooks-to-latest-versions)
+  * [Temporarily disable hooks](#temporarily-disable-hooks)
+  * [Re-enable hooks after disabling](#re-enable-hooks-after-disabling)
+* [CI integration](#ci-integration)
+* [Troubleshooting](#troubleshooting)
+  * ["command not found: pre-commit"](#command-not-found-pre-commit)
+  * ["MarkdownLint failed to find Node.js"](#markdownlint-failed-to-find-nodejs)
+  * ["ShellCheck not found"](#shellcheck-not-found)
+  * [Hooks are running but I want to skip them temporarily](#hooks-are-running-but-i-want-to-skip-them-temporarily)
+* [Understanding Hook Failures](#understanding-hook-failures)
+  * [ShellCheck Failures](#shellcheck-failures)
+  * [MarkdownLint Failures](#markdownlint-failures)
+  * [Test Suite Failures](#test-suite-failures)
+  * [Commit Message Format Failures](#commit-message-format-failures)
+* [Hook Configuration](#hook-configuration)
+  * [Understanding the config](#understanding-the-config)
+  * [Updating hooks](#updating-hooks)
+* [Integration with CI/CD](#integration-with-cicd)
+* [For Maintainers: Managing Pre-commit](#for-maintainers-managing-pre-commit)
+  * [Adding a new hook](#adding-a-new-hook)
+  * [Updating hook versions](#updating-hook-versions)
+  * [Skipping a hook for specific files](#skipping-a-hook-for-specific-files)
+* [Additional Resources](#additional-resources)
+* [Questions?](#questions)
 
 ## Quick Start (Recommended)
 
@@ -50,11 +50,11 @@ If you have Python 3 installed, the easiest way is to run our setup script:
 
 The script will:
 
-- Check for required dependencies (Python and pip)
-- Install the pre-commit framework
-- Configure git hooks from `.pre-commit-config.yaml`
-- Run checks on existing files (optional)
-- Provide next steps and useful commands
+* Check for required dependencies (Python and pip)
+* Install the pre-commit framework
+* Configure git hooks from `.pre-commit-config.yaml`
+* Run checks on existing files (optional)
+* Provide next steps and useful commands
 
 That's it! You're done. Pre-commit hooks are now active.
 
@@ -64,26 +64,26 @@ Pre-commit hooks run automatically before each commit. They check:
 
 1. **ShellCheck** - Validates Bash script syntax and common errors
 
-   - Catches syntax errors, undefined variables, incorrect quoting, and more
-   - Runs on all `.sh` files
+   * Catches syntax errors, undefined variables, incorrect quoting, and more
+   * Runs on all `.sh` files
 
 2. **MarkdownLint** - Checks and auto-fixes Markdown formatting
 
-   - Automatically fixes formatting issues (blank lines, trailing spaces, etc.)
-   - For issues that can't be auto-fixed (line length), you'll need to fix manually
-   - Ensures consistent formatting, proper headings, and link validation
-   - Runs on all `.md` files
+   * Automatically fixes formatting issues (blank lines, trailing spaces, etc.)
+   * For issues that can't be auto-fixed (line length), you'll need to fix manually
+   * Ensures consistent formatting, proper headings, and link validation
+   * Runs on all `.md` files
 
 3. **Bash Logger Tests** - Runs the test suite
 
-   - Verifies all changes pass the test suite
-   - Prevents committing broken code
+   * Verifies all changes pass the test suite
+   * Prevents committing broken code
 
 4. **Commit Message Format** - Validates semantic versioning format
-   - Ensures commit messages follow the pattern: `<type>(<scope>): <subject>`
-   - Enables automated release and version management
-   - Provides clear feedback if message format is incorrect
-   - Examples: `feat(logging): add color support`, `fix: prevent race condition`
+   * Ensures commit messages follow the pattern: `<type>(<scope>): <subject>`
+   * Enables automated release and version management
+   * Provides clear feedback if message format is incorrect
+   * Examples: `feat(logging): add color support`, `fix: prevent race condition`
 
 When hooks run and auto-fix formatting (like MarkdownLint), the modified files will be
 staged and your commit will proceed. If any check fails and can't be auto-fixed, your
@@ -95,8 +95,8 @@ If you prefer to install manually or the script doesn't work for your setup:
 
 ### Prerequisites
 
-- **Python 3.6+** - [Download here](https://www.python.org/)
-- **pip** - Usually comes with Python 3
+* **Python 3.6+** - [Download here](https://www.python.org/)
+* **pip** - Usually comes with Python 3
 
 ### Installation Steps
 
@@ -185,8 +185,8 @@ python -m pre-commit run --all-files
 
 Or add the user bin directory to your PATH. Common locations:
 
-- Linux/Mac: `~/.local/bin`
-- Windows with Python: `%APPDATA%\Python\Python3x\Scripts`
+* Linux/Mac: `~/.local/bin`
+* Windows with Python: `%APPDATA%\Python\Python3x\Scripts`
 
 ### "MarkdownLint failed to find Node.js"
 
@@ -222,9 +222,9 @@ pre-commit install
 
 ShellCheck finds potential issues in Bash scripts. Review its output and fix the issues. Common ones:
 
-- Undefined variables - use quotes: `"$var"` instead of `$var`
-- Unquoted variables in conditions
-- Using `[` instead of `[[`
+* Undefined variables - use quotes: `"$var"` instead of `$var`
+* Unquoted variables in conditions
+* Using `[` instead of `[[`
 
 See [ShellCheck wiki](https://www.shellcheck.net/wiki/) for detailed explanations.
 
@@ -234,8 +234,8 @@ MarkdownLint automatically fixes many formatting issues (blank lines, trailing s
 
 However, some issues require manual fixes:
 
-- **Line length** - Lines exceeding 120 characters must be reworded or restructured
-- **Content-related issues** - Problems that can't be fixed without changing your content
+* **Line length** - Lines exceeding 120 characters must be reworded or restructured
+* **Content-related issues** - Problems that can't be fixed without changing your content
 
 When MarkdownLint blocks your commit due to unfixable issues:
 
@@ -263,9 +263,9 @@ with a helpful error message.
 
 **Common issues:**
 
-- Missing type: Use `feat:`, `fix:`, `docs:`, etc. at the start
-- Missing colon: Ensure format is `type(scope): message`
-- Invalid type: Must be one of: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
+* Missing type: Use `feat:`, `fix:`, `docs:`, etc. at the start
+* Missing colon: Ensure format is `type(scope): message`
+* Invalid type: Must be one of: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
   `chore`, `ci`
 
 **To fix:**
@@ -303,10 +303,10 @@ repos:
         args: [--severity=warning] # Only fail on warnings and above
 ```
 
-- `repo` - Source of the hook
-- `rev` - Version to use (update with `pre-commit autoupdate`)
-- `hooks` - Specific hooks from that repo
-- `args` - Arguments passed to the tool (configuration)
+* `repo` - Source of the hook
+* `rev` - Version to use (update with `pre-commit autoupdate`)
+* `hooks` - Specific hooks from that repo
+* `args` - Arguments passed to the tool (configuration)
 
 ### Updating hooks
 
@@ -322,10 +322,10 @@ This updates `.pre-commit-config.yaml` to use newer versions.
 
 These same checks run in GitHub Actions on every pull request. Setting up pre-commit locally means:
 
-- You catch issues before pushing
-- Faster feedback cycle
-- Fewer failed pipeline runs
-- Better code quality overall
+* You catch issues before pushing
+* Faster feedback cycle
+* Fewer failed pipeline runs
+* Better code quality overall
 
 It's a win-win!
 
@@ -358,10 +358,10 @@ In `.pre-commit-config.yaml`, add `exclude` patterns:
 
 ## Additional Resources
 
-- [Pre-commit Documentation](https://pre-commit.com/)
-- [ShellCheck Documentation](https://www.shellcheck.net/)
-- [MarkdownLint Rules](https://github.com/igorshubovych/markdownlint-cli#rules)
-- [Getting Started with Contributing](CONTRIBUTING.md)
+* [Pre-commit Documentation](https://pre-commit.com/)
+* [ShellCheck Documentation](https://www.shellcheck.net/)
+* [MarkdownLint Rules](https://github.com/igorshubovych/markdownlint-cli#rules)
+* [Getting Started with Contributing](CONTRIBUTING.md)
 
 ## Questions?
 

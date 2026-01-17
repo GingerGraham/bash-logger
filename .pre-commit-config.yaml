@@ -33,7 +33,7 @@ repos:
       - id: markdownlint
         name: MarkdownLint
         description: Lint and auto-fix markdown files
-        entry: markdownlint --fix
+        entry: markdownlint --fix --config .markdownlint.yaml
         language: node
         types: [markdown]
 

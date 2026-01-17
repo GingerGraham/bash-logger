@@ -4,49 +4,49 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Installation Issues](#installation-issues)
-  - [Module Not Found](#module-not-found)
-  - [Permission Denied](#permission-denied)
-- [Initialization Issues](#initialization-issues)
-  - [Logger Not Initialized](#logger-not-initialized)
-  - [Initialization Fails](#initialization-fails)
-- [Configuration File Issues](#configuration-file-issues)
-  - [Configuration File Not Loaded](#configuration-file-not-loaded)
-  - [Invalid Configuration Values](#invalid-configuration-values)
-  - [CLI Arguments Not Overriding Config](#cli-arguments-not-overriding-config)
-- [File Logging Issues](#file-logging-issues)
-  - [No Output to Log File](#no-output-to-log-file)
-  - [Log File Permission Denied](#log-file-permission-denied)
-- [Journal Logging Issues](#journal-logging-issues)
-  - [Journal Logs Not Appearing](#journal-logs-not-appearing)
-  - [Wrong Tag in Journal](#wrong-tag-in-journal)
-- [Console Output Issues](#console-output-issues)
-  - [No Console Output](#no-console-output)
-  - [No Colors in Output](#no-colors-in-output)
-  - [Colors Appear in Log File](#colors-appear-in-log-file)
-- [Output Stream Issues](#output-stream-issues)
-  - [Logs Going to Wrong Stream](#logs-going-to-wrong-stream)
-  - [Cannot Separate Stdout and Stderr](#cannot-separate-stdout-and-stderr)
-- [Runtime Configuration Issues](#runtime-configuration-issues)
-  - [set_log_level Not Working](#set_log_level-not-working)
-  - [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
-- [Format Issues](#format-issues)
-  - [Format Not Applied](#format-not-applied)
-  - [Weird Characters in Output](#weird-characters-in-output)
-- [Debugging Tips](#debugging-tips)
-  - [Enable Verbose Mode](#enable-verbose-mode)
-  - [Test with Minimal Configuration](#test-with-minimal-configuration)
-  - [Verify Function Availability](#verify-function-availability)
-  - [Check Initialization Return Code](#check-initialization-return-code)
-  - [Test Logger Command](#test-logger-command)
-- [Performance Issues](#performance-issues)
-  - [Slow Logging](#slow-logging)
-- [Common Error Messages](#common-error-messages)
-  - ["command not found: init_logger"](#command-not-found-init_logger)
-  - ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
-  - ["invalid log level"](#invalid-log-level)
-- [Getting Help](#getting-help)
-- [Related Documentation](#related-documentation)
+* [Installation Issues](#installation-issues)
+  * [Module Not Found](#module-not-found)
+  * [Permission Denied](#permission-denied)
+* [Initialization Issues](#initialization-issues)
+  * [Logger Not Initialized](#logger-not-initialized)
+  * [Initialization Fails](#initialization-fails)
+* [Configuration File Issues](#configuration-file-issues)
+  * [Configuration File Not Loaded](#configuration-file-not-loaded)
+  * [Invalid Configuration Values](#invalid-configuration-values)
+  * [CLI Arguments Not Overriding Config](#cli-arguments-not-overriding-config)
+* [File Logging Issues](#file-logging-issues)
+  * [No Output to Log File](#no-output-to-log-file)
+  * [Log File Permission Denied](#log-file-permission-denied)
+* [Journal Logging Issues](#journal-logging-issues)
+  * [Journal Logs Not Appearing](#journal-logs-not-appearing)
+  * [Wrong Tag in Journal](#wrong-tag-in-journal)
+* [Console Output Issues](#console-output-issues)
+  * [No Console Output](#no-console-output)
+  * [No Colors in Output](#no-colors-in-output)
+  * [Colors Appear in Log File](#colors-appear-in-log-file)
+* [Output Stream Issues](#output-stream-issues)
+  * [Logs Going to Wrong Stream](#logs-going-to-wrong-stream)
+  * [Cannot Separate Stdout and Stderr](#cannot-separate-stdout-and-stderr)
+* [Runtime Configuration Issues](#runtime-configuration-issues)
+  * [set_log_level Not Working](#set_log_level-not-working)
+  * [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
+* [Format Issues](#format-issues)
+  * [Format Not Applied](#format-not-applied)
+  * [Weird Characters in Output](#weird-characters-in-output)
+* [Debugging Tips](#debugging-tips)
+  * [Enable Verbose Mode](#enable-verbose-mode)
+  * [Test with Minimal Configuration](#test-with-minimal-configuration)
+  * [Verify Function Availability](#verify-function-availability)
+  * [Check Initialization Return Code](#check-initialization-return-code)
+  * [Test Logger Command](#test-logger-command)
+* [Performance Issues](#performance-issues)
+  * [Slow Logging](#slow-logging)
+* [Common Error Messages](#common-error-messages)
+  * ["command not found: init_logger"](#command-not-found-init_logger)
+  * ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
+  * ["invalid log level"](#invalid-log-level)
+* [Getting Help](#getting-help)
+* [Related Documentation](#related-documentation)
 
 ## Installation Issues
 
@@ -627,13 +627,13 @@ If you're still experiencing issues:
 
 1. **Check the documentation:**
 
-   - [Getting Started](getting-started.md)
-   - [Initialization](initialization.md)
-   - [Configuration](configuration.md)
+   * [Getting Started](getting-started.md)
+   * [Initialization](initialization.md)
+   * [Configuration](configuration.md)
 
 2. **Review examples:**
 
-   - [Examples](examples.md)
+   * [Examples](examples.md)
 
 3. **Test with minimal example:**
 
@@ -660,8 +660,8 @@ ls -ld /var/log/
 
 ## Related Documentation
 
-- [Getting Started](getting-started.md) - Basic setup
-- [Initialization](initialization.md) - Configuration options
-- [Configuration](configuration.md) - Config file troubleshooting
-- [Journal Logging](journal-logging.md) - Journal-specific issues
-- [Examples](examples.md) - Working examples to reference
+* [Getting Started](getting-started.md) - Basic setup
+* [Initialization](initialization.md) - Configuration options
+* [Configuration](configuration.md) - Config file troubleshooting
+* [Journal Logging](journal-logging.md) - Journal-specific issues
+* [Examples](examples.md) - Working examples to reference

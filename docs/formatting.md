@@ -4,46 +4,46 @@ The Bash Logging Module allows you to customize the format of log messages using
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Default Format](#default-format)
-- [Format Placeholders](#format-placeholders)
-- [Setting Format at Initialization](#setting-format-at-initialization)
-- [Format Examples](#format-examples)
-  - [Minimal Format](#minimal-format)
-  - [Standard Format (Default)](#standard-format-default)
-  - [Detailed Format with Timezone](#detailed-format-with-timezone)
-  - [Syslog-Style Format](#syslog-style-format)
-  - [Compact Format](#compact-format)
-  - [Time-Only Format](#time-only-format)
-- [Timezone Display](#timezone-display)
-  - [Without Timezone Placeholder](#without-timezone-placeholder)
-- [Configuration File Format Setting](#configuration-file-format-setting)
-- [Changing Format at Runtime](#changing-format-at-runtime)
-- [Format Best Practices](#format-best-practices)
-  - [1. Include Timestamp for File Logs](#1-include-timestamp-for-file-logs)
-  - [2. Include Script Name for Multi-Script Logs](#2-include-script-name-for-multi-script-logs)
-  - [3. Include Timezone for Distributed Systems](#3-include-timezone-for-distributed-systems)
-  - [4. Minimal Format for Console Debugging](#4-minimal-format-for-console-debugging)
-  - [5. Consistent Format Across Applications](#5-consistent-format-across-applications)
-  - [6. Consider Log Parsing Tools](#6-consider-log-parsing-tools)
-- [Format Examples by Use Case](#format-examples-by-use-case)
-  - [Development Script](#development-script)
-  - [Production Application](#production-application)
-  - [System Service](#system-service)
-  - [Multi-Timezone Deployment](#multi-timezone-deployment)
-  - [Shared Log File](#shared-log-file)
-  - [CLI Tool](#cli-tool)
-- [Cloud and Structured Logging Formats](#cloud-and-structured-logging-formats)
-  - [AWS CloudWatch Logs Format](#aws-cloudwatch-logs-format)
-  - [JSON-Like Format](#json-like-format)
-  - [Pipe-Delimited Format](#pipe-delimited-format)
-  - [Kubernetes/Container Logs Format](#kubernetescontainer-logs-format)
-  - [Splunk-Friendly Format](#splunk-friendly-format)
-  - [Example: Multi-Environment Format Selection](#example-multi-environment-format-selection)
-- [Special Characters in Messages](#special-characters-in-messages)
-- [Escaping in Format Strings](#escaping-in-format-strings)
-- [Testing Your Format](#testing-your-format)
-- [Format and Color Output](#format-and-color-output)
-- [Related Documentation](#related-documentation)
+* [Default Format](#default-format)
+* [Format Placeholders](#format-placeholders)
+* [Setting Format at Initialization](#setting-format-at-initialization)
+* [Format Examples](#format-examples)
+  * [Minimal Format](#minimal-format)
+  * [Standard Format (Default)](#standard-format-default)
+  * [Detailed Format with Timezone](#detailed-format-with-timezone)
+  * [Syslog-Style Format](#syslog-style-format)
+  * [Compact Format](#compact-format)
+  * [Time-Only Format](#time-only-format)
+* [Timezone Display](#timezone-display)
+  * [Without Timezone Placeholder](#without-timezone-placeholder)
+* [Configuration File Format Setting](#configuration-file-format-setting)
+* [Changing Format at Runtime](#changing-format-at-runtime)
+* [Format Best Practices](#format-best-practices)
+  * [1. Include Timestamp for File Logs](#1-include-timestamp-for-file-logs)
+  * [2. Include Script Name for Multi-Script Logs](#2-include-script-name-for-multi-script-logs)
+  * [3. Include Timezone for Distributed Systems](#3-include-timezone-for-distributed-systems)
+  * [4. Minimal Format for Console Debugging](#4-minimal-format-for-console-debugging)
+  * [5. Consistent Format Across Applications](#5-consistent-format-across-applications)
+  * [6. Consider Log Parsing Tools](#6-consider-log-parsing-tools)
+* [Format Examples by Use Case](#format-examples-by-use-case)
+  * [Development Script](#development-script)
+  * [Production Application](#production-application)
+  * [System Service](#system-service)
+  * [Multi-Timezone Deployment](#multi-timezone-deployment)
+  * [Shared Log File](#shared-log-file)
+  * [CLI Tool](#cli-tool)
+* [Cloud and Structured Logging Formats](#cloud-and-structured-logging-formats)
+  * [AWS CloudWatch Logs Format](#aws-cloudwatch-logs-format)
+  * [JSON-Like Format](#json-like-format)
+  * [Pipe-Delimited Format](#pipe-delimited-format)
+  * [Kubernetes/Container Logs Format](#kubernetescontainer-logs-format)
+  * [Splunk-Friendly Format](#splunk-friendly-format)
+  * [Example: Multi-Environment Format Selection](#example-multi-environment-format-selection)
+* [Special Characters in Messages](#special-characters-in-messages)
+* [Escaping in Format Strings](#escaping-in-format-strings)
+* [Testing Your Format](#testing-your-format)
+* [Format and Color Output](#format-and-color-output)
+* [Related Documentation](#related-documentation)
 
 ## Default Format
 
@@ -102,10 +102,10 @@ DEBUG: Variable value: count=42
 
 **When to use:**
 
-- Quick debugging
-- When context is obvious
-- Console-only logging
-- Minimal output requirements
+* Quick debugging
+* When context is obvious
+* Console-only logging
+* Minimal output requirements
 
 ### Standard Format (Default)
 
@@ -122,10 +122,10 @@ Output:
 
 **When to use:**
 
-- General purpose logging
-- File logging
-- Production environments
-- Most use cases
+* General purpose logging
+* File logging
+* Production environments
+* Most use cases
 
 ### Detailed Format with Timezone
 
@@ -142,10 +142,10 @@ Output:
 
 **When to use:**
 
-- Multi-timezone deployments
-- Coordinated operations
-- Compliance/audit requirements
-- When UTC timestamps are used
+* Multi-timezone deployments
+* Coordinated operations
+* Compliance/audit requirements
+* When UTC timestamps are used
 
 ### Syslog-Style Format
 
@@ -163,10 +163,10 @@ Note: `$$` is a Bash variable for the current process ID.
 
 **When to use:**
 
-- System logs
-- Service logs
-- Process tracking
-- Syslog integration
+* System logs
+* Service logs
+* Process tracking
+* Syslog integration
 
 ### Compact Format
 
@@ -183,10 +183,10 @@ Output:
 
 **When to use:**
 
-- Development
-- Short-lived scripts
-- When timestamp isn't needed
-- Interactive use
+* Development
+* Short-lived scripts
+* When timestamp isn't needed
+* Interactive use
 
 ### Time-Only Format
 
@@ -203,10 +203,10 @@ Output:
 
 **When to use:**
 
-- Same-day logs
-- Performance monitoring
-- Short-term debugging
-- When date is implied
+* Same-day logs
+* Performance monitoring
+* Short-term debugging
+* When date is implied
 
 ## Timezone Display
 
@@ -407,17 +407,17 @@ timestamp=2026-01-16 14:30:45 level=INFO script=myscript.sh message=Application 
 
 **When to use:**
 
-- AWS Lambda functions
-- EC2 instances with CloudWatch agent
-- ECS/Fargate containers
-- Any AWS service that sends logs to CloudWatch
+* AWS Lambda functions
+* EC2 instances with CloudWatch agent
+* ECS/Fargate containers
+* Any AWS service that sends logs to CloudWatch
 
 **Best practices for CloudWatch:**
 
-- Always use UTC time (`--utc`)
-- Include log level for filtering
-- Keep format consistent across services
-- Consider adding request IDs in the message for tracing
+* Always use UTC time (`--utc`)
+* Include log level for filtering
+* Keep format consistent across services
+* Consider adding request IDs in the message for tracing
 
 ### JSON-Like Format
 
@@ -436,10 +436,10 @@ Output:
 
 **When to use:**
 
-- Log aggregation platforms (ELK, Splunk, Datadog)
-- When logs need to be parsed programmatically
-- Cloud-native applications
-- Microservices architectures
+* Log aggregation platforms (ELK, Splunk, Datadog)
+* When logs need to be parsed programmatically
+* Cloud-native applications
+* Microservices architectures
 
 **Note:** This creates JSON-like output but is not guaranteed to be valid JSON if the message contains special
 characters like quotes. For production use with strict JSON requirements, consider post-processing logs or using
@@ -463,10 +463,10 @@ Output:
 
 **When to use:**
 
-- Easy parsing with `cut` or `awk`
-- CSV-like log analysis
-- Simple log aggregation
-- When JSON is overkill
+* Easy parsing with `cut` or `awk`
+* CSV-like log analysis
+* Simple log aggregation
+* When JSON is overkill
 
 ### Kubernetes/Container Logs Format
 
@@ -489,10 +489,10 @@ time=2026-01-16 14:30:45 tz=UTC level=INFO source=myscript.sh msg=Application st
 
 **When to use:**
 
-- Docker containers
-- Kubernetes pods
-- Container orchestration platforms
-- When logs are collected by container runtime
+* Docker containers
+* Kubernetes pods
+* Container orchestration platforms
+* When logs are collected by container runtime
 
 ### Splunk-Friendly Format
 
@@ -511,9 +511,9 @@ Output:
 
 **When to use:**
 
-- Splunk log ingestion
-- When using Splunk Universal Forwarder
-- Enterprise log management with Splunk
+* Splunk log ingestion
+* When using Splunk Universal Forwarder
+* Enterprise log management with Splunk
 
 ### Example: Multi-Environment Format Selection
 
@@ -634,7 +634,7 @@ Color codes are automatically stripped when output is redirected to a file:
 
 ## Related Documentation
 
-- [Initialization](initialization.md) - Setting format at startup
-- [Runtime Configuration](runtime-configuration.md) - Changing format during execution
-- [Configuration](configuration.md) - Format in config files
-- [Examples](examples.md) - Complete format examples
+* [Initialization](initialization.md) - Setting format at startup
+* [Runtime Configuration](runtime-configuration.md) - Changing format during execution
+* [Configuration](configuration.md) - Format in config files
+* [Examples](examples.md) - Complete format examples

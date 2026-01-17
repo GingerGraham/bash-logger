@@ -4,29 +4,29 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Overview](#overview)
-- [Running Tests](#running-tests)
-  - [Run All Tests](#run-all-tests)
-  - [Run Specific Test Suites](#run-specific-test-suites)
-  - [Understanding Test Output](#understanding-test-output)
-- [Test Suite Structure](#test-suite-structure)
-  - [Test Files](#test-files)
-  - [Test Coverage](#test-coverage)
-- [Writing Tests](#writing-tests)
-  - [Basic Test Structure](#basic-test-structure)
-  - [Assertion Functions](#assertion-functions)
-    - [Equality Assertions](#equality-assertions)
-    - [String Assertions](#string-assertions)
-    - [File Assertions](#file-assertions)
-    - [Command Assertions](#command-assertions)
-  - [Test Helpers](#test-helpers)
-  - [Best Practices](#best-practices)
-- [Adding New Tests](#adding-new-tests)
-  - [Creating a New Test Suite](#creating-a-new-test-suite)
-  - [Adding Tests to Existing Suite](#adding-tests-to-existing-suite)
-- [Debugging Failed Tests](#debugging-failed-tests)
-- [Continuous Integration](#continuous-integration)
-- [Related Documentation](#related-documentation)
+* [Overview](#overview)
+* [Running Tests](#running-tests)
+  * [Run All Tests](#run-all-tests)
+  * [Run Specific Test Suites](#run-specific-test-suites)
+  * [Understanding Test Output](#understanding-test-output)
+* [Test Suite Structure](#test-suite-structure)
+  * [Test Files](#test-files)
+  * [Test Coverage](#test-coverage)
+* [Writing Tests](#writing-tests)
+  * [Basic Test Structure](#basic-test-structure)
+  * [Assertion Functions](#assertion-functions)
+    * [Equality Assertions](#equality-assertions)
+    * [String Assertions](#string-assertions)
+    * [File Assertions](#file-assertions)
+    * [Command Assertions](#command-assertions)
+  * [Test Helpers](#test-helpers)
+  * [Best Practices](#best-practices)
+* [Adding New Tests](#adding-new-tests)
+  * [Creating a New Test Suite](#creating-a-new-test-suite)
+  * [Adding Tests to Existing Suite](#adding-tests-to-existing-suite)
+* [Debugging Failed Tests](#debugging-failed-tests)
+* [Continuous Integration](#continuous-integration)
+* [Related Documentation](#related-documentation)
 
 ## Overview
 
@@ -34,10 +34,10 @@ The bash-logger project includes a comprehensive test suite with 103 tests acros
 suites, validating all functionality of the logging module. The test framework is built
 in pure Bash and designed to be:
 
-- **Self-contained**: No external test frameworks required
-- **CI-friendly**: Clear exit codes and non-interactive
-- **Developer-friendly**: Colored output and detailed error messages
-- **Maintainable**: Simple structure that's easy to extend
+* **Self-contained**: No external test frameworks required
+* **CI-friendly**: Clear exit codes and non-interactive
+* **Developer-friendly**: Colored output and detailed error messages
+* **Maintainable**: Simple structure that's easy to extend
 
 ## Running Tests
 
@@ -68,12 +68,12 @@ cd tests
 
 Available test suites:
 
-- `test_log_levels` - Log level functionality
-- `test_initialization` - Logger initialization
-- `test_output` - Output routing and formatting
-- `test_format` - Message format templates
-- `test_config` - Configuration file parsing
-- `test_runtime_config` - Runtime configuration changes
+* `test_log_levels` - Log level functionality
+* `test_initialization` - Logger initialization
+* `test_output` - Output routing and formatting
+* `test_format` - Message format templates
+* `test_config` - Configuration file parsing
+* `test_runtime_config` - Runtime configuration changes
 
 ### Understanding Test Output
 
@@ -104,14 +104,14 @@ All tests passed!
 
 **Symbols**:
 
-- ✓ (green) - Test passed
-- ✗ (red) - Test failed
-- ⊘ (yellow) - Test skipped
+* ✓ (green) - Test passed
+* ✗ (red) - Test failed
+* ⊘ (yellow) - Test skipped
 
 **Exit Codes**:
 
-- `0` - All tests passed
-- `1` - One or more tests failed
+* `0` - All tests passed
+* `1` - One or more tests failed
 
 ## Test Suite Structure
 
@@ -121,17 +121,17 @@ The test suite is organized into the following files:
 
 **Core Infrastructure** (`tests/`):
 
-- `run_tests.sh` - Main test runner
-- `test_helpers.sh` - Assertion functions and utilities
+* `run_tests.sh` - Main test runner
+* `test_helpers.sh` - Assertion functions and utilities
 
 **Test Suites** (`tests/`):
 
-- `test_log_levels.sh` - 12 tests for log levels
-- `test_initialization.sh` - 21 tests for initialization
-- `test_output.sh` - 17 tests for output routing
-- `test_format.sh` - 16 tests for message formatting
-- `test_config.sh` - 21 tests for config file parsing
-- `test_runtime_config.sh` - 16 tests for runtime changes
+* `test_log_levels.sh` - 12 tests for log levels
+* `test_initialization.sh` - 21 tests for initialization
+* `test_output.sh` - 17 tests for output routing
+* `test_format.sh` - 16 tests for message formatting
+* `test_config.sh` - 21 tests for config file parsing
+* `test_runtime_config.sh` - 16 tests for runtime changes
 
 ### Test Coverage
 
@@ -510,21 +510,21 @@ jobs:
 
 **Requirements**:
 
-- Bash 4.0 or later
-- Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
-- Optional: `logger` command for journal logging tests
+* Bash 4.0 or later
+* Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
+* Optional: `logger` command for journal logging tests
 
 **CI Characteristics**:
 
-- Non-interactive
-- Clean exit codes (0=pass, 1=fail)
-- Temporary files in system temp directory
-- Skips tests when dependencies unavailable
-- No pager usage or interactive prompts
+* Non-interactive
+* Clean exit codes (0=pass, 1=fail)
+* Temporary files in system temp directory
+* Skips tests when dependencies unavailable
+* No pager usage or interactive prompts
 
 ## Related Documentation
 
-- [Getting Started](getting-started.md) - Basic usage of the logging module
-- [Initialization](initialization.md) - Initialization options and configuration
-- [Examples](examples.md) - Comprehensive usage examples
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
+* [Getting Started](getting-started.md) - Basic usage of the logging module
+* [Initialization](initialization.md) - Initialization options and configuration
+* [Examples](examples.md) - Comprehensive usage examples
+* [Troubleshooting](troubleshooting.md) - Common issues and solutions

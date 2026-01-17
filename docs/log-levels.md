@@ -5,33 +5,33 @@ least critical.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Overview](#overview)
-- [Available Log Levels](#available-log-levels)
-- [Log Level Details](#log-level-details)
-  - [EMERGENCY (0)](#emergency-0)
-  - [ALERT (1)](#alert-1)
-  - [CRITICAL (2)](#critical-2)
-  - [ERROR (3)](#error-3)
-  - [WARN (4)](#warn-4)
-  - [NOTICE (5)](#notice-5)
-  - [INFO (6)](#info-6)
-  - [DEBUG (7)](#debug-7)
-- [Special Level: SENSITIVE](#special-level-sensitive)
-- [Setting Log Levels](#setting-log-levels)
-  - [At Initialization](#at-initialization)
-  - [At Runtime](#at-runtime)
-- [Log Level Filtering](#log-level-filtering)
-- [Choosing the Right Level](#choosing-the-right-level)
-  - [Development](#development)
-  - [Testing](#testing)
-  - [Production](#production)
-  - [Monitoring/Operations](#monitoringoperations)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-  - [Progressive Verbosity](#progressive-verbosity)
-  - [Debug Mode](#debug-mode)
-  - [Production Mode](#production-mode)
-- [Related Documentation](#related-documentation)
+* [Overview](#overview)
+* [Available Log Levels](#available-log-levels)
+* [Log Level Details](#log-level-details)
+  * [EMERGENCY (0)](#emergency-0)
+  * [ALERT (1)](#alert-1)
+  * [CRITICAL (2)](#critical-2)
+  * [ERROR (3)](#error-3)
+  * [WARN (4)](#warn-4)
+  * [NOTICE (5)](#notice-5)
+  * [INFO (6)](#info-6)
+  * [DEBUG (7)](#debug-7)
+* [Special Level: SENSITIVE](#special-level-sensitive)
+* [Setting Log Levels](#setting-log-levels)
+  * [At Initialization](#at-initialization)
+  * [At Runtime](#at-runtime)
+* [Log Level Filtering](#log-level-filtering)
+* [Choosing the Right Level](#choosing-the-right-level)
+  * [Development](#development)
+  * [Testing](#testing)
+  * [Production](#production)
+  * [Monitoring/Operations](#monitoringoperations)
+* [Best Practices](#best-practices)
+* [Examples](#examples)
+  * [Progressive Verbosity](#progressive-verbosity)
+  * [Debug Mode](#debug-mode)
+  * [Production Mode](#production-mode)
+* [Related Documentation](#related-documentation)
 
 ## Overview
 
@@ -63,9 +63,9 @@ log_emergency "Critical system failure - cannot continue"
 
 **Examples:**
 
-- Complete system failure
-- Unrecoverable errors that require immediate shutdown
-- Data corruption preventing any operation
+* Complete system failure
+* Unrecoverable errors that require immediate shutdown
+* Data corruption preventing any operation
 
 ### ALERT (1)
 
@@ -77,9 +77,9 @@ log_alert "Database connection lost - attempting recovery"
 
 **Examples:**
 
-- Service outages requiring immediate attention
-- Security breaches detected
-- Critical resource exhaustion
+* Service outages requiring immediate attention
+* Security breaches detected
+* Critical resource exhaustion
 
 ### CRITICAL (2)
 
@@ -91,9 +91,9 @@ log_critical "Disk space critically low: 1% remaining"
 
 **Examples:**
 
-- Hardware failures
-- Critical resource depletion
-- Application component failures
+* Hardware failures
+* Critical resource depletion
+* Application component failures
 
 ### ERROR (3)
 
@@ -105,10 +105,10 @@ log_error "Failed to write to configuration file"
 
 **Examples:**
 
-- File I/O errors
-- Failed operations
-- Invalid input or state
-- Recoverable errors
+* File I/O errors
+* Failed operations
+* Invalid input or state
+* Recoverable errors
 
 ### WARN (4)
 
@@ -120,10 +120,10 @@ log_warn "API rate limit approaching threshold"
 
 **Examples:**
 
-- Deprecated feature usage
-- Configuration issues that can be worked around
-- Resource usage approaching limits
-- Potential future problems
+* Deprecated feature usage
+* Configuration issues that can be worked around
+* Resource usage approaching limits
+* Potential future problems
 
 ### NOTICE (5)
 
@@ -135,10 +135,10 @@ log_notice "Configuration reloaded successfully"
 
 **Examples:**
 
-- Service startup/shutdown
-- Configuration changes
-- Significant but normal events
-- Successful completion of important operations
+* Service startup/shutdown
+* Configuration changes
+* Significant but normal events
+* Successful completion of important operations
 
 ### INFO (6)
 
@@ -150,10 +150,10 @@ log_info "Processing file: data.csv"
 
 **Examples:**
 
-- Progress updates
-- Status messages
-- Regular operational events
-- User actions
+* Progress updates
+* Status messages
+* Regular operational events
+* User actions
 
 **Note:** INFO is the default log level.
 
@@ -167,10 +167,10 @@ log_debug "Variable value: count=$count, max=$max"
 
 **Examples:**
 
-- Variable values
-- Function entry/exit
-- Detailed state information
-- Development diagnostics
+* Variable values
+* Function entry/exit
+* Detailed state information
+* Development diagnostics
 
 **Note:** DEBUG messages are suppressed by default. Enable with `--verbose` or `--level DEBUG`.
 
@@ -184,10 +184,10 @@ log_sensitive "API Key: $API_KEY"
 
 **Behavior:**
 
-- Displayed only on console
-- Never written to log files
-- Never sent to system journal
-- Logged at INFO level severity for display purposes
+* Displayed only on console
+* Never written to log files
+* Never sent to system journal
+* Logged at INFO level severity for display purposes
 
 See [Sensitive Data](sensitive-data.md) for more details.
 
@@ -326,7 +326,7 @@ log_error "Error occurred"           # Shown
 
 ## Related Documentation
 
-- [Initialization](initialization.md) - Setting log level at startup
-- [Runtime Configuration](runtime-configuration.md) - Changing log level dynamically
-- [Sensitive Data](sensitive-data.md) - Handling sensitive information
-- [Examples](examples.md) - More usage examples
+* [Initialization](initialization.md) - Setting log level at startup
+* [Runtime Configuration](runtime-configuration.md) - Changing log level dynamically
+* [Sensitive Data](sensitive-data.md) - Handling sensitive information
+* [Examples](examples.md) - More usage examples

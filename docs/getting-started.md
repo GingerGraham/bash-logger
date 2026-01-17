@@ -4,23 +4,23 @@ This guide will help you get started with the Bash Logging Module quickly.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Workflows](#workflows)
-  - [Linting Workflows](#linting-workflows)
-- [Installation](#installation)
-  - [Common Installation Locations](#common-installation-locations)
-  - [Example Installation](#example-installation)
-- [Basic Usage](#basic-usage)
-- [Your First Script](#your-first-script)
-- [Common Options](#common-options)
-  - [Enable Verbose Output](#enable-verbose-output)
-  - [Log to a File](#log-to-a-file)
-  - [Quiet Mode](#quiet-mode)
-  - [Custom Log Level](#custom-log-level)
-- [Quick Reference](#quick-reference)
-  - [Logging Functions](#logging-functions)
-  - [Common Initialization Patterns](#common-initialization-patterns)
-- [Exit Codes](#exit-codes)
-- [Next Steps](#next-steps)
+* [Workflows](#workflows)
+  * [Linting Workflows](#linting-workflows)
+* [Installation](#installation)
+  * [Common Installation Locations](#common-installation-locations)
+  * [Example Installation](#example-installation)
+* [Basic Usage](#basic-usage)
+* [Your First Script](#your-first-script)
+* [Common Options](#common-options)
+  * [Enable Verbose Output](#enable-verbose-output)
+  * [Log to a File](#log-to-a-file)
+  * [Quiet Mode](#quiet-mode)
+  * [Custom Log Level](#custom-log-level)
+* [Quick Reference](#quick-reference)
+  * [Logging Functions](#logging-functions)
+  * [Common Initialization Patterns](#common-initialization-patterns)
+* [Exit Codes](#exit-codes)
+* [Next Steps](#next-steps)
 
 ## Workflows
 
@@ -28,9 +28,9 @@ The repository includes GitHub Actions workflows to ensure code quality and cons
 
 ### Linting Workflows
 
-- **Lint Bash Scripts**: Applies ShellCheck linting for all bash scripts in pull requests destined for the main branch.
-- **Lint Markdown Files**: Applies MarkdownLint for all markdown files in pull requests destined for the main branch.
-- [Next Steps](#next-steps)
+* **Lint Bash Scripts**: Applies ShellCheck linting for all bash scripts in pull requests destined for the main branch.
+* **Lint Markdown Files**: Applies MarkdownLint for all markdown files in pull requests destined for the main branch.
+* [Next Steps](#next-steps)
 
 ## Installation
 
@@ -39,9 +39,9 @@ be sourced from any location.
 
 ### Common Installation Locations
 
-- `/usr/local/lib/logging.sh` - System-wide installation
-- `$HOME/.local/lib/logging.sh` - User-specific installation
-- Project directory - Alongside your script
+* `/usr/local/lib/logging.sh` - System-wide installation
+* `$HOME/.local/lib/logging.sh` - User-specific installation
+* Project directory - Alongside your script
 
 ### Example Installation
 
@@ -183,8 +183,8 @@ init_logger --config /etc/myapp/logging.conf
 
 The `init_logger` function returns:
 
-- `0` - Successful initialization
-- `1` - Error (e.g., unable to create log file)
+* `0` - Successful initialization
+* `1` - Error (e.g., unable to create log file)
 
 Example error handling:
 
@@ -197,7 +197,7 @@ fi
 
 ## Next Steps
 
-- [Log Levels](log-levels.md) - Learn about all available log levels
-- [Initialization](initialization.md) - Explore all initialization options
-- [Configuration](configuration.md) - Use configuration files for complex setups
-- [Examples](examples.md) - See comprehensive usage examples
+* [Log Levels](log-levels.md) - Learn about all available log levels
+* [Initialization](initialization.md) - Explore all initialization options
+* [Configuration](configuration.md) - Use configuration files for complex setups
+* [Examples](examples.md) - See comprehensive usage examples

@@ -5,63 +5,63 @@ applications running on modern Linux distributions.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Overview](#overview)
-- [Requirements](#requirements)
-  - [System Requirements](#system-requirements)
-  - [Check if Journal Logging is Available](#check-if-journal-logging-is-available)
-  - [Installing logger](#installing-logger)
-- [Enabling Journal Logging](#enabling-journal-logging)
-  - [At Initialization](#at-initialization)
-  - [In Configuration Files](#in-configuration-files)
-  - [At Runtime](#at-runtime)
-- [Journal Tags](#journal-tags)
-  - [Default Tag](#default-tag)
-  - [Custom Tag](#custom-tag)
-  - [Tag Best Practices](#tag-best-practices)
-- [Log Level Mapping](#log-level-mapping)
-- [Viewing Journal Logs](#viewing-journal-logs)
-  - [Basic journalctl Commands](#basic-journalctl-commands)
-  - [Filtering by Priority](#filtering-by-priority)
-  - [Time-Based Filtering](#time-based-filtering)
-  - [Output Formats](#output-formats)
-- [Use Cases](#use-cases)
-  - [System Service](#system-service)
-  - [Scheduled Task (Cron)](#scheduled-task-cron)
-  - [Long-Running Daemon](#long-running-daemon)
-  - [Combined Logging](#combined-logging)
-- [Journal vs. File Logging](#journal-vs-file-logging)
-  - [When to Use Journal Logging](#when-to-use-journal-logging)
-  - [When to Use File Logging](#when-to-use-file-logging)
-  - [When to Use Both](#when-to-use-both)
-- [Sensitive Data and Journal](#sensitive-data-and-journal)
-- [Journal Storage](#journal-storage)
-  - [Check Journal Storage](#check-journal-storage)
-  - [Configure Journal Retention](#configure-journal-retention)
-- [Troubleshooting](#troubleshooting)
-  - [Logger Command Not Found](#logger-command-not-found)
-  - [Journal Not Receiving Logs](#journal-not-receiving-logs)
-  - [Permission Issues](#permission-issues)
-  - [Verifying Logs Are Received](#verifying-logs-are-received)
-- [Performance Considerations](#performance-considerations)
-- [Related Documentation](#related-documentation)
+* [Overview](#overview)
+* [Requirements](#requirements)
+  * [System Requirements](#system-requirements)
+  * [Check if Journal Logging is Available](#check-if-journal-logging-is-available)
+  * [Installing logger](#installing-logger)
+* [Enabling Journal Logging](#enabling-journal-logging)
+  * [At Initialization](#at-initialization)
+  * [In Configuration Files](#in-configuration-files)
+  * [At Runtime](#at-runtime)
+* [Journal Tags](#journal-tags)
+  * [Default Tag](#default-tag)
+  * [Custom Tag](#custom-tag)
+  * [Tag Best Practices](#tag-best-practices)
+* [Log Level Mapping](#log-level-mapping)
+* [Viewing Journal Logs](#viewing-journal-logs)
+  * [Basic journalctl Commands](#basic-journalctl-commands)
+  * [Filtering by Priority](#filtering-by-priority)
+  * [Time-Based Filtering](#time-based-filtering)
+  * [Output Formats](#output-formats)
+* [Use Cases](#use-cases)
+  * [System Service](#system-service)
+  * [Scheduled Task (Cron)](#scheduled-task-cron)
+  * [Long-Running Daemon](#long-running-daemon)
+  * [Combined Logging](#combined-logging)
+* [Journal vs. File Logging](#journal-vs-file-logging)
+  * [When to Use Journal Logging](#when-to-use-journal-logging)
+  * [When to Use File Logging](#when-to-use-file-logging)
+  * [When to Use Both](#when-to-use-both)
+* [Sensitive Data and Journal](#sensitive-data-and-journal)
+* [Journal Storage](#journal-storage)
+  * [Check Journal Storage](#check-journal-storage)
+  * [Configure Journal Retention](#configure-journal-retention)
+* [Troubleshooting](#troubleshooting)
+  * [Logger Command Not Found](#logger-command-not-found)
+  * [Journal Not Receiving Logs](#journal-not-receiving-logs)
+  * [Permission Issues](#permission-issues)
+  * [Verifying Logs Are Received](#verifying-logs-are-received)
+* [Performance Considerations](#performance-considerations)
+* [Related Documentation](#related-documentation)
 
 ## Overview
 
 Journal logging sends log messages to the systemd journal using the `logger` command. This provides:
 
-- Centralized logging with systemd
-- Integration with system logs
-- Structured log metadata
-- Persistent storage (when configured)
-- Powerful querying with `journalctl`
-- Automatic log rotation
+* Centralized logging with systemd
+* Integration with system logs
+* Structured log metadata
+* Persistent storage (when configured)
+* Powerful querying with `journalctl`
+* Automatic log rotation
 
 ## Requirements
 
 ### System Requirements
 
-- systemd (standard on most modern Linux distributions)
-- `logger` command (typically from the `util-linux` package)
+* systemd (standard on most modern Linux distributions)
+* `logger` command (typically from the `util-linux` package)
 
 ### Check if Journal Logging is Available
 
@@ -358,36 +358,36 @@ log_info "Application started"
 
 **Benefits:**
 
-- Journal for system integration and queries
-- File for backups and long-term archival
-- File for easy grepping and analysis
+* Journal for system integration and queries
+* File for backups and long-term archival
+* File for easy grepping and analysis
 
 ## Journal vs. File Logging
 
 ### When to Use Journal Logging
 
-- System services and daemons
-- Applications running under systemd
-- When you need structured metadata
-- When you want centralized system logs
-- When log rotation is handled by systemd
-- When you need powerful log queries
+* System services and daemons
+* Applications running under systemd
+* When you need structured metadata
+* When you want centralized system logs
+* When log rotation is handled by systemd
+* When you need powerful log queries
 
 ### When to Use File Logging
 
-- Application-specific logs
-- When you need custom log rotation
-- When logs need to be shipped elsewhere
-- When you need simple grep/awk access
-- When running on systems without systemd
-- When you need guaranteed log format
+* Application-specific logs
+* When you need custom log rotation
+* When logs need to be shipped elsewhere
+* When you need simple grep/awk access
+* When running on systems without systemd
+* When you need guaranteed log format
 
 ### When to Use Both
 
-- Critical applications requiring redundancy
-- When different teams need different formats
-- When you want local files and system integration
-- For compliance requiring multiple log stores
+* Critical applications requiring redundancy
+* When different teams need different formats
+* When you want local files and system integration
+* For compliance requiring multiple log stores
 
 ## Sensitive Data and Journal
 
@@ -508,8 +508,8 @@ set_journal_logging true
 
 ## Related Documentation
 
-- [Initialization](initialization.md) - Enabling journal logging at startup
-- [Configuration](configuration.md) - Journal settings in config files
-- [Runtime Configuration](runtime-configuration.md) - Changing journal settings dynamically
-- [Sensitive Data](sensitive-data.md) - Understanding what doesn't go to the journal
-- [Examples](examples.md) - Complete journal logging examples
+* [Initialization](initialization.md) - Enabling journal logging at startup
+* [Configuration](configuration.md) - Journal settings in config files
+* [Runtime Configuration](runtime-configuration.md) - Changing journal settings dynamically
+* [Sensitive Data](sensitive-data.md) - Understanding what doesn't go to the journal
+* [Examples](examples.md) - Complete journal logging examples

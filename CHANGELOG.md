@@ -15,83 +15,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Changelog file to track project changes
+* Changelog file to track project changes
 
 ### Features
 
-- implement automated release workflow with semantic-release
-- add consumer-friendly release packages (tar.gz and zip with checksums)
-- add BASH_LOGGER_VERSION constant to logging.sh for version tracking
+* implement automated release workflow with semantic-release
+* add consumer-friendly release packages (tar.gz and zip with checksums)
+* add BASH_LOGGER_VERSION constant to logging.sh for version tracking
 
 ### Bug Fixes
 
-- **docs:** clean up duplicate CHANGELOG entries from failed releases ([456f81d](https://github.com/GingerGraham/bash-logger/commit/456f81d5ff85c055ec8008edc0a0291c6dfeefd7))
-- remove redundant comments in parse_config_file function ([66414f2](https://github.com/GingerGraham/bash-logger/commit/66414f21ca93b464fa9a771ac2f71162fd93af76))
-- **ci:** use glob patterns for release asset upload
-- **ci:** use PAT token to work around phantom tag restrictions
+* **docs:** clean up duplicate CHANGELOG entries from failed releases ([456f81d](https://github.com/GingerGraham/bash-logger/commit/456f81d5ff85c055ec8008edc0a0291c6dfeefd7))
+* remove redundant comments in parse_config_file function ([66414f2](https://github.com/GingerGraham/bash-logger/commit/66414f21ca93b464fa9a771ac2f71162fd93af76))
+* **ci:** use glob patterns for release asset upload
+* **ci:** use PAT token to work around phantom tag restrictions
 
 ## [0.9.0] - 2026-01-16
 
 ### Added
 
-- Configuration file support for persistent logger settings
-- Example configuration file (`configuration/logging.conf.example`)
-- Comprehensive documentation for configuration file usage
-- Control over which log levels are redirected to stderr vs stdout
-- Runtime configuration change support
+* Configuration file support for persistent logger settings
+* Example configuration file (`configuration/logging.conf.example`)
+* Comprehensive documentation for configuration file usage
+* Control over which log levels are redirected to stderr vs stdout
+* Runtime configuration change support
 
 ### Changed
 
-- Streamlined inline documentation for better readability
-- Improved documentation structure and formatting across multiple files
+* Streamlined inline documentation for better readability
+* Improved documentation structure and formatting across multiple files
 
 ## [0.8.0] - 2025-07-02
 
 ### Added
 
-- Full syslog-compliant log level support (8 levels: EMERGENCY, ALERT, CRITICAL, ERROR, WARN, NOTICE, INFO, DEBUG)
-- Additional log functions: `log_notice()`, `log_critical()`, `log_alert()`, `log_emergency()`
-- `LOG_LEVEL_FATAL` alias for `LOG_LEVEL_EMERGENCY` for backward compatibility
-- Sensitive data logging function (`log_sensitive()`) - console only, never to file or journal
-- Color-coded output support with automatic terminal detection
-- Manual color control options (`--color`, `--no-color`)
-- Support for `NO_COLOR`, `CLICOLOR`, and `CLICOLOR_FORCE` environment variables
-- Custom log format templates with variable substitution
-  - Format variables: `%d` (date), `%z` (timezone), `%l` (level), `%s` (script), `%m` (message)
-- UTC timestamp support (`--utc` flag and `USE_UTC` setting)
-- Systemd journal integration via `logger` command
-- Optional journal tagging for better log filtering
-- Script name detection and inclusion in log messages
-- Advanced color detection supporting multiple terminal types
-- Helper functions:
-  - `get_log_level_value()` - Convert log level names to numeric values
-  - `get_log_level_name()` - Convert numeric values to level names
-  - `check_logger_available()` - Check for systemd journal support
-  - `detect_color_support()` - Intelligent terminal color capability detection
-  - `should_use_colors()` - Determine if colors should be used based on settings
+* Full syslog-compliant log level support (8 levels: EMERGENCY, ALERT, CRITICAL, ERROR, WARN, NOTICE, INFO, DEBUG)
+* Additional log functions: `log_notice()`, `log_critical()`, `log_alert()`, `log_emergency()`
+* `LOG_LEVEL_FATAL` alias for `LOG_LEVEL_EMERGENCY` for backward compatibility
+* Sensitive data logging function (`log_sensitive()`) - console only, never to file or journal
+* Color-coded output support with automatic terminal detection
+* Manual color control options (`--color`, `--no-color`)
+* Support for `NO_COLOR`, `CLICOLOR`, and `CLICOLOR_FORCE` environment variables
+* Custom log format templates with variable substitution
+  * Format variables: `%d` (date), `%z` (timezone), `%l` (level), `%s` (script), `%m` (message)
+* UTC timestamp support (`--utc` flag and `USE_UTC` setting)
+* Systemd journal integration via `logger` command
+* Optional journal tagging for better log filtering
+* Script name detection and inclusion in log messages
+* Advanced color detection supporting multiple terminal types
+* Helper functions:
+  * `get_log_level_value()` - Convert log level names to numeric values
+  * `get_log_level_name()` - Convert numeric values to level names
+  * `check_logger_available()` - Check for systemd journal support
+  * `detect_color_support()` - Intelligent terminal color capability detection
+  * `should_use_colors()` - Determine if colors should be used based on settings
 
 ### Changed
 
-- Updated shebang from `#!/bin/bash` to `#!/usr/bin/env bash` for better portability
-- Renamed from `bash_logger.sh` to `logging.sh`
-- Revised log level numbering to follow syslog standard (0=most severe, 7=least severe)
-  - Previous: DEBUG=0, INFO=1, WARN=2, ERROR=3
-  - Current: EMERGENCY=0, ALERT=1, CRITICAL=2, ERROR=3, WARN=4, NOTICE=5, INFO=6, DEBUG=7
-- Enhanced `init_logger()` with additional options:
-  - `-d|--level LEVEL` - Set log level by name or number
-  - `-f|--format FORMAT` - Set custom log format template
-  - `-j|--journal` - Enable journal logging
-  - `-t|--tag TAG` - Set journal tag
-  - `--utc` - Use UTC timestamps
-  - `--color` / `--no-color` - Force color usage
-- Improved log message formatting with customizable templates
-- Enhanced error handling and validation throughout
-- Better documentation in code comments
+* Updated shebang from `#!/bin/bash` to `#!/usr/bin/env bash` for better portability
+* Renamed from `bash_logger.sh` to `logging.sh`
+* Revised log level numbering to follow syslog standard (0=most severe, 7=least severe)
+  * Previous: DEBUG=0, INFO=1, WARN=2, ERROR=3
+  * Current: EMERGENCY=0, ALERT=1, CRITICAL=2, ERROR=3, WARN=4, NOTICE=5, INFO=6, DEBUG=7
+* Enhanced `init_logger()` with additional options:
+  * `-d|--level LEVEL` - Set log level by name or number
+  * `-f|--format FORMAT` - Set custom log format template
+  * `-j|--journal` - Enable journal logging
+  * `-t|--tag TAG` - Set journal tag
+  * `--utc` - Use UTC timestamps
+  * `--color` / `--no-color` - Force color usage
+* Improved log message formatting with customizable templates
+* Enhanced error handling and validation throughout
+* Better documentation in code comments
 
 ### Fixed
 
-- Log file directory validation and permission checking
-- Proper handling of log levels in filtering logic
+* Log file directory validation and permission checking
+* Proper handling of log levels in filtering logic
 
 ### Development Notes
 
@@ -105,32 +105,32 @@ functional maturity before being formalized into a repository structure.
 
 ### Added
 
-- Initial release of reusable Bash logging module
-- Basic logging functions: `log_debug()`, `log_info()`, `log_warn()`, `log_error()`
-- `init_logger()` function with options:
-  - `-l|--log FILE` - Write logs to file
-  - `-q|--quiet` - Disable console output
-  - `-v|--verbose` - Enable debug level logging
-- Four log levels: DEBUG (0), INFO (1), WARN (2), ERROR (3)
-- Configurable console and file output
-- Timestamp inclusion in log messages (format: YYYY-MM-DD HH:MM:SS)
-- Log file validation and permission checking
-- Demo script (`log-demo.sh`) showing usage examples
+* Initial release of reusable Bash logging module
+* Basic logging functions: `log_debug()`, `log_info()`, `log_warn()`, `log_error()`
+* `init_logger()` function with options:
+  * `-l|--log FILE` - Write logs to file
+  * `-q|--quiet` - Disable console output
+  * `-v|--verbose` - Enable debug level logging
+* Four log levels: DEBUG (0), INFO (1), WARN (2), ERROR (3)
+* Configurable console and file output
+* Timestamp inclusion in log messages (format: YYYY-MM-DD HH:MM:SS)
+* Log file validation and permission checking
+* Demo script (`log-demo.sh`) showing usage examples
 
 ### Implementation Details
 
-- Pure Bash implementation with no external dependencies (except optional `logger` for journal support)
-- Designed to be sourced by other scripts
-- Global configuration variables for easy customization
-- Safe default settings (INFO level, console output enabled)
+* Pure Bash implementation with no external dependencies (except optional `logger` for journal support)
+* Designed to be sourced by other scripts
+* Global configuration variables for easy customization
+* Safe default settings (INFO level, console output enabled)
 
 ---
 
 ## Version History
 
-- **0.9.0** (2026-01-16): Configuration file support and stderr redirection control
-- **0.8.0** (2025-07-02): Full syslog compliance, colors, journal integration, custom formatting
-- **0.1.0** (2025-03-03): Initial release with basic logging functionality
+* **0.9.0** (2026-01-16): Configuration file support and stderr redirection control
+* **0.8.0** (2025-07-02): Full syslog compliance, colors, journal integration, custom formatting
+* **0.1.0** (2025-03-03): Initial release with basic logging functionality
 
 ## Development Notes
 
@@ -140,10 +140,10 @@ iterative improvements to functionality, documentation, and standards compliance
 
 Version 0.9.0 marks the transition to a formal repository structure with:
 
-- Comprehensive test suite (103 tests across 6 test suites)
-- CI/CD pipelines with automated linting (ShellCheck, MarkdownLint)
-- Pre-commit hooks for code quality
-- Extensive documentation (10+ markdown files)
-- Demo scripts showcasing all features
-- Semantic commit messages for automated release management
-- Community contribution guidelines
+* Comprehensive test suite (103 tests across 6 test suites)
+* CI/CD pipelines with automated linting (ShellCheck, MarkdownLint)
+* Pre-commit hooks for code quality
+* Extensive documentation (10+ markdown files)
+* Demo scripts showcasing all features
+* Semantic commit messages for automated release management
+* Community contribution guidelines

@@ -5,48 +5,48 @@ following Unix conventions.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Default Behavior](#default-behavior)
-- [Why Split Output Streams?](#why-split-output-streams)
-  - [Unix Philosophy](#unix-philosophy)
-  - [Example Benefit](#example-benefit)
-- [Configuring the Stderr Threshold](#configuring-the-stderr-threshold)
-  - [Stderr Level Reference](#stderr-level-reference)
-- [Practical Use Cases](#practical-use-cases)
-  - [Separating Normal Output from Errors](#separating-normal-output-from-errors)
-  - [Suppressing Errors](#suppressing-errors)
-  - [Capturing Only Errors](#capturing-only-errors)
-  - [Sending All Output to Stderr](#sending-all-output-to-stderr)
-  - [All Output to Stdout](#all-output-to-stdout)
-- [Configuration File Settings](#configuration-file-settings)
-- [Stream Redirection Examples](#stream-redirection-examples)
-  - [Save All Output to File](#save-all-output-to-file)
-  - [Separate Files for Normal and Error Output](#separate-files-for-normal-and-error-output)
-  - [Silent Execution](#silent-execution)
-  - [Show Only Errors](#show-only-errors)
-  - [Swap Streams](#swap-streams)
-- [Color Output and Streams](#color-output-and-streams)
-- [Debugging Stream Behavior](#debugging-stream-behavior)
-- [Common Patterns by Script Type](#common-patterns-by-script-type)
-  - [System Administration Script](#system-administration-script)
-  - [Data Processing Pipeline](#data-processing-pipeline)
-  - [Background Service](#background-service)
-  - [Interactive Script](#interactive-script)
-  - [Cron Job](#cron-job)
-- [Best Practices](#best-practices)
-  - [1. Use Default Split for Most Scripts](#1-use-default-split-for-most-scripts)
-  - [2. Use DEBUG for CLI Tools](#2-use-debug-for-cli-tools)
-  - [3. Use WARN for Strict Error Monitoring](#3-use-warn-for-strict-error-monitoring)
-  - [4. Document Stream Behavior](#4-document-stream-behavior)
-  - [5. Test Stream Behavior](#5-test-stream-behavior)
-- [File and Journal Logging](#file-and-journal-logging)
-- [Related Documentation](#related-documentation)
+* [Default Behavior](#default-behavior)
+* [Why Split Output Streams?](#why-split-output-streams)
+  * [Unix Philosophy](#unix-philosophy)
+  * [Example Benefit](#example-benefit)
+* [Configuring the Stderr Threshold](#configuring-the-stderr-threshold)
+  * [Stderr Level Reference](#stderr-level-reference)
+* [Practical Use Cases](#practical-use-cases)
+  * [Separating Normal Output from Errors](#separating-normal-output-from-errors)
+  * [Suppressing Errors](#suppressing-errors)
+  * [Capturing Only Errors](#capturing-only-errors)
+  * [Sending All Output to Stderr](#sending-all-output-to-stderr)
+  * [All Output to Stdout](#all-output-to-stdout)
+* [Configuration File Settings](#configuration-file-settings)
+* [Stream Redirection Examples](#stream-redirection-examples)
+  * [Save All Output to File](#save-all-output-to-file)
+  * [Separate Files for Normal and Error Output](#separate-files-for-normal-and-error-output)
+  * [Silent Execution](#silent-execution)
+  * [Show Only Errors](#show-only-errors)
+  * [Swap Streams](#swap-streams)
+* [Color Output and Streams](#color-output-and-streams)
+* [Debugging Stream Behavior](#debugging-stream-behavior)
+* [Common Patterns by Script Type](#common-patterns-by-script-type)
+  * [System Administration Script](#system-administration-script)
+  * [Data Processing Pipeline](#data-processing-pipeline)
+  * [Background Service](#background-service)
+  * [Interactive Script](#interactive-script)
+  * [Cron Job](#cron-job)
+* [Best Practices](#best-practices)
+  * [1. Use Default Split for Most Scripts](#1-use-default-split-for-most-scripts)
+  * [2. Use DEBUG for CLI Tools](#2-use-debug-for-cli-tools)
+  * [3. Use WARN for Strict Error Monitoring](#3-use-warn-for-strict-error-monitoring)
+  * [4. Document Stream Behavior](#4-document-stream-behavior)
+  * [5. Test Stream Behavior](#5-test-stream-behavior)
+* [File and Journal Logging](#file-and-journal-logging)
+* [Related Documentation](#related-documentation)
 
 ## Default Behavior
 
 By default, the logging module splits console output:
 
-- **stdout**: DEBUG, INFO, NOTICE, WARN (normal operation messages)
-- **stderr**: ERROR, CRITICAL, ALERT, EMERGENCY (error messages)
+* **stdout**: DEBUG, INFO, NOTICE, WARN (normal operation messages)
+* **stderr**: ERROR, CRITICAL, ALERT, EMERGENCY (error messages)
 
 This follows the Unix convention where stdout contains normal output that can be piped or captured, while stderr
 contains error output that should be visible even when stdout is redirected.
@@ -57,14 +57,14 @@ contains error output that should be visible even when stdout is redirected.
 
 In Unix/Linux systems:
 
-- **stdout** - Standard output for program results and normal operational messages
-- **stderr** - Standard error for diagnostics, warnings, and error messages
+* **stdout** - Standard output for program results and normal operational messages
+* **stderr** - Standard error for diagnostics, warnings, and error messages
 
 This separation allows:
 
-- Capturing program output while seeing errors on screen
-- Redirecting output without losing error messages
-- Chaining commands with pipes while preserving error visibility
+* Capturing program output while seeing errors on screen
+* Redirecting output without losing error messages
+* Chaining commands with pipes while preserving error visibility
 
 ### Example Benefit
 
@@ -142,9 +142,9 @@ Hide error messages while keeping normal output:
 
 **When to use:**
 
-- Running in cron jobs where errors are logged elsewhere
-- When you know errors are expected and harmless
-- Testing scripts where error output is noisy
+* Running in cron jobs where errors are logged elsewhere
+* When you know errors are expected and harmless
+* Testing scripts where error output is noisy
 
 ### Capturing Only Errors
 
@@ -160,9 +160,9 @@ Capture only error messages to a file:
 
 **When to use:**
 
-- Monitoring for errors in background processes
-- Creating error logs separate from normal logs
-- Alerting on any stderr output
+* Monitoring for errors in background processes
+* Creating error logs separate from normal logs
+* Alerting on any stderr output
 
 ### Sending All Output to Stderr
 
@@ -191,9 +191,9 @@ log_info "Processing complete"
 
 **When to use:**
 
-- CLI tools that produce data output
-- Scripts that generate reports or data
-- Tools designed to be used in pipes
+* CLI tools that produce data output
+* Scripts that generate reports or data
+* Tools designed to be used in pipes
 
 ### All Output to Stdout
 
@@ -206,9 +206,9 @@ init_logger --stderr-level EMERGENCY
 
 **When to use:**
 
-- When stderr is monitored for critical alerts only
-- Legacy systems expecting all logs on stdout
-- Specific logging infrastructure requirements
+* When stderr is monitored for critical alerts only
+* Legacy systems expecting all logs on stdout
+* Specific logging infrastructure requirements
 
 ## Configuration File Settings
 
@@ -426,7 +426,7 @@ log_debug "Debug message"
 
 ## Related Documentation
 
-- [Initialization](initialization.md) - Setting stderr-level at startup
-- [Configuration](configuration.md) - Stderr-level in config files
-- [Log Levels](log-levels.md) - Understanding log severity
-- [Examples](examples.md) - Complete examples with stream redirection
+* [Initialization](initialization.md) - Setting stderr-level at startup
+* [Configuration](configuration.md) - Stderr-level in config files
+* [Log Levels](log-levels.md) - Understanding log severity
+* [Examples](examples.md) - Complete examples with stream redirection

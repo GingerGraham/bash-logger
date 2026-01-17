@@ -7,16 +7,16 @@ A flexible, reusable logging module for Bash scripts that provides standardized 
 
 ## Features
 
-- Standard syslog log levels (DEBUG, INFO, WARN, ERROR, CRITICAL, etc.)
-- Console output with color-coding by severity
-- Configurable stdout/stderr output stream split
-- Optional file output
-- Optional systemd journal logging
-- Customizable log format
-- UTC or local time support
-- INI configuration file support
-- Runtime configuration changes
-- Special handling for sensitive data
+* Standard syslog log levels (DEBUG, INFO, WARN, ERROR, CRITICAL, etc.)
+* Console output with color-coding by severity
+* Configurable stdout/stderr output stream split
+* Optional file output
+* Optional systemd journal logging
+* Customizable log format
+* UTC or local time support
+* INI configuration file support
+* Runtime configuration changes
+* Special handling for sensitive data
 
 ## Quick Start
 
@@ -38,23 +38,23 @@ See [Getting Started](docs/getting-started.md) for detailed installation and bas
 
 ### Core Documentation
 
-- [Getting Started](docs/getting-started.md) - Installation and basic usage
-- [Log Levels](docs/log-levels.md) - Understanding severity levels
-- [Initialization](docs/initialization.md) - Configuring the logger at startup
-- [Configuration](docs/configuration.md) - Using configuration files
+* [Getting Started](docs/getting-started.md) - Installation and basic usage
+* [Log Levels](docs/log-levels.md) - Understanding severity levels
+* [Initialization](docs/initialization.md) - Configuring the logger at startup
+* [Configuration](docs/configuration.md) - Using configuration files
 
 ### Advanced Topics
 
-- [Output Streams](docs/output-streams.md) - Controlling stdout/stderr behavior
-- [Formatting](docs/formatting.md) - Customizing log message format
-- [Journal Logging](docs/journal-logging.md) - Integration with systemd journal
-- [Runtime Configuration](docs/runtime-configuration.md) - Changing settings on the fly
-- [Sensitive Data](docs/sensitive-data.md) - Handling sensitive information securely
+* [Output Streams](docs/output-streams.md) - Controlling stdout/stderr behavior
+* [Formatting](docs/formatting.md) - Customizing log message format
+* [Journal Logging](docs/journal-logging.md) - Integration with systemd journal
+* [Runtime Configuration](docs/runtime-configuration.md) - Changing settings on the fly
+* [Sensitive Data](docs/sensitive-data.md) - Handling sensitive information securely
 
 ### Reference
 
-- [Examples](docs/examples.md) - Comprehensive usage examples
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+* [Examples](docs/examples.md) - Comprehensive usage examples
+* [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
 ## Common Use Cases
 

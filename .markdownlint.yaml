@@ -33,9 +33,9 @@
     "lines_below": 1
   },
 
-  # List marker style - consistent but flexible
+  # List marker style - force asterisk to match release pipeline
   "MD004": {
-    "style": "consistent"
+    "style": "asterisk"
   },
 
   # List indentation

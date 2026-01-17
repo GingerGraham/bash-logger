@@ -5,47 +5,47 @@ persistent storage.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Overview](#overview)
-- [The log_sensitive Function](#the-log_sensitive-function)
-  - [Basic Usage](#basic-usage)
-  - [What Gets Logged Where](#what-gets-logged-where)
-- [When to Use log_sensitive](#when-to-use-log_sensitive)
-  - [Appropriate Use Cases](#appropriate-use-cases)
-  - [Example: API Authentication](#example-api-authentication)
-  - [Example: Database Connection](#example-database-connection)
-- [Security Considerations](#security-considerations)
-  - [Console Output Security](#console-output-security)
-  - [Production Environments](#production-environments)
-  - [Alternative Approaches](#alternative-approaches)
-    - [1. Redact Sensitive Values](#1-redact-sensitive-values)
-    - [2. Hash for Verification](#2-hash-for-verification)
-    - [3. Boolean Indicators](#3-boolean-indicators)
-- [Examples](#examples)
-  - [OAuth Flow](#oauth-flow)
-  - [SSH Key Management](#ssh-key-management)
-  - [Environment Variable Debugging](#environment-variable-debugging)
-  - [User Authentication](#user-authentication)
-- [What log_sensitive Does NOT Do](#what-log_sensitive-does-not-do)
-  - [Not a Security Solution](#not-a-security-solution)
-  - [Still Need Proper Security Practices](#still-need-proper-security-practices)
-- [Best Practices](#best-practices)
-  - [1. Minimize Sensitive Logging](#1-minimize-sensitive-logging)
-  - [2. Use Structured Redaction](#2-use-structured-redaction)
-  - [3. Document Sensitive Data Handling](#3-document-sensitive-data-handling)
-  - [4. Disable in Production](#4-disable-in-production)
-  - [5. Audit Sensitive Logging](#5-audit-sensitive-logging)
-- [Testing Sensitive Logging](#testing-sensitive-logging)
-  - [Verify Sensitive Data Doesn't Persist](#verify-sensitive-data-doesnt-persist)
-- [Related Documentation](#related-documentation)
+* [Overview](#overview)
+* [The log_sensitive Function](#the-log_sensitive-function)
+  * [Basic Usage](#basic-usage)
+  * [What Gets Logged Where](#what-gets-logged-where)
+* [When to Use log_sensitive](#when-to-use-log_sensitive)
+  * [Appropriate Use Cases](#appropriate-use-cases)
+  * [Example: API Authentication](#example-api-authentication)
+  * [Example: Database Connection](#example-database-connection)
+* [Security Considerations](#security-considerations)
+  * [Console Output Security](#console-output-security)
+  * [Production Environments](#production-environments)
+  * [Alternative Approaches](#alternative-approaches)
+    * [1. Redact Sensitive Values](#1-redact-sensitive-values)
+    * [2. Hash for Verification](#2-hash-for-verification)
+    * [3. Boolean Indicators](#3-boolean-indicators)
+* [Examples](#examples)
+  * [OAuth Flow](#oauth-flow)
+  * [SSH Key Management](#ssh-key-management)
+  * [Environment Variable Debugging](#environment-variable-debugging)
+  * [User Authentication](#user-authentication)
+* [What log_sensitive Does NOT Do](#what-log_sensitive-does-not-do)
+  * [Not a Security Solution](#not-a-security-solution)
+  * [Still Need Proper Security Practices](#still-need-proper-security-practices)
+* [Best Practices](#best-practices)
+  * [1. Minimize Sensitive Logging](#1-minimize-sensitive-logging)
+  * [2. Use Structured Redaction](#2-use-structured-redaction)
+  * [3. Document Sensitive Data Handling](#3-document-sensitive-data-handling)
+  * [4. Disable in Production](#4-disable-in-production)
+  * [5. Audit Sensitive Logging](#5-audit-sensitive-logging)
+* [Testing Sensitive Logging](#testing-sensitive-logging)
+  * [Verify Sensitive Data Doesn't Persist](#verify-sensitive-data-doesnt-persist)
+* [Related Documentation](#related-documentation)
 
 ## Overview
 
 The `log_sensitive` function allows you to log sensitive information that will:
 
-- **Display on console** - Visible during interactive execution
-- **Never write to log files** - Not persisted to disk
-- **Never send to journal** - Not stored in systemd journal
-- **Not send to syslog** - Excluded from system logs
+* **Display on console** - Visible during interactive execution
+* **Never write to log files** - Not persisted to disk
+* **Never send to journal** - Not stored in systemd journal
+* **Not send to syslog** - Excluded from system logs
 
 ## The log_sensitive Function
 
@@ -82,15 +82,15 @@ log_info "Authentication complete"        # → Console, File, Journal
 
 Use `log_sensitive` for:
 
-- **Passwords and passphrases**
-- **API keys and tokens**
-- **OAuth secrets**
-- **Private keys**
-- **Database connection strings with embedded credentials**
-- **Session tokens**
-- **Authentication credentials**
-- **Encryption keys**
-- **Personal Identifiable Information (PII) in some contexts**
+* **Passwords and passphrases**
+* **API keys and tokens**
+* **OAuth secrets**
+* **Private keys**
+* **Database connection strings with embedded credentials**
+* **Session tokens**
+* **Authentication credentials**
+* **Encryption keys**
+* **Personal Identifiable Information (PII) in some contexts**
 
 ### Example: API Authentication
 
@@ -299,24 +299,24 @@ authenticate_user "admin" "$USER_PASSWORD"
 
 `log_sensitive` is **not** a complete security solution. It:
 
-- ✗ Does **not** encrypt the data
-- ✗ Does **not** prevent console capture/recording
-- ✗ Does **not** prevent terminal history logging
-- ✗ Does **not** prevent memory dumps
-- ✗ Does **not** prevent process monitoring
-- ✗ Does **not** clear variables from memory
+* ✗ Does **not** encrypt the data
+* ✗ Does **not** prevent console capture/recording
+* ✗ Does **not** prevent terminal history logging
+* ✗ Does **not** prevent memory dumps
+* ✗ Does **not** prevent process monitoring
+* ✗ Does **not** clear variables from memory
 
 ### Still Need Proper Security Practices
 
 You must still:
 
-- Store secrets in secure vaults (like HashiCorp Vault, AWS Secrets Manager)
-- Use environment variables instead of hardcoding
-- Implement proper access controls
-- Use encrypted communication channels
-- Follow the principle of least privilege
-- Rotate credentials regularly
-- Monitor for credential exposure
+* Store secrets in secure vaults (like HashiCorp Vault, AWS Secrets Manager)
+* Use environment variables instead of hardcoding
+* Implement proper access controls
+* Use encrypted communication channels
+* Follow the principle of least privilege
+* Rotate credentials regularly
+* Monitor for credential exposure
 
 ## Best Practices
 
@@ -427,7 +427,7 @@ rm "$LOG_FILE"
 
 ## Related Documentation
 
-- [Log Levels](log-levels.md) - Understanding log severity levels
-- [Journal Logging](journal-logging.md) - What doesn't go to the journal
-- [Examples](examples.md) - More examples of sensitive data handling
-- [Getting Started](getting-started.md) - Basic logging usage
+* [Log Levels](log-levels.md) - Understanding log severity levels
+* [Journal Logging](journal-logging.md) - What doesn't go to the journal
+* [Examples](examples.md) - More examples of sensitive data handling
+* [Getting Started](getting-started.md) - Basic logging usage

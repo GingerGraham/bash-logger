@@ -6,34 +6,34 @@ configuration from code.
 
 ## Table of Contents <!-- omit in toc -->
 
-- [Configuration File Format](#configuration-file-format)
-- [Configuration Keys](#configuration-keys)
-  - [Boolean Values](#boolean-values)
-  - [Key Aliases](#key-aliases)
-- [Using Configuration Files](#using-configuration-files)
-  - [Basic Usage](#basic-usage)
-  - [With CLI Overrides](#with-cli-overrides)
-- [Configuration Precedence](#configuration-precedence)
-  - [Example Precedence](#example-precedence)
-- [Configuration Examples](#configuration-examples)
-  - [Development Configuration](#development-configuration)
-  - [Production Configuration](#production-configuration)
-  - [Testing Configuration](#testing-configuration)
-  - [Silent File-Only Logging](#silent-file-only-logging)
-  - [Verbose Console-Only Logging](#verbose-console-only-logging)
-- [User-Configurable Applications](#user-configurable-applications)
-- [Environment-Specific Configuration](#environment-specific-configuration)
-- [Dynamic Configuration Paths](#dynamic-configuration-paths)
-  - [XDG Base Directory Specification](#xdg-base-directory-specification)
-  - [Multiple Config Locations](#multiple-config-locations)
-- [Example Configuration File](#example-configuration-file)
-- [Configuration Best Practices](#configuration-best-practices)
-  - [1. Provide Example Configuration](#1-provide-example-configuration)
-  - [2. Use Comments Liberally](#2-use-comments-liberally)
-  - [3. Separate Per-Environment Configs](#3-separate-per-environment-configs)
-  - [4. Document Required vs Optional Settings](#4-document-required-vs-optional-settings)
-  - [5. Version Configuration Files](#5-version-configuration-files)
-- [Related Documentation](#related-documentation)
+* [Configuration File Format](#configuration-file-format)
+* [Configuration Keys](#configuration-keys)
+  * [Boolean Values](#boolean-values)
+  * [Key Aliases](#key-aliases)
+* [Using Configuration Files](#using-configuration-files)
+  * [Basic Usage](#basic-usage)
+  * [With CLI Overrides](#with-cli-overrides)
+* [Configuration Precedence](#configuration-precedence)
+  * [Example Precedence](#example-precedence)
+* [Configuration Examples](#configuration-examples)
+  * [Development Configuration](#development-configuration)
+  * [Production Configuration](#production-configuration)
+  * [Testing Configuration](#testing-configuration)
+  * [Silent File-Only Logging](#silent-file-only-logging)
+  * [Verbose Console-Only Logging](#verbose-console-only-logging)
+* [User-Configurable Applications](#user-configurable-applications)
+* [Environment-Specific Configuration](#environment-specific-configuration)
+* [Dynamic Configuration Paths](#dynamic-configuration-paths)
+  * [XDG Base Directory Specification](#xdg-base-directory-specification)
+  * [Multiple Config Locations](#multiple-config-locations)
+* [Example Configuration File](#example-configuration-file)
+* [Configuration Best Practices](#configuration-best-practices)
+  * [1. Provide Example Configuration](#1-provide-example-configuration)
+  * [2. Use Comments Liberally](#2-use-comments-liberally)
+  * [3. Separate Per-Environment Configs](#3-separate-per-environment-configs)
+  * [4. Document Required vs Optional Settings](#4-document-required-vs-optional-settings)
+  * [5. Version Configuration Files](#5-version-configuration-files)
+* [Related Documentation](#related-documentation)
 
 ## Configuration File Format
 
@@ -97,8 +97,8 @@ verbose = false
 
 Boolean settings accept multiple formats:
 
-- `true`, `yes`, `on`, `1` - Enable the option
-- `false`, `no`, `off`, `0` - Disable the option
+* `true`, `yes`, `on`, `1` - Enable the option
+* `false`, `no`, `off`, `0` - Disable the option
 
 ### Key Aliases
 
@@ -174,9 +174,9 @@ init_logger --config logging.conf --level DEBUG --color
 
 **Result:**
 
-- Level: DEBUG (from CLI)
-- Color: always (from CLI)
-- Log file: /var/log/app.log (from config)
+* Level: DEBUG (from CLI)
+* Color: always (from CLI)
+* Log file: /var/log/app.log (from config)
 
 ## Configuration Examples
 
@@ -487,8 +487,8 @@ level = INFO
 
 ## Related Documentation
 
-- [Initialization](initialization.md) - Using `init_logger` with config files
-- [Formatting](formatting.md) - Format string options
-- [Output Streams](output-streams.md) - Stderr level configuration
-- [Journal Logging](journal-logging.md) - Journal configuration options
-- [Examples](examples.md) - Complete configuration examples
+* [Initialization](initialization.md) - Using `init_logger` with config files
+* [Formatting](formatting.md) - Format string options
+* [Output Streams](output-streams.md) - Stderr level configuration
+* [Journal Logging](journal-logging.md) - Journal configuration options
+* [Examples](examples.md) - Complete configuration examples
