@@ -266,7 +266,6 @@ parse_config_file() {
                             esac
                             ;;
                         console_log)
-                            # console_log=true means CONSOLE_LOG=true (direct mapping)
                             case "${value,,}" in
                                 true|yes|1|on)
                                     CONSOLE_LOG="true"
@@ -304,7 +303,6 @@ parse_config_file() {
         fi
     done < "$config_file"
 
-    # Store the config file path for potential reload functionality
     LOG_CONFIG_FILE="$config_file"
 
     return 0
