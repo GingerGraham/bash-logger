@@ -5,48 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.0](https://github.com/GingerGraham/bash-logger/compare/0.9.0...0.10.0) (2026-01-17)
-
-### Features
-
-* implement automated release workflow with semantic-release ([0cb89ca](https://github.com/GingerGraham/bash-logger/commit/0cb89ca75baf53374d91878a66bd1c2491111ee7))
-
-### Bug Fixes
-
-* **ci:** use glob patterns for release asset upload ([fb828d8](https://github.com/GingerGraham/bash-logger/commit/fb828d876caf00438a938c23f94bee1909b9c1b7))
-* update GitHub token to use PAT_TOKEN for release workflow ([eb0da6e](https://github.com/GingerGraham/bash-logger/commit/eb0da6e7c8753206d231a17e3e456cea9ddeb011))
-
-## [0.10.0](https://github.com/GingerGraham/bash-logger/compare/0.9.0...0.10.0) (2026-01-17)
-
-### Features
-
-* implement automated release workflow with semantic-release ([0cb89ca](https://github.com/GingerGraham/bash-logger/commit/0cb89ca75baf53374d91878a66bd1c2491111ee7))
-
-### Bug Fixes
-
-* **ci:** use glob patterns for release asset upload ([fb828d8](https://github.com/GingerGraham/bash-logger/commit/fb828d876caf00438a938c23f94bee1909b9c1b7))
-
-## [0.10.0](https://github.com/GingerGraham/bash-logger/compare/0.9.0...0.10.0) (2026-01-17)
-
-### Features
-
-* implement automated release workflow with semantic-release ([0cb89ca](https://github.com/GingerGraham/bash-logger/commit/0cb89ca75baf53374d91878a66bd1c2491111ee7))
-
-### Bug Fixes
-
-* **ci:** use glob patterns for release asset upload ([fb828d8](https://github.com/GingerGraham/bash-logger/commit/fb828d876caf00438a938c23f94bee1909b9c1b7))
-
-## [0.10.0](https://github.com/GingerGraham/bash-logger/compare/0.9.0...0.10.0) (2026-01-16)
-
-### Features
-
-* implement automated release workflow with semantic-release ([0cb89ca](https://github.com/GingerGraham/bash-logger/commit/0cb89ca75baf53374d91878a66bd1c2491111ee7))
-
 ## [Unreleased]
 
 ### Added
 
 * Changelog file to track project changes
+
+## [0.10.0](https://github.com/GingerGraham/bash-logger/compare/0.9.0...0.10.0) - 2026-01-17
+
+### Features
+
+* implement automated release workflow with semantic-release
+* add consumer-friendly release packages (tar.gz and zip with checksums)
+* add BASH_LOGGER_VERSION constant to logging.sh for version tracking
+
+### Bug Fixes
+
+* **ci:** use glob patterns for release asset upload
+* **ci:** use PAT token to work around phantom tag restrictions
 
 ## [0.9.0] - 2026-01-16
 
