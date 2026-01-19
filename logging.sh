@@ -44,7 +44,9 @@
 #   - Troubleshooting: docs/troubleshooting.md
 
 # Version (updated by release workflow)
-readonly BASH_LOGGER_VERSION="1.1.0"
+if [[ -z "${BASH_LOGGER_VERSION:-}" ]]; then
+    readonly BASH_LOGGER_VERSION="1.1.0"
+fi
 
 # Log levels (following complete syslog standard - higher number = less severe)
 LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
@@ -695,7 +697,7 @@ set_log_level() {
 
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        if should_use_colors; then
+        if _should_use_colors; then
             echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
@@ -888,7 +890,6 @@ _log_to_console() {
     local level_name="$2"
     local level_value="$3"
 
-
     local use_stderr=false
     if _should_use_stderr "$level_value"; then
         use_stderr=true
@@ -902,11 +903,10 @@ _log_to_console() {
         output="${log_color}${output}${COLOR_RESET}"
     fi
 
-
     if [[ "$use_stderr" == true ]]; then
-        echo "${output}" >&2 # Log to stderr
+        echo -e "${output}" >&2 # Log to stderr
     else
-        echo "${output}"
+        echo -e "${output}"
     fi
 }
 
