@@ -295,6 +295,7 @@ fi
 
 ## Next Steps
 
+* **[API Reference](api-reference.md)** - Complete function reference
 * [Log Levels](log-levels.md) - Learn about all available log levels
 * [Initialization](initialization.md) - Explore all initialization options
 * [Configuration](configuration.md) - Use configuration files for complex setups

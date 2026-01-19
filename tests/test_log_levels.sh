@@ -33,52 +33,52 @@ test_fatal_alias() {
     pass_test
 }
 
-# Test: get_log_level_value function
+# Test: _get_log_level_value function (internal)
 test_get_log_level_value() {
     start_test "get_log_level_value converts names to numbers"
 
-    assert_equals "0" "$(get_log_level_value "EMERGENCY")" || return
-    assert_equals "1" "$(get_log_level_value "ALERT")" || return
-    assert_equals "2" "$(get_log_level_value "CRITICAL")" || return
-    assert_equals "3" "$(get_log_level_value "ERROR")" || return
-    assert_equals "4" "$(get_log_level_value "WARN")" || return
-    assert_equals "5" "$(get_log_level_value "NOTICE")" || return
-    assert_equals "6" "$(get_log_level_value "INFO")" || return
-    assert_equals "7" "$(get_log_level_value "DEBUG")" || return
+    assert_equals "0" "$(_get_log_level_value "EMERGENCY")" || return
+    assert_equals "1" "$(_get_log_level_value "ALERT")" || return
+    assert_equals "2" "$(_get_log_level_value "CRITICAL")" || return
+    assert_equals "3" "$(_get_log_level_value "ERROR")" || return
+    assert_equals "4" "$(_get_log_level_value "WARN")" || return
+    assert_equals "5" "$(_get_log_level_value "NOTICE")" || return
+    assert_equals "6" "$(_get_log_level_value "INFO")" || return
+    assert_equals "7" "$(_get_log_level_value "DEBUG")" || return
 
     # Test case insensitivity
-    assert_equals "6" "$(get_log_level_value "info")" || return
-    assert_equals "3" "$(get_log_level_value "ErRoR")" || return
+    assert_equals "6" "$(_get_log_level_value "info")" || return
+    assert_equals "3" "$(_get_log_level_value "ErRoR")" || return
 
     # Test FATAL alias
-    assert_equals "0" "$(get_log_level_value "FATAL")" || return
+    assert_equals "0" "$(_get_log_level_value "FATAL")" || return
 
     pass_test
 }
 
-# Test: get_log_level_value with numbers
+# Test: _get_log_level_value with numbers (internal)
 test_get_log_level_value_numeric() {
     start_test "get_log_level_value accepts numeric values"
 
-    assert_equals "0" "$(get_log_level_value "0")" || return
-    assert_equals "3" "$(get_log_level_value "3")" || return
-    assert_equals "7" "$(get_log_level_value "7")" || return
+    assert_equals "0" "$(_get_log_level_value "0")" || return
+    assert_equals "3" "$(_get_log_level_value "3")" || return
+    assert_equals "7" "$(_get_log_level_value "7")" || return
 
     pass_test
 }
 
-# Test: get_log_level_name function
+# Test: _get_log_level_name function (internal)
 test_get_log_level_name() {
     start_test "get_log_level_name converts numbers to names"
 
-    assert_equals "EMERGENCY" "$(get_log_level_name 0)" || return
-    assert_equals "ALERT" "$(get_log_level_name 1)" || return
-    assert_equals "CRITICAL" "$(get_log_level_name 2)" || return
-    assert_equals "ERROR" "$(get_log_level_name 3)" || return
-    assert_equals "WARN" "$(get_log_level_name 4)" || return
-    assert_equals "NOTICE" "$(get_log_level_name 5)" || return
-    assert_equals "INFO" "$(get_log_level_name 6)" || return
-    assert_equals "DEBUG" "$(get_log_level_name 7)" || return
+    assert_equals "EMERGENCY" "$(_get_log_level_name 0)" || return
+    assert_equals "ALERT" "$(_get_log_level_name 1)" || return
+    assert_equals "CRITICAL" "$(_get_log_level_name 2)" || return
+    assert_equals "ERROR" "$(_get_log_level_name 3)" || return
+    assert_equals "WARN" "$(_get_log_level_name 4)" || return
+    assert_equals "NOTICE" "$(_get_log_level_name 5)" || return
+    assert_equals "INFO" "$(_get_log_level_name 6)" || return
+    assert_equals "DEBUG" "$(_get_log_level_name 7)" || return
 
     pass_test
 }
@@ -214,18 +214,18 @@ test_verbose_enables_debug() {
     pass_test
 }
 
-# Test: get_syslog_priority function
+# Test: _get_syslog_priority function (internal)
 test_get_syslog_priority() {
     start_test "get_syslog_priority returns correct priorities"
 
-    assert_equals "emerg" "$(get_syslog_priority 0)" || return
-    assert_equals "alert" "$(get_syslog_priority 1)" || return
-    assert_equals "crit" "$(get_syslog_priority 2)" || return
-    assert_equals "err" "$(get_syslog_priority 3)" || return
-    assert_equals "warning" "$(get_syslog_priority 4)" || return
-    assert_equals "notice" "$(get_syslog_priority 5)" || return
-    assert_equals "info" "$(get_syslog_priority 6)" || return
-    assert_equals "debug" "$(get_syslog_priority 7)" || return
+    assert_equals "emerg" "$(_get_syslog_priority 0)" || return
+    assert_equals "alert" "$(_get_syslog_priority 1)" || return
+    assert_equals "crit" "$(_get_syslog_priority 2)" || return
+    assert_equals "err" "$(_get_syslog_priority 3)" || return
+    assert_equals "warning" "$(_get_syslog_priority 4)" || return
+    assert_equals "notice" "$(_get_syslog_priority 5)" || return
+    assert_equals "info" "$(_get_syslog_priority 6)" || return
+    assert_equals "debug" "$(_get_syslog_priority 7)" || return
 
     pass_test
 }
