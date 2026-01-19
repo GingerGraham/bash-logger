@@ -29,6 +29,7 @@ Deep dives into specific features:
 
 ## Reference
 
+* **[API Reference](api-reference.md)** - Complete function reference
 * **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
 * **[Testing](testing.md)** - Guide to the test suite
 * **[Releases](releases.md)** - Release process and versioning

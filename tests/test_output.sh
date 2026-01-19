@@ -218,7 +218,7 @@ test_color_never() {
     " 2>&1)
 
     # Should not contain ANSI escape codes
-    if [[ "$output" =~ $'\033'\\[ ]]; then
+    if [[ "$output" =~ $'\033\[' ]]; then
         fail_test "Output contains ANSI escape codes"
         return
     fi

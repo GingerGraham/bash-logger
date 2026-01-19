@@ -11,6 +11,29 @@
 #
 # Quick usage: source logging.sh && init_logger [options]
 #
+# Public API Functions:
+#   Initialization:
+#     - init_logger [options]           : Initialize the logger with options
+#     - check_logger_available          : Check if system logger is available
+#
+#   Logging Functions:
+#     - log_debug, log_info, log_notice : Standard logging functions
+#     - log_warn, log_error, log_critical
+#     - log_alert, log_emergency, log_fatal
+#     - log_init, log_sensitive         : Special purpose logging
+#
+#   Runtime Configuration:
+#     - set_log_level <level>           : Change log level dynamically
+#     - set_log_format <format>         : Change message format
+#     - set_timezone_utc <true|false>   : Toggle UTC timestamps
+#     - set_journal_logging <true|false>: Toggle system journal logging
+#     - set_journal_tag <tag>           : Change journal tag
+#     - set_color_mode <auto|always|never> : Change color output
+#
+# Internal Functions (prefixed with _):
+#   Functions prefixed with underscore (_) are internal implementation details
+#   and should not be called directly by consuming scripts.
+#
 # Comprehensive documentation:
 #   - Getting started: docs/getting-started.md
 #   - Command-line options: docs/initialization.md
@@ -21,7 +44,9 @@
 #   - Troubleshooting: docs/troubleshooting.md
 
 # Version (updated by release workflow)
-readonly BASH_LOGGER_VERSION="1.1.0"
+if [[ -z "${BASH_LOGGER_VERSION:-}" ]]; then
+    readonly BASH_LOGGER_VERSION="1.1.0"
+fi
 
 # Log levels (following complete syslog standard - higher number = less severe)
 LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
@@ -50,6 +75,18 @@ JOURNAL_TAG=""  # Tag for syslog/journal entries
 # Color settings
 USE_COLORS="auto"  # Can be "auto", "always", or "never"
 
+# ANSI color codes (using $'...' syntax for literal escape characters)
+COLOR_RESET=$'\e[0m'
+COLOR_BLUE=$'\e[34m'
+COLOR_GREEN=$'\e[32m'
+COLOR_YELLOW=$'\e[33m'
+COLOR_RED=$'\e[31m'
+COLOR_RED_BOLD=$'\e[31;1m'
+COLOR_WHITE_ON_RED=$'\e[37;41m'
+COLOR_BOLD_WHITE_ON_RED=$'\e[1;37;41m'
+COLOR_PURPLE=$'\e[35m'
+COLOR_CYAN=$'\e[36m'
+
 # Stream output settings
 # Messages at this level and above (more severe) go to stderr, below go to stdout
 # Default: ERROR (level 3) and above to stderr
@@ -67,8 +104,8 @@ LOG_STDERR_LEVEL=$LOG_LEVEL_ERROR
 #  "%d %z [%l] [%s] %m" => "2025-03-03 12:34:56 UTC [INFO] [myscript.sh] Hello world"
 LOG_FORMAT="%d [%l] [%s] %m"
 
-# Function to detect terminal color support
-detect_color_support() {
+# Function to detect terminal color support (internal)
+_detect_color_support() {
     # Default to no colors if explicitly disabled
     if [[ -n "${NO_COLOR:-}" || "${CLICOLOR:-}" == "0" ]]; then
         return 1
@@ -103,8 +140,8 @@ detect_color_support() {
     return 1  # Default to no colors
 }
 
-# Function to determine if colors should be used
-should_use_colors() {
+# Function to determine if colors should be used (internal)
+_should_use_colors() {
     case "$USE_COLORS" in
         "always")
             return 0
@@ -113,15 +150,15 @@ should_use_colors() {
             return 1
             ;;
         "auto"|*)
-            detect_color_support
+            _detect_color_support
             return $?
             ;;
     esac
 }
 
-# Function to determine if a log level should output to stderr
+# Function to determine if a log level should output to stderr (internal)
 # Returns 0 (true) if the given level should go to stderr
-should_use_stderr() {
+_should_use_stderr() {
     local level_value="$1"
     # Lower number = more severe, so use stderr if level <= threshold
     [[ "$level_value" -le "$LOG_STDERR_LEVEL" ]]
@@ -135,11 +172,11 @@ check_logger_available() {
 # Configuration file path (set by init_logger when using -c option)
 LOG_CONFIG_FILE=""
 
-# Parse an INI-style configuration file
-# Usage: parse_config_file "/path/to/config.ini"
+# Parse an INI-style configuration file (internal)
+# Usage: _parse_config_file "/path/to/config.ini"
 # Returns 0 on success, 1 on error
 # Config values are applied to global variables; CLI args can override them later
-parse_config_file() {
+_parse_config_file() {
     local config_file="$1"
 
     # Validate file exists and is readable
@@ -191,7 +228,7 @@ parse_config_file() {
             # Apply configuration based on key (case-insensitive)
             case "${key,,}" in
                 level|log_level)
-                    CURRENT_LOG_LEVEL=$(get_log_level_value "$value")
+                    CURRENT_LOG_LEVEL=$(_get_log_level_value "$value")
                     ;;
                 format|log_format)
                     LOG_FORMAT="$value"
@@ -249,7 +286,7 @@ parse_config_file() {
                     esac
                     ;;
                 stderr_level|stderr-level)
-                    LOG_STDERR_LEVEL=$(get_log_level_value "$value")
+                    LOG_STDERR_LEVEL=$(_get_log_level_value "$value")
                     ;;
                 quiet|console_log)
                     case "${key,,}" in
@@ -310,8 +347,8 @@ parse_config_file() {
     return 0
 }
 
-# Convert log level name to numeric value
-get_log_level_value() {
+# Convert log level name to numeric value (internal)
+_get_log_level_value() {
     local level_name="$1"
     case "${level_name^^}" in
         "DEBUG")
@@ -350,8 +387,8 @@ get_log_level_value() {
     esac
 }
 
-# Get log level name from numeric value
-get_log_level_name() {
+# Get log level name from numeric value (internal)
+_get_log_level_name() {
     local level_value="$1"
     case "$level_value" in
         "$LOG_LEVEL_DEBUG")
@@ -384,8 +421,48 @@ get_log_level_name() {
     esac
 }
 
-# Map log level to syslog priority
-get_syslog_priority() {
+# Gets the ANSI color codes for a level name (internal)
+_get_log_level_color() {
+    local level_name="$1"
+    case "$level_name" in
+        "DEBUG")
+            echo "${COLOR_BLUE}"
+            ;;
+        "INFO")
+            echo ""
+            ;;
+        "NOTICE")
+            echo "${COLOR_GREEN}"
+            ;;
+        "WARN")
+            echo "${COLOR_YELLOW}"
+            ;;
+        "ERROR")
+            echo "${COLOR_RED}"
+            ;;
+        "CRITICAL")
+            echo "${COLOR_RED_BOLD}"
+            ;;
+        "ALERT")
+            echo "${COLOR_WHITE_ON_RED}"
+            ;;
+        "EMERGENCY"|"FATAL")
+            echo "${COLOR_BOLD_WHITE_ON_RED}"
+            ;;
+        "INIT")
+            echo "${COLOR_PURPLE}"
+            ;;
+        "SENSITIVE")
+            echo "${COLOR_CYAN}"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# Map log level to syslog priority (internal)
+_get_syslog_priority() {
     local level_value="$1"
     case "$level_value" in
         "$LOG_LEVEL_DEBUG")
@@ -418,8 +495,8 @@ get_syslog_priority() {
     esac
 }
 
-# Function to format log message
-format_log_message() {
+# Function to format log message (internal)
+_format_log_message() {
     local level_name="$1"
     local message="$2"
 
@@ -478,7 +555,7 @@ init_logger() {
                     echo "Error: --config requires a file path argument" >&2
                     return 1
                 fi
-                if ! parse_config_file "$config_file"; then
+                if ! _parse_config_file "$config_file"; then
                     return 1
                 fi
                 break
@@ -504,7 +581,7 @@ init_logger() {
                 ;;
             -d|--level)
                 local level_value
-                level_value=$(get_log_level_value "$2")
+                level_value=$(_get_log_level_value "$2")
                 CURRENT_LOG_LEVEL=$level_value
                 # If both --verbose and --level are specified, --level takes precedence
                 shift 2
@@ -544,7 +621,7 @@ init_logger() {
                 ;;
             -e|--stderr-level)
                 local stderr_level_value
-                stderr_level_value=$(get_log_level_value "$2")
+                stderr_level_value=$(_get_log_level_value "$2")
                 LOG_STDERR_LEVEL=$stderr_level_value
                 shift 2
                 ;;
@@ -590,7 +667,7 @@ init_logger() {
 
         # Write the initialization message using the same format
         local init_message
-        init_message=$(format_log_message "INIT" "Logger initialized by $caller_script")
+        init_message=$(_format_log_message "INIT" "Logger initialized by $caller_script")
         echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
             echo "Error: Failed to write test message to log file" >&2
             return 1
@@ -600,7 +677,7 @@ init_logger() {
     fi
 
     # Log initialization success
-    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(get_log_level_name "$CURRENT_LOG_LEVEL"), stderr level=$(get_log_level_name "$LOG_STDERR_LEVEL"), format=\"$LOG_FORMAT\""
+    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(_get_log_level_name "$CURRENT_LOG_LEVEL"), stderr level=$(_get_log_level_name "$LOG_STDERR_LEVEL"), format=\"$LOG_FORMAT\""
     return 0
 }
 
@@ -608,20 +685,20 @@ init_logger() {
 set_log_level() {
     local level="$1"
     local old_level
-    old_level=$(get_log_level_name "$CURRENT_LOG_LEVEL")
-    CURRENT_LOG_LEVEL=$(get_log_level_value "$level")
+    old_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
+    CURRENT_LOG_LEVEL=$(_get_log_level_value "$level")
     local new_level
-    new_level=$(get_log_level_name "$CURRENT_LOG_LEVEL")
+    new_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
 
     # Create a special log entry that bypasses level checks
     local message="Log level changed from $old_level to $new_level"
     local log_entry
-    log_entry=$(format_log_message "CONFIG" "$message")
+    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if _should_use_colors; then
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -645,12 +722,12 @@ set_timezone_utc() {
 
     local message="Timezone setting changed from $old_setting to $USE_UTC"
     local log_entry
-    log_entry=$(format_log_message "CONFIG" "$message")
+    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if _should_use_colors; then
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -674,12 +751,12 @@ set_log_format() {
 
     local message="Log format changed from \"$old_format\" to \"$LOG_FORMAT\""
     local log_entry
-    log_entry=$(format_log_message "CONFIG" "$message")
+    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if _should_use_colors; then
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -712,12 +789,12 @@ set_journal_logging() {
 
     local message="Journal logging changed from $old_setting to $USE_JOURNAL"
     local log_entry
-    log_entry=$(format_log_message "CONFIG" "$message")
+    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if _should_use_colors; then
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -741,12 +818,12 @@ set_journal_tag() {
 
     local message="Journal tag changed from \"$old_tag\" to \"$JOURNAL_TAG\""
     local log_entry
-    log_entry=$(format_log_message "CONFIG" "$message")
+    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if _should_use_colors; then
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -785,12 +862,12 @@ set_color_mode() {
 
     local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
     local log_entry
-    log_entry=$(format_log_message "CONFIG" "$message")
+    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+        if _should_use_colors; then
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -807,8 +884,34 @@ set_color_mode() {
     fi
 }
 
-# Function to log messages with different severity levels
-log_message() {
+# Logs to console (internal)
+_log_to_console() {
+    local log_entry="$1"
+    local level_name="$2"
+    local level_value="$3"
+
+    local use_stderr=false
+    if _should_use_stderr "$level_value"; then
+        use_stderr=true
+    fi
+
+    local output="${log_entry}"
+
+    if _should_use_colors; then
+        local log_color
+        log_color=$(_get_log_level_color "$level_name")
+        output="${log_color}${output}${COLOR_RESET}"
+    fi
+
+    if [[ "$use_stderr" == true ]]; then
+        echo -e "${output}" >&2 # Log to stderr
+    else
+        echo -e "${output}"
+    fi
+}
+
+# Function to log messages with different severity levels (internal)
+_log_message() {
     local level_name="$1"
     local level_value="$2"
     local message="$3"
@@ -823,105 +926,11 @@ log_message() {
 
     # Format the log entry
     local log_entry
-    log_entry=$(format_log_message "$level_name" "$message")
+    log_entry=$(_format_log_message "$level_name" "$message")
 
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        # Determine if output should go to stderr based on configured threshold
-        local use_stderr=false
-        if should_use_stderr "$level_value"; then
-            use_stderr=true
-        fi
-
-        if should_use_colors; then
-            # Color output for console based on log level
-            case "$level_name" in
-                "DEBUG")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[34m${log_entry}\e[0m" >&2  # Blue
-                    else
-                        echo -e "\e[34m${log_entry}\e[0m"  # Blue
-                    fi
-                    ;;
-                "INFO")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "${log_entry}" >&2  # Default color
-                    else
-                        echo -e "${log_entry}"  # Default color
-                    fi
-                    ;;
-                "NOTICE")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[32m${log_entry}\e[0m" >&2  # Green
-                    else
-                        echo -e "\e[32m${log_entry}\e[0m"  # Green
-                    fi
-                    ;;
-                "WARN")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[33m${log_entry}\e[0m" >&2  # Yellow
-                    else
-                        echo -e "\e[33m${log_entry}\e[0m"  # Yellow
-                    fi
-                    ;;
-                "ERROR")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[31m${log_entry}\e[0m" >&2  # Red
-                    else
-                        echo -e "\e[31m${log_entry}\e[0m"  # Red
-                    fi
-                    ;;
-                "CRITICAL")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[31;1m${log_entry}\e[0m" >&2  # Bright Red
-                    else
-                        echo -e "\e[31;1m${log_entry}\e[0m"  # Bright Red
-                    fi
-                    ;;
-                "ALERT")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[37;41m${log_entry}\e[0m" >&2  # White on Red background
-                    else
-                        echo -e "\e[37;41m${log_entry}\e[0m"  # White on Red background
-                    fi
-                    ;;
-                "EMERGENCY"|"FATAL")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[1;37;41m${log_entry}\e[0m" >&2  # Bold White on Red background
-                    else
-                        echo -e "\e[1;37;41m${log_entry}\e[0m"  # Bold White on Red background
-                    fi
-                    ;;
-                "INIT")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[35m${log_entry}\e[0m" >&2  # Purple for init
-                    else
-                        echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
-                    fi
-                    ;;
-                "SENSITIVE")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[36m${log_entry}\e[0m" >&2  # Cyan for sensitive
-                    else
-                        echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
-                    fi
-                    ;;
-                *)
-                    if [[ "$use_stderr" == true ]]; then
-                        echo "${log_entry}" >&2  # Default color for unknown level
-                    else
-                        echo "${log_entry}"  # Default color for unknown level
-                    fi
-                    ;;
-            esac
-        else
-            # Plain output without colors
-            if [[ "$use_stderr" == true ]]; then
-                echo "${log_entry}" >&2
-            else
-                echo "${log_entry}"
-            fi
-        fi
+        _log_to_console "$log_entry" "$level_name" "$level_value"
     fi
 
     # If LOG_FILE is set and not empty, append to the log file (without colors)
@@ -945,7 +954,7 @@ log_message() {
         if check_logger_available; then
             # Map our log level to syslog priority
             local syslog_priority
-            syslog_priority=$(get_syslog_priority "$level_value")
+            syslog_priority=$(_get_syslog_priority "$level_value")
 
             # Use the logger command to send to syslog/journal
             # Strip any ANSI color codes from the message
@@ -957,49 +966,49 @@ log_message() {
 
 # Helper functions for different log levels
 log_debug() {
-    log_message "DEBUG" $LOG_LEVEL_DEBUG "$1"
+    _log_message "DEBUG" $LOG_LEVEL_DEBUG "$1"
 }
 
 log_info() {
-    log_message "INFO" $LOG_LEVEL_INFO "$1"
+    _log_message "INFO" $LOG_LEVEL_INFO "$1"
 }
 
 log_notice() {
-    log_message "NOTICE" $LOG_LEVEL_NOTICE "$1"
+    _log_message "NOTICE" $LOG_LEVEL_NOTICE "$1"
 }
 
 log_warn() {
-    log_message "WARN" $LOG_LEVEL_WARN "$1"
+    _log_message "WARN" $LOG_LEVEL_WARN "$1"
 }
 
 log_error() {
-    log_message "ERROR" $LOG_LEVEL_ERROR "$1"
+    _log_message "ERROR" $LOG_LEVEL_ERROR "$1"
 }
 
 log_critical() {
-    log_message "CRITICAL" $LOG_LEVEL_CRITICAL "$1"
+    _log_message "CRITICAL" $LOG_LEVEL_CRITICAL "$1"
 }
 
 log_alert() {
-    log_message "ALERT" $LOG_LEVEL_ALERT "$1"
+    _log_message "ALERT" $LOG_LEVEL_ALERT "$1"
 }
 
 log_emergency() {
-    log_message "EMERGENCY" $LOG_LEVEL_EMERGENCY "$1"
+    _log_message "EMERGENCY" $LOG_LEVEL_EMERGENCY "$1"
 }
 
 # Alias for backward compatibility
 log_fatal() {
-    log_message "FATAL" $LOG_LEVEL_EMERGENCY "$1"
+    _log_message "FATAL" $LOG_LEVEL_EMERGENCY "$1"
 }
 
 log_init() {
-    log_message "INIT" -1 "$1"  # Using -1 to ensure it always shows
+    _log_message "INIT" -1 "$1"  # Using -1 to ensure it always shows
 }
 
 # Function for sensitive logging - console only, never to file or journal
 log_sensitive() {
-    log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true" "true"
+    _log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true" "true"
 }
 
 # Only execute initialization if this script is being run directly

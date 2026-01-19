@@ -60,6 +60,7 @@ See [Getting Started](docs/getting-started.md) for detailed installation and bas
 
 ### Reference
 
+* **[API Reference](docs/api-reference.md)** - Complete function reference
 * [Examples](docs/examples.md) - Comprehensive usage examples
 * [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
