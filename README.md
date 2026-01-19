@@ -1,9 +1,13 @@
 # Bash Logger
 
+![GitHub Release](https://img.shields.io/github/v/release/GingerGraham/bash-logger)
+[![Release](https://github.com/GingerGraham/bash-logger/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/GingerGraham/bash-logger/actions/workflows/release.yml)
+[![Tests](https://github.com/GingerGraham/bash-logger/actions/workflows/tests.yml/badge.svg)](https://github.com/GingerGraham/bash-logger/actions/workflows/tests.yml)
+
 A flexible, reusable logging module for Bash scripts that provides standardized logging functionality with various configuration options.
 
 > [!NOTE]
-> This is a expansion of the originally published [bash_logging GitHub gist](https://gist.github.com/GingerGraham/99af97eed2cd89cd047a2088947a5405) published by @GingerGraham.
+> This is a expansion of the originally published [bash_logging GitHub gist](https://gist.github.com/GingerGraham/99af97eed2cd89cd047a2088947a5405) published by [@GingerGraham](https://github.com/GingerGraham).
 
 ## Primary artifact
 
