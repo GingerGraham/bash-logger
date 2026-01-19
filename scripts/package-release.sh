@@ -44,6 +44,9 @@ echo "Copying consumer files..."
 # Copy main module
 cp "$PROJECT_ROOT/logging.sh" "$PACKAGE_DIR/$PACKAGE_NAME/"
 
+# Also copy logging.sh to the root of release-package for standalone distribution
+cp "$PROJECT_ROOT/logging.sh" "$PACKAGE_DIR/"
+
 # Copy directories
 cp -r "$PROJECT_ROOT/configuration" "$PACKAGE_DIR/$PACKAGE_NAME/"
 cp -r "$PROJECT_ROOT/demo-scripts" "$PACKAGE_DIR/$PACKAGE_NAME/"
@@ -179,17 +182,24 @@ echo "✓ Created: ${PACKAGE_NAME}.tar.gz"
 zip -q -r "${PACKAGE_NAME}.zip" "$PACKAGE_NAME"
 echo "✓ Created: ${PACKAGE_NAME}.zip"
 
-# Generate checksums
+# Generate checksums for packages
 sha256sum "${PACKAGE_NAME}.tar.gz" > "${PACKAGE_NAME}.tar.gz.sha256"
 sha256sum "${PACKAGE_NAME}.zip" > "${PACKAGE_NAME}.zip.sha256"
-echo "✓ Created: checksums"
+echo "✓ Created: package checksums"
+
+# Generate checksum for standalone logging.sh
+sha256sum "logging.sh" > "logging.sh.sha256"
+echo "✓ Created: logging.sh checksum"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Package Complete"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Created archives:"
+echo "Standalone module:"
+echo "  - logging.sh ($(du -h "logging.sh" | cut -f1))"
+echo ""
+echo "Package archives:"
 echo "  - ${PACKAGE_NAME}.tar.gz ($(du -h "${PACKAGE_NAME}.tar.gz" | cut -f1))"
 echo "  - ${PACKAGE_NAME}.zip ($(du -h "${PACKAGE_NAME}.zip" | cut -f1))"
 echo ""

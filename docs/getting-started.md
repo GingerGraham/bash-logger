@@ -9,6 +9,8 @@ This guide will help you get started with the Bash Logging Module quickly.
 * [Installation](#installation)
   * [Common Installation Locations](#common-installation-locations)
   * [Example Installation](#example-installation)
+  * [Installing from a Tagged Release](#installing-from-a-tagged-release)
+    * [Verifying the Download with SHA256](#verifying-the-download-with-sha256)
 * [Basic Usage](#basic-usage)
 * [Your First Script](#your-first-script)
 * [Common Options](#common-options)
@@ -59,6 +61,102 @@ chmod +x ~/.local/lib/logging.sh
 curl -o ./logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
 chmod +x ./logging.sh
 ```
+
+### Installing from a Tagged Release
+
+If you prefer to use a specific stable release version instead of the main branch, you can download directly from
+GitHub releases:
+
+```bash
+# Get the latest release version
+LATEST_VERSION=$(curl -s https://api.github.com/repos/GingerGraham/bash-logger/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+
+echo "Latest version: $LATEST_VERSION"
+
+# Download the logging.sh file from the release
+curl -L -o logging.sh "https://github.com/GingerGraham/bash-logger/releases/download/${LATEST_VERSION}/logging.sh"
+chmod +x logging.sh
+```
+
+This approach ensures you're using a stable, tagged release rather than the development version. The GitHub releases
+page at [bash-logger releases](https://github.com/GingerGraham/bash-logger/releases) shows all available versions and
+their release notes.
+
+#### Verifying the Download with SHA256
+
+It's recommended to verify the integrity of downloaded files using SHA256 checksums. Here's how to do it on different
+platforms:
+
+**Linux:**
+
+```bash
+# Download the checksum file
+curl -L -o logging.sh.sha256 "https://github.com/GingerGraham/bash-logger/releases/download/${LATEST_VERSION}/logging.sh.sha256"
+
+# Verify the file
+sha256sum -c logging.sh.sha256
+```
+
+Expected output on success:
+
+```
+logging.sh: OK
+```
+
+**macOS:**
+
+```bash
+# Download the checksum file
+curl -L -o logging.sh.sha256 "https://github.com/GingerGraham/bash-logger/releases/download/${LATEST_VERSION}/logging.sh.sha256"
+
+# Verify the file (macOS uses shasum)
+shasum -a 256 -c logging.sh.sha256
+```
+
+Expected output on success:
+
+```
+logging.sh: OK
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Get the latest release version
+$releases = Invoke-WebRequest -Uri "https://api.github.com/repos/GingerGraham/bash-logger/releases/latest" | ConvertFrom-Json
+$LATEST_VERSION = $releases.tag_name
+
+# Download the logging.sh file
+Invoke-WebRequest -Uri "https://github.com/GingerGraham/bash-logger/releases/download/$LATEST_VERSION/logging.sh" -OutFile "logging.sh"
+
+# Download the checksum file
+Invoke-WebRequest -Uri "https://github.com/GingerGraham/bash-logger/releases/download/$LATEST_VERSION/logging.sh.sha256" -OutFile "logging.sh.sha256"
+
+# Read the expected checksum from the file
+$expectedChecksum = (Get-Content logging.sh.sha256).Split()[0]
+
+# Calculate the actual checksum
+$actualChecksum = (Get-FileHash -Path logging.sh -Algorithm SHA256).Hash
+
+# Compare checksums
+if ($expectedChecksum -eq $actualChecksum) {
+    Write-Host "✓ Checksum verified successfully!" -ForegroundColor Green
+} else {
+    Write-Host "✗ Checksum mismatch! File may be corrupted or tampered with." -ForegroundColor Red
+    exit 1
+}
+```
+
+**Manual Verification (All Platforms):**
+
+If you prefer to manually compare checksums:
+
+1. Download `logging.sh.sha256` from the releases page
+2. Open the file and note the checksum value (first 64 characters)
+3. Calculate your file's checksum:
+   * **Linux/macOS:** `sha256sum logging.sh` or `shasum -a 256 logging.sh`
+   * **Windows (PowerShell):** `(Get-FileHash -Path logging.sh -Algorithm SHA256).Hash`
+4. Compare the two values - they should match exactly
 
 ## Basic Usage
 

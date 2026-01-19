@@ -68,20 +68,28 @@
       {
         "assets": [
           {
+            "path": "release-package/logging.sh",
+            "label": "logging.sh (Standalone Module)"
+          },
+          {
+            "path": "release-package/logging.sh.sha256",
+            "label": "logging.sh SHA256 Checksum"
+          },
+          {
             "path": "release-package/*.tar.gz",
-            "label": "bash-logger tar.gz package"
+            "label": "Complete Package (tar.gz)"
           },
           {
             "path": "release-package/*.tar.gz.sha256",
-            "label": "bash-logger tar.gz SHA256 checksum"
+            "label": "SHA256 Checksum (tar.gz)"
           },
           {
             "path": "release-package/*.zip",
-            "label": "bash-logger zip package"
+            "label": "Complete Package (zip)"
           },
           {
             "path": "release-package/*.zip.sha256",
-            "label": "bash-logger zip SHA256 checksum"
+            "label": "SHA256 Checksum (zip)"
           }
         ]
       }
