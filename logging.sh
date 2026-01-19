@@ -50,6 +50,18 @@ JOURNAL_TAG=""  # Tag for syslog/journal entries
 # Color settings
 USE_COLORS="auto"  # Can be "auto", "always", or "never"
 
+# ANSI color codes (using $'...' syntax for literal escape characters)
+COLOR_RESET=$'\e[0m'
+COLOR_BLUE=$'\e[34m'
+COLOR_GREEN=$'\e[32m'
+COLOR_YELLOW=$'\e[33m'
+COLOR_RED=$'\e[31m'
+COLOR_RED_BOLD=$'\e[31;1m'
+COLOR_WHITE_ON_RED=$'\e[37;41m'
+COLOR_BOLD_WHITE_ON_RED=$'\e[1;37;41m'
+COLOR_PURPLE=$'\e[35m'
+COLOR_CYAN=$'\e[36m'
+
 # Stream output settings
 # Messages at this level and above (more severe) go to stderr, below go to stdout
 # Default: ERROR (level 3) and above to stderr
@@ -384,6 +396,46 @@ get_log_level_name() {
     esac
 }
 
+# Gets the ANSI color codes for a level name
+get_log_level_color() {
+    local level_name="$1"
+    case "$level_name" in
+        "DEBUG")
+            echo "${COLOR_BLUE}"
+            ;;
+        "INFO")
+            echo ""
+            ;;
+        "NOTICE")
+            echo "${COLOR_GREEN}"
+            ;;
+        "WARN")
+            echo "${COLOR_YELLOW}"
+            ;;
+        "ERROR")
+            echo "${COLOR_RED}"
+            ;;
+        "CRITICAL")
+            echo "${COLOR_RED_BOLD}"
+            ;;
+        "ALERT")
+            echo "${COLOR_WHITE_ON_RED}"
+            ;;
+        "EMERGENCY"|"FATAL")
+            echo "${COLOR_BOLD_WHITE_ON_RED}"
+            ;;
+        "INIT")
+            echo "${COLOR_PURPLE}"
+            ;;
+        "SENSITIVE")
+            echo "${COLOR_CYAN}"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
 # Map log level to syslog priority
 get_syslog_priority() {
     local level_value="$1"
@@ -621,7 +673,7 @@ set_log_level() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -650,7 +702,7 @@ set_timezone_utc() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -679,7 +731,7 @@ set_log_format() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -717,7 +769,7 @@ set_journal_logging() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -746,7 +798,7 @@ set_journal_tag() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -790,7 +842,7 @@ set_color_mode() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if should_use_colors; then
-            echo -e "\e[35m${log_entry}\e[0m"  # Purple for configuration changes
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -804,6 +856,34 @@ set_color_mode() {
     # Log to journal if enabled
     if [[ "$USE_JOURNAL" == "true" ]]; then
         logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
+# Logs to console
+log_to_console() {
+    local log_entry="$1"
+    local level_name="$2"
+    local level_value="$3"
+
+
+    local use_stderr=false
+    if should_use_stderr "$level_value"; then
+        use_stderr=true
+    fi
+
+    local output="${log_entry}"
+
+    if should_use_colors; then
+        local log_color
+        log_color=$(get_log_level_color "$level_name")
+        output="${log_color}${output}${COLOR_RESET}"
+    fi
+
+
+    if [[ "$use_stderr" == true ]]; then
+        echo "${output}" >&2 # Log to stderr
+    else
+        echo "${output}"
     fi
 }
 
@@ -827,101 +907,7 @@ log_message() {
 
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
-        # Determine if output should go to stderr based on configured threshold
-        local use_stderr=false
-        if should_use_stderr "$level_value"; then
-            use_stderr=true
-        fi
-
-        if should_use_colors; then
-            # Color output for console based on log level
-            case "$level_name" in
-                "DEBUG")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[34m${log_entry}\e[0m" >&2  # Blue
-                    else
-                        echo -e "\e[34m${log_entry}\e[0m"  # Blue
-                    fi
-                    ;;
-                "INFO")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "${log_entry}" >&2  # Default color
-                    else
-                        echo -e "${log_entry}"  # Default color
-                    fi
-                    ;;
-                "NOTICE")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[32m${log_entry}\e[0m" >&2  # Green
-                    else
-                        echo -e "\e[32m${log_entry}\e[0m"  # Green
-                    fi
-                    ;;
-                "WARN")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[33m${log_entry}\e[0m" >&2  # Yellow
-                    else
-                        echo -e "\e[33m${log_entry}\e[0m"  # Yellow
-                    fi
-                    ;;
-                "ERROR")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[31m${log_entry}\e[0m" >&2  # Red
-                    else
-                        echo -e "\e[31m${log_entry}\e[0m"  # Red
-                    fi
-                    ;;
-                "CRITICAL")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[31;1m${log_entry}\e[0m" >&2  # Bright Red
-                    else
-                        echo -e "\e[31;1m${log_entry}\e[0m"  # Bright Red
-                    fi
-                    ;;
-                "ALERT")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[37;41m${log_entry}\e[0m" >&2  # White on Red background
-                    else
-                        echo -e "\e[37;41m${log_entry}\e[0m"  # White on Red background
-                    fi
-                    ;;
-                "EMERGENCY"|"FATAL")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[1;37;41m${log_entry}\e[0m" >&2  # Bold White on Red background
-                    else
-                        echo -e "\e[1;37;41m${log_entry}\e[0m"  # Bold White on Red background
-                    fi
-                    ;;
-                "INIT")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[35m${log_entry}\e[0m" >&2  # Purple for init
-                    else
-                        echo -e "\e[35m${log_entry}\e[0m"  # Purple for init
-                    fi
-                    ;;
-                "SENSITIVE")
-                    if [[ "$use_stderr" == true ]]; then
-                        echo -e "\e[36m${log_entry}\e[0m" >&2  # Cyan for sensitive
-                    else
-                        echo -e "\e[36m${log_entry}\e[0m"  # Cyan for sensitive
-                    fi
-                    ;;
-                *)
-                    if [[ "$use_stderr" == true ]]; then
-                        echo "${log_entry}" >&2  # Default color for unknown level
-                    else
-                        echo "${log_entry}"  # Default color for unknown level
-                    fi
-                    ;;
-            esac
-        else
-            # Plain output without colors
-            if [[ "$use_stderr" == true ]]; then
-                echo "${log_entry}" >&2
-            else
-                echo "${log_entry}"
-            fi
-        fi
+        log_to_console "$log_entry" "$level_name" "$level_value"
     fi
 
     # If LOG_FILE is set and not empty, append to the log file (without colors)
