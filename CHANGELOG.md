@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/GingerGraham/bash-logger/compare/1.0.0...1.1.0) (2026-01-19)
+
+### Features
+
+* enhance release packaging and documentation for standalone module ([#9](https://github.com/GingerGraham/bash-logger/issues/9)) ([8ed0017](https://github.com/GingerGraham/bash-logger/commit/8ed0017fffffbf16ed569e8e70d520a1453f306b))
+
+### Bug Fixes
+
+* trigger manual patch release [skip ci] ([bfd9559](https://github.com/GingerGraham/bash-logger/commit/bfd9559bad16511b014697483d5a23cf3f4b7a63))
+
 ## [1.0.0](https://github.com/GingerGraham/bash-logger/compare/0.11.0...1.0.0) (2026-01-17)
 
 ### ⚠ BREAKING CHANGES
