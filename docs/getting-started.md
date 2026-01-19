@@ -133,10 +133,10 @@ Invoke-WebRequest -Uri "https://github.com/GingerGraham/bash-logger/releases/dow
 Invoke-WebRequest -Uri "https://github.com/GingerGraham/bash-logger/releases/download/$LATEST_VERSION/logging.sh.sha256" -OutFile "logging.sh.sha256"
 
 # Read the expected checksum from the file
-$expectedChecksum = (Get-Content logging.sh.sha256).Split()[0]
+$expectedChecksum = (Get-Content logging.sh.sha256).Split()[0].ToLower()
 
 # Calculate the actual checksum
-$actualChecksum = (Get-FileHash -Path logging.sh -Algorithm SHA256).Hash
+$actualChecksum = (Get-FileHash -Path logging.sh -Algorithm SHA256).Hash.ToLower()
 
 # Compare checksums
 if ($expectedChecksum -eq $actualChecksum) {
