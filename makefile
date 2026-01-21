@@ -114,7 +114,7 @@ test:
 		echo "Running test suite..."; \
 		if [ -f tests/run_tests.sh ]; then \
 			if [ ! -x tests/run_tests.sh ]; then \
-				chmod +x tests/run_tests.sh; \
+				chmod +x tests/run_tests.sh || { echo "Error: Cannot make test runner executable"; exit 1; }; \
 			fi; \
 			./tests/run_tests.sh; \
 		elif command -v bats >/dev/null 2>&1; then \
