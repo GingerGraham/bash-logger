@@ -164,13 +164,13 @@ backup_existing_installation() {
     local backup_dir
     backup_dir="${INSTALL_DIR}.backup-$(date +%Y%m%d-%H%M%S)"
 
-    info "Creating backup at ${backup_dir}..."
+    info "Creating backup at ${backup_dir}..." >&2
 
     if cp -r "$INSTALL_DIR" "$backup_dir" 2>/dev/null; then
-        success "Backup created successfully"
+        success "Backup created successfully" >&2
         echo "$backup_dir"
     else
-        warn "Failed to create backup, continuing anyway..."
+        warn "Failed to create backup, continuing anyway..." >&2
         echo ""
     fi
 }
@@ -184,13 +184,18 @@ download_release() {
     local download_url="https://github.com/${GITHUB_REPO}/archive/refs/tags/${tag}.tar.gz"
 
     if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$download_url" -o "${temp_dir}/release.tar.gz" || error "Failed to download release"
+        curl --max-time 60 -fsSL "$download_url" -o "${temp_dir}/release.tar.gz" || error "Failed to download release"
     elif command -v wget >/dev/null 2>&1; then
-        wget -qO "${temp_dir}/release.tar.gz" "$download_url" || error "Failed to download release"
+        wget --timeout=60 -qO "${temp_dir}/release.tar.gz" "$download_url" || error "Failed to download release"
     fi
 
     info "Extracting files..."
     tar -xzf "${temp_dir}/release.tar.gz" -C "$temp_dir" --strip-components=1 || error "Failed to extract release"
+
+    # Verify the library file exists
+    if [[ ! -f "${temp_dir}/${LIBRARY_FILE}" ]]; then
+        error "Library file ${LIBRARY_FILE} not found in release archive"
+    fi
 }
 
 determine_install_paths() {
@@ -217,19 +222,25 @@ install_files() {
     info "Installing to ${INSTALL_DIR}..."
 
     # Create directories
-    mkdir -p "$INSTALL_DIR"
-    mkdir -p "$DOC_DIR"
+    mkdir -p "$INSTALL_DIR" || error "Failed to create ${INSTALL_DIR}"
+    mkdir -p "$DOC_DIR" || error "Failed to create ${DOC_DIR}"
 
     # Install library
-    install -m 644 "${temp_dir}/${LIBRARY_FILE}" "${INSTALL_DIR}/${LIBRARY_FILE}"
+    if ! install -m 644 "${temp_dir}/${LIBRARY_FILE}" "${INSTALL_DIR}/${LIBRARY_FILE}"; then
+        error "Failed to install ${LIBRARY_FILE}"
+    fi
 
     # Install version file
-    echo "$new_version" > "${INSTALL_DIR}/${VERSION_FILE}"
+    if ! echo "$new_version" > "${INSTALL_DIR}/${VERSION_FILE}"; then
+        error "Failed to create version file"
+    fi
 
     # Install documentation
     for doc in README.md LICENSE CHANGELOG.md; do
         if [[ -f "${temp_dir}/${doc}" ]]; then
-            install -m 644 "${temp_dir}/${doc}" "${DOC_DIR}/"
+            if ! install -m 644 "${temp_dir}/${doc}" "${DOC_DIR}/"; then
+                warn "Failed to install ${doc}, continuing..."
+            fi
         fi
     done
 
@@ -316,7 +327,7 @@ main() {
     # Create temporary directory
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap 'rm -rf "$temp_dir"' EXIT
+    trap 'if [[ -n "${temp_dir:-}" ]] && [[ -d "$temp_dir" ]]; then rm -rf "$temp_dir"; fi' EXIT
 
     # Get and download latest release
     local latest_tag
