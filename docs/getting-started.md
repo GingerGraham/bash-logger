@@ -43,21 +43,21 @@ be sourced from any location.
 
 ### Common Installation Locations
 
-* `/usr/local/lib/logging.sh` - System-wide installation
-* `$HOME/.local/lib/logging.sh` - User-specific installation
+* `/usr/local/lib/bash-logger/logging.sh` - System-wide installation
+* `$HOME/.local/lib/bash-logger/logging.sh` - User-specific installation
 * Project directory - Alongside your script
 
 ### Example Installation
 
 ```bash
 # System-wide (requires sudo)
-sudo curl -o /usr/local/lib/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-sudo chmod +x /usr/local/lib/logging.sh
+sudo curl -o /usr/local/lib/bash-logger/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
+sudo chmod +x /usr/local/lib/bash-logger/logging.sh
 
 # User-specific
-mkdir -p ~/.local/lib
-curl -o ~/.local/lib/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-chmod +x ~/.local/lib/logging.sh
+mkdir -p ~/.local/lib/bash-logger
+curl -o ~/.local/lib/bash-logger/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
+chmod +x ~/.local/lib/bash-logger/logging.sh
 
 # Project directory
 curl -o ./logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
