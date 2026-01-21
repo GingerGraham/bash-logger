@@ -135,7 +135,10 @@ demos:
 		echo "Running demo scripts..."; \
 		if [ -f demo-scripts/run_demos.sh ]; then \
 			if [ ! -x demo-scripts/run_demos.sh ]; then \
-				chmod +x demo-scripts/run_demos.sh; \
+				if ! chmod +x demo-scripts/run_demos.sh; then \
+					echo "Error: failed to make demo-scripts/run_demos.sh executable"; \
+					exit 1; \
+				fi; \
 			fi; \
 			./demo-scripts/run_demos.sh; \
 		else \
