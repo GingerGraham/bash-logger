@@ -57,15 +57,13 @@ install:
 	@echo "Installing bash-logger to $(DESTDIR)$(BINDIR)..."
 	install -d "$(DESTDIR)$(BINDIR)"
 	install -m 644 "$(LIBRARY)" "$(DESTDIR)$(BINDIR)/$(LIBRARY)"
-	@if [ -d docs ]; then \
-		echo "Installing documentation to $(DESTDIR)$(DOCDIR)..."; \
-		install -d "$(DESTDIR)$(DOCDIR)"; \
-		for doc in $(DOCS); do \
-			if [ -f "$$doc" ]; then \
-				install -m 644 "$$doc" "$(DESTDIR)$(DOCDIR)/"; \
-			fi; \
-		done; \
-	fi
+	@echo "Installing documentation to $(DESTDIR)$(DOCDIR)..."
+	@install -d "$(DESTDIR)$(DOCDIR)"
+	@for doc in $(DOCS); do \
+		if [ -f "$$doc" ]; then \
+			install -m 644 "$$doc" "$(DESTDIR)$(DOCDIR)/"; \
+		fi; \
+	done
 	@echo ""
 	@echo "Installation complete!"
 	@echo ""
@@ -79,15 +77,13 @@ install-user:
 	@echo "Installing bash-logger to $(USER_BINDIR)..."
 	install -d "$(USER_BINDIR)"
 	install -m 644 "$(LIBRARY)" "$(USER_BINDIR)/$(LIBRARY)"
-	@if [ -d docs ]; then \
-		echo "Installing documentation to $(USER_DOCDIR)..."; \
-		install -d "$(USER_DOCDIR)"; \
-		for doc in $(DOCS); do \
-			if [ -f "$$doc" ]; then \
-				install -m 644 "$$doc" "$(USER_DOCDIR)/"; \
-			fi; \
-		done; \
-	fi
+	@echo "Installing documentation to $(USER_DOCDIR)..."
+	@install -d "$(USER_DOCDIR)"
+	@for doc in $(DOCS); do \
+		if [ -f "$$doc" ]; then \
+			install -m 644 "$$doc" "$(USER_DOCDIR)/"; \
+		fi; \
+	done
 	@echo ""
 	@echo "Installation complete!"
 	@echo ""
