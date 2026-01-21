@@ -84,8 +84,8 @@ ls -l /path/to/logging.sh
 # Make file readable
 chmod +r /path/to/logging.sh
 
-# Make file executable (if needed)
-chmod +x /path/to/logging.sh
+# Or set appropriate permissions
+chmod 644 /path/to/logging.sh
 ```
 
 ## Initialization Issues
@@ -626,13 +626,11 @@ init_logger --level ERROR   # Correct
 If you're still experiencing issues:
 
 1. **Check the documentation:**
-
    * [Getting Started](getting-started.md)
    * [Initialization](initialization.md)
    * [Configuration](configuration.md)
 
 2. **Review examples:**
-
    * [Examples](examples.md)
 
 3. **Test with minimal example:**

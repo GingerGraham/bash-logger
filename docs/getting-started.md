@@ -43,25 +43,26 @@ be sourced from any location.
 
 ### Common Installation Locations
 
-* `/usr/local/lib/logging.sh` - System-wide installation
-* `$HOME/.local/lib/logging.sh` - User-specific installation
+* `/usr/local/lib/bash-logger/logging.sh` - System-wide installation
+* `$HOME/.local/lib/bash-logger/logging.sh` - User-specific installation
 * Project directory - Alongside your script
 
 ### Example Installation
 
 ```bash
 # System-wide (requires sudo)
-sudo curl -o /usr/local/lib/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-sudo chmod +x /usr/local/lib/logging.sh
+sudo mkdir -p /usr/local/lib/bash-logger
+sudo curl -o /usr/local/lib/bash-logger/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
+sudo chmod 644 /usr/local/lib/bash-logger/logging.sh
 
 # User-specific
-mkdir -p ~/.local/lib
-curl -o ~/.local/lib/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-chmod +x ~/.local/lib/logging.sh
+mkdir -p ~/.local/lib/bash-logger
+curl -o ~/.local/lib/bash-logger/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
+chmod 644 ~/.local/lib/bash-logger/logging.sh
 
 # Project directory
 curl -o ./logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-chmod +x ./logging.sh
+chmod 644 ./logging.sh
 ```
 
 ### Installing from a Tagged Release
@@ -77,7 +78,7 @@ echo "Latest version: $LATEST_VERSION"
 
 # Download the logging.sh file from the release
 curl -L -o logging.sh "https://github.com/GingerGraham/bash-logger/releases/download/${LATEST_VERSION}/logging.sh"
-chmod +x logging.sh
+chmod 644 logging.sh
 ```
 
 This approach ensures you're using a stable, tagged release rather than the development version. The GitHub releases
