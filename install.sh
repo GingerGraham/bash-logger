@@ -120,7 +120,7 @@ check_root() {
 }
 
 get_latest_release() {
-    info "Fetching latest release information..."
+    info "Fetching latest release information..." >&2
 
     # Try to get the latest release tag from GitHub API
     local release_info
