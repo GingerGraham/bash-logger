@@ -11,6 +11,7 @@ This guide will help you get started with the Bash Logging Module quickly.
   * [Example Installation](#example-installation)
   * [Installing from a Tagged Release](#installing-from-a-tagged-release)
     * [Verifying the Download with SHA256](#verifying-the-download-with-sha256)
+  * [Install with bpkg](#install-with-bpkg)
 * [Basic Usage](#basic-usage)
 * [Your First Script](#your-first-script)
 * [Common Options](#common-options)
@@ -157,6 +158,45 @@ If you prefer to manually compare checksums:
    * **Linux/macOS:** `sha256sum logging.sh` or `shasum -a 256 logging.sh`
    * **Windows (PowerShell):** `(Get-FileHash -Path logging.sh -Algorithm SHA256).Hash`
 4. Compare the two values - they should match exactly
+
+### Install with bpkg
+
+For users of the [bpkg package manager](https://www.bpkg.sh/):
+
+```bash
+# Install the package
+bpkg install GingerGraham/bash-logger
+
+# Source in your script
+source ~/.bpkg/deps/bash-logger/logging.sh
+init_logger
+log_info "Installed via bpkg!"
+```
+
+**Update an existing installation:**
+
+```bash
+bpkg update bash-logger
+```
+
+**Global installation** (requires sudo):
+
+```bash
+sudo bpkg install -g GingerGraham/bash-logger
+# Then use: source /usr/local/bpkg/bash-logger/logging.sh
+```
+
+**Advantages:**
+
+* Package manager handles installation and updates
+* Works well for development environments
+* Easy to manage multiple shell libraries
+
+**Considerations:**
+
+* Requires bpkg to be installed first
+* User-local by default (not system-wide unless using `-g`)
+* Users need to know the bpkg installation path for sourcing
 
 ## Basic Usage
 

@@ -1,0 +1,29 @@
+{
+  "name": "bash-logger",
+  "version": "1.2.0",
+  "description": "Production-grade logging for bash scripts with syslog compliance, journal integration, and customizable formatting",
+  "author": "Graham Watts (GingerGraham)",
+  "homepage": "https://github.com/GingerGraham/bash-logger",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GingerGraham/bash-logger.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "bash",
+    "logging",
+    "shell",
+    "syslog",
+    "systemd",
+    "journal"
+  ],
+  "scripts": [
+    "logging.sh"
+  ],
+  "files": [
+    "logging.sh",
+    "configuration/",
+    "demo-scripts/",
+    "docs/"
+  ]
+}
