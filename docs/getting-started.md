@@ -8,9 +8,11 @@ This guide will help you get started with the Bash Logging Module quickly.
   * [Linting Workflows](#linting-workflows)
 * [Installation](#installation)
   * [Common Installation Locations](#common-installation-locations)
-  * [Example Installation](#example-installation)
-  * [Installing from a Tagged Release](#installing-from-a-tagged-release)
-    * [Verifying the Download with SHA256](#verifying-the-download-with-sha256)
+  * [Using the Install Script](#using-the-install-script)
+  * [Manual Installation](#manual-installation)
+    * [Example Installation](#example-installation)
+    * [Installing from a Tagged Release](#installing-from-a-tagged-release)
+      * [Verifying the Download with SHA256](#verifying-the-download-with-sha256)
   * [Install with bpkg](#install-with-bpkg)
     * [Update an existing installation:](#update-an-existing-installation)
 * [Basic Usage](#basic-usage)
@@ -38,8 +40,7 @@ The repository includes GitHub Actions workflows to ensure code quality and cons
 
 ## Installation
 
-Simply place the `logging.sh` file in a directory of your choice. The module is a single, self-contained script that can
-be sourced from any location.
+bash-logger can be installed in several ways. Choose the method that best fits your needs.
 
 ### Common Installation Locations
 
@@ -47,7 +48,45 @@ be sourced from any location.
 * `$HOME/.local/lib/bash-logger/logging.sh` - User-specific installation
 * Project directory - Alongside your script
 
-### Example Installation
+### Using the Install Script
+
+The easiest way to install bash-logger is with the provided installation script. It handles downloading the latest release,
+verifying integrity, and setting up the module for you.
+
+**Quick Install (User):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | bash
+```
+
+**System-wide Installation (requires sudo):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | sudo bash -s -- --system
+```
+
+**Custom Location:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | bash -s -- --prefix ~/tools
+```
+
+**Additional Options:**
+
+* `--user` - Install for current user only (default)
+* `--system` - Install system-wide (requires root)
+* `--prefix PATH` - Custom installation prefix
+* `--auto-rc` - Automatically add source line to shell RC file
+* `--no-backup` - Skip backing up existing installation
+
+For more details, see the [install script documentation](../install.sh).
+
+### Manual Installation
+
+If you prefer to install manually, simply place the `logging.sh` file in a directory of your choice. The module is a single, self-contained script that can
+be sourced from any location.
+
+#### Example Installation
 
 ```bash
 # System-wide (requires sudo)
@@ -65,7 +104,7 @@ curl -o ./logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/
 chmod 644 ./logging.sh
 ```
 
-### Installing from a Tagged Release
+#### Installing from a Tagged Release
 
 If you prefer to use a specific stable release version instead of the main branch, you can download directly from
 GitHub releases:
@@ -85,7 +124,7 @@ This approach ensures you're using a stable, tagged release rather than the deve
 page at [bash-logger releases](https://github.com/GingerGraham/bash-logger/releases) shows all available versions and
 their release notes.
 
-#### Verifying the Download with SHA256
+##### Verifying the Download with SHA256
 
 It's recommended to verify the integrity of downloaded files using SHA256 checksums. Here's how to do it on different
 platforms:
