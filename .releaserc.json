@@ -53,13 +53,13 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "sed -i 's/readonly BASH_LOGGER_VERSION=\".*\"/readonly BASH_LOGGER_VERSION=\"${nextRelease.version}\"/' logging.sh && ./scripts/package-release.sh ${nextRelease.version}"
+        "prepareCmd": "sed -i 's/readonly BASH_LOGGER_VERSION=\".*\"/readonly BASH_LOGGER_VERSION=\"${nextRelease.version}\"/' logging.sh && sed -i 's/\"version\": \".*\"/\"version\": \"${nextRelease.version}\"/' bpkg.json && ./scripts/package-release.sh ${nextRelease.version}"
       }
     ],
     [
       "@semantic-release/git",
       {
-        "assets": ["CHANGELOG.md", "logging.sh"],
+        "assets": ["CHANGELOG.md", "logging.sh", "bpkg.json"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ],
