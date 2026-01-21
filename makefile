@@ -13,7 +13,7 @@ USER_DOCDIR = $(USER_PREFIX)/share/doc/bash-logger
 
 # Files to install
 LIBRARY = logging.sh
-DOCS = README.md LICENSE CHANGELOG.md
+DOCS = README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md
 
 # Shell for execution
 SHELL := /bin/bash
