@@ -12,6 +12,7 @@ This guide will help you get started with the Bash Logging Module quickly.
   * [Installing from a Tagged Release](#installing-from-a-tagged-release)
     * [Verifying the Download with SHA256](#verifying-the-download-with-sha256)
   * [Install with bpkg](#install-with-bpkg)
+    * [Update an existing installation:](#update-an-existing-installation)
 * [Basic Usage](#basic-usage)
 * [Your First Script](#your-first-script)
 * [Common Options](#common-options)
@@ -161,42 +162,33 @@ If you prefer to manually compare checksums:
 
 ### Install with bpkg
 
-For users of the [bpkg package manager](https://www.bpkg.sh/):
+For users of the [`bpkg` package manager](https://www.bpkg.sh/), bash-logger can be easily installed and managed.
+
+For a consistent experience the configuration for `bpkg` is set to always use the global installation option.
+As such, the installation location will be: `${HOME}/.local/lib/bash-logger/logging.sh`.
 
 ```bash
 # Install the package
-bpkg install GingerGraham/bash-logger
+bpkg install GingerGraham/bash-logger@main
 
 # Source in your script
-source ~/.bpkg/deps/bash-logger/logging.sh
+source ${HOME}/.local/lib/bash-logger/logging.sh
 init_logger
 log_info "Installed via bpkg!"
 ```
 
-**Update an existing installation:**
+**Note:** the `@main` branch reference **is required** as `bpkg` defaults to looking for
+the `master` branch, which does not exist in this repository.
+
+#### Update an existing installation:
 
 ```bash
 bpkg update bash-logger
 ```
 
-**Global installation** (requires sudo):
-
-```bash
-sudo bpkg install -g GingerGraham/bash-logger
-# Then use: source /usr/local/bpkg/bash-logger/logging.sh
-```
-
-**Advantages:**
-
-* Package manager handles installation and updates
-* Works well for development environments
-* Easy to manage multiple shell libraries
-
-**Considerations:**
-
-* Requires bpkg to be installed first
-* User-local by default (not system-wide unless using `-g`)
-* Users need to know the bpkg installation path for sourcing
+`bpkg` does not support true, system-wide, global installations (i.e. `/usr/local/lib`), so the recommendation
+for these scenarios is to use the standard installation method described above, allowing users to determine the
+best location for their system.
 
 ## Basic Usage
 
