@@ -113,7 +113,10 @@ test:
 	@if [ -d tests ]; then \
 		echo "Running test suite..."; \
 		if [ -f tests/run_tests.sh ]; then \
-			bash tests/run_tests.sh; \
+			if [ ! -x tests/run_tests.sh ]; then \
+				chmod +x tests/run_tests.sh; \
+			fi; \
+			./tests/run_tests.sh; \
 		elif command -v bats >/dev/null 2>&1; then \
 			bats tests/; \
 		else \
@@ -131,7 +134,10 @@ demos:
 	@if [ -d demo-scripts ]; then \
 		echo "Running demo scripts..."; \
 		if [ -f demo-scripts/run_demos.sh ]; then \
-			bash demo-scripts/run_demos.sh; \
+			if [ ! -x demo-scripts/run_demos.sh ]; then \
+				chmod +x demo-scripts/run_demos.sh; \
+			fi; \
+			./demo-scripts/run_demos.sh; \
 		else \
 			echo "Error: demo-scripts/run_demos.sh not found"; \
 			exit 1; \
