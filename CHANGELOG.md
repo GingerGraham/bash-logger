@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/GingerGraham/bash-logger/compare/1.2.0...1.2.1) (2026-01-21)
+
+### Bug Fixes
+
+* add bpkg support and update release preparation commands ([#14](https://github.com/GingerGraham/bash-logger/issues/14)) ([a577cfc](https://github.com/GingerGraham/bash-logger/commit/a577cfc5591848a0bdda03f053a53636506c2b05)), closes [#13](https://github.com/GingerGraham/bash-logger/issues/13)
+* **bpkg:** resolved installation issue and updated documentation ([#17](https://github.com/GingerGraham/bash-logger/issues/17)) ([1a3ff44](https://github.com/GingerGraham/bash-logger/commit/1a3ff440de9143fb686c0dc62a4c23e00904ee9c)), closes [#15](https://github.com/GingerGraham/bash-logger/issues/15) [#16](https://github.com/GingerGraham/bash-logger/issues/16)
+* trigger manual patch release [skip ci] ([7f601e6](https://github.com/GingerGraham/bash-logger/commit/7f601e6fc87f1c9f036e5ac051a5205b4e8f248f))
+
+### Documentation
+
+* add Contributor Covenant Code of Conduct ([0e96703](https://github.com/GingerGraham/bash-logger/commit/0e96703ba006dfa19bfdc30ae7d6491e31361198))
+* improve README formatting and clarify author attribution ([b68cc08](https://github.com/GingerGraham/bash-logger/commit/b68cc0851e8df3e86e5fa275d2d5ea01cc1fb45d))
+* update SECURITY.md for clarity and formatting improvements ([fe9ddbf](https://github.com/GingerGraham/bash-logger/commit/fe9ddbf9f919f83cfe200018a376017f6ee83890))
+
 ## [1.2.0](https://github.com/GingerGraham/bash-logger/compare/1.1.0...1.2.0) (2026-01-19)
 
 ### Features
