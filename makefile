@@ -96,14 +96,14 @@ install-user:
 	@echo "  source $(USER_PREFIX)/lib/bash-logger/logging.sh"
 
 uninstall:
-	@echo "Removing bash-logger from $(DESTDIR)$(PREFIX)..."
+	@echo "Removing bash-logger installation from $(DESTDIR)$(PREFIX)..."
 	rm -f "$(DESTDIR)$(BINDIR)/$(LIBRARY)"
 	rmdir "$(DESTDIR)$(BINDIR)" 2>/dev/null || true
 	rm -rf "$(DESTDIR)$(DOCDIR)"
 	@echo "Uninstall complete!"
 
 uninstall-user:
-	@echo "Removing bash-logger from $(USER_PREFIX)..."
+	@echo "Removing bash-logger installation from $(USER_PREFIX)..."
 	rm -f "$(USER_BINDIR)/$(LIBRARY)"
 	rmdir "$(USER_BINDIR)" 2>/dev/null || true
 	rm -rf "$(USER_DOCDIR)"
