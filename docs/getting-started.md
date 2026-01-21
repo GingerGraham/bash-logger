@@ -52,16 +52,16 @@ be sourced from any location.
 ```bash
 # System-wide (requires sudo)
 sudo curl -o /usr/local/lib/bash-logger/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-sudo chmod +x /usr/local/lib/bash-logger/logging.sh
+sudo chmod 644 /usr/local/lib/bash-logger/logging.sh
 
 # User-specific
 mkdir -p ~/.local/lib/bash-logger
 curl -o ~/.local/lib/bash-logger/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-chmod +x ~/.local/lib/bash-logger/logging.sh
+chmod 644 ~/.local/lib/bash-logger/logging.sh
 
 # Project directory
 curl -o ./logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
-chmod +x ./logging.sh
+chmod 644 ./logging.sh
 ```
 
 ### Installing from a Tagged Release
@@ -77,7 +77,7 @@ echo "Latest version: $LATEST_VERSION"
 
 # Download the logging.sh file from the release
 curl -L -o logging.sh "https://github.com/GingerGraham/bash-logger/releases/download/${LATEST_VERSION}/logging.sh"
-chmod +x logging.sh
+chmod 644 logging.sh
 ```
 
 This approach ensures you're using a stable, tagged release rather than the development version. The GitHub releases
