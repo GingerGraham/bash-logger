@@ -51,6 +51,7 @@ be sourced from any location.
 
 ```bash
 # System-wide (requires sudo)
+sudo mkdir -p /usr/local/lib/bash-logger
 sudo curl -o /usr/local/lib/bash-logger/logging.sh https://raw.githubusercontent.com/GingerGraham/bash-logger/main/logging.sh
 sudo chmod 644 /usr/local/lib/bash-logger/logging.sh
 

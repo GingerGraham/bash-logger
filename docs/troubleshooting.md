@@ -28,7 +28,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
   * [Logs Going to Wrong Stream](#logs-going-to-wrong-stream)
   * [Cannot Separate Stdout and Stderr](#cannot-separate-stdout-and-stderr)
 * [Runtime Configuration Issues](#runtime-configuration-issues)
-  * [set\_log\_level Not Working](#set_log_level-not-working)
+  * [set_log_level Not Working](#set_log_level-not-working)
   * [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
 * [Format Issues](#format-issues)
   * [Format Not Applied](#format-not-applied)
@@ -42,7 +42,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 * [Performance Issues](#performance-issues)
   * [Slow Logging](#slow-logging)
 * [Common Error Messages](#common-error-messages)
-  * ["command not found: init\_logger"](#command-not-found-init_logger)
+  * ["command not found: init_logger"](#command-not-found-init_logger)
   * ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
   * ["invalid log level"](#invalid-log-level)
 * [Getting Help](#getting-help)
@@ -84,7 +84,7 @@ ls -l /path/to/logging.sh
 # Make file readable
 chmod +r /path/to/logging.sh
 
-# Make file executable (if needed)
+# Or set appropriate permissions
 chmod 644 /path/to/logging.sh
 ```
 
@@ -626,13 +626,11 @@ init_logger --level ERROR   # Correct
 If you're still experiencing issues:
 
 1. **Check the documentation:**
-
    * [Getting Started](getting-started.md)
    * [Initialization](initialization.md)
    * [Configuration](configuration.md)
 
 2. **Review examples:**
-
    * [Examples](examples.md)
 
 3. **Test with minimal example:**

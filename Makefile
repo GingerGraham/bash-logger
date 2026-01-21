@@ -3,12 +3,12 @@
 # Installation directories
 PREFIX ?= /usr/local
 DESTDIR ?=
-BINDIR = $(PREFIX)/lib/bash-logger
+LIBDIR = $(PREFIX)/lib/bash-logger
 DOCDIR = $(PREFIX)/share/doc/bash-logger
 
 # User installation directories
 USER_PREFIX ?= $(HOME)/.local
-USER_BINDIR = $(USER_PREFIX)/lib/bash-logger
+USER_LIBDIR = $(USER_PREFIX)/lib/bash-logger
 USER_DOCDIR = $(USER_PREFIX)/share/doc/bash-logger
 
 # Files to install
@@ -54,9 +54,9 @@ help:
 	@echo "  make check           # Run before committing"
 
 install:
-	@echo "Installing bash-logger to $(DESTDIR)$(BINDIR)..."
-	install -d "$(DESTDIR)$(BINDIR)"
-	install -m 644 "$(LIBRARY)" "$(DESTDIR)$(BINDIR)/$(LIBRARY)"
+	@echo "Installing bash-logger to $(DESTDIR)$(LIBDIR)..."
+	install -d "$(DESTDIR)$(LIBDIR)"
+	install -m 644 "$(LIBRARY)" "$(DESTDIR)$(LIBDIR)/$(LIBRARY)"
 	@if [ -d docs ]; then \
 		echo "Installing documentation to $(DESTDIR)$(DOCDIR)..."; \
 		install -d "$(DESTDIR)$(DOCDIR)"; \
@@ -70,15 +70,15 @@ install:
 	@echo "Installation complete!"
 	@echo ""
 	@echo "To use bash-logger, add this to your script:"
-	@echo "  source $(BINDIR)/logging.sh"
+	@echo "  source $(LIBDIR)/logging.sh"
 	@echo ""
 	@echo "Or add to your ~/.bashrc:"
-	@echo "  source $(BINDIR)/logging.sh"
+	@echo "  source $(LIBDIR)/logging.sh"
 
 install-user:
-	@echo "Installing bash-logger to $(USER_BINDIR)..."
-	install -d "$(USER_BINDIR)"
-	install -m 644 "$(LIBRARY)" "$(USER_BINDIR)/$(LIBRARY)"
+	@echo "Installing bash-logger to $(USER_LIBDIR)..."
+	install -d "$(USER_LIBDIR)"
+	install -m 644 "$(LIBRARY)" "$(USER_LIBDIR)/$(LIBRARY)"
 	@if [ -d docs ]; then \
 		echo "Installing documentation to $(USER_DOCDIR)..."; \
 		install -d "$(USER_DOCDIR)"; \
@@ -92,22 +92,22 @@ install-user:
 	@echo "Installation complete!"
 	@echo ""
 	@echo "To use bash-logger, add this to your script:"
-	@echo "  source $(USER_BINDIR)/logging.sh"
+	@echo "  source $(USER_LIBDIR)/logging.sh"
 	@echo ""
 	@echo "Or add to your ~/.bashrc:"
-	@echo "  source $(USER_BINDIR)/logging.sh"
+	@echo "  source $(USER_LIBDIR)/logging.sh"
 
 uninstall:
 	@echo "Removing bash-logger installation from $(DESTDIR)$(PREFIX)..."
-	rm -f "$(DESTDIR)$(BINDIR)/$(LIBRARY)"
-	rmdir "$(DESTDIR)$(BINDIR)" 2>/dev/null || true
+	rm -f "$(DESTDIR)$(LIBDIR)/$(LIBRARY)"
+	rmdir "$(DESTDIR)$(LIBDIR)" 2>/dev/null || true
 	rm -rf "$(DESTDIR)$(DOCDIR)"
 	@echo "Uninstall complete!"
 
 uninstall-user:
 	@echo "Removing bash-logger installation from $(USER_PREFIX)..."
-	rm -f "$(USER_BINDIR)/$(LIBRARY)"
-	rmdir "$(USER_BINDIR)" 2>/dev/null || true
+	rm -f "$(USER_LIBDIR)/$(LIBRARY)"
+	rmdir "$(USER_LIBDIR)" 2>/dev/null || true
 	rm -rf "$(USER_DOCDIR)"
 	@echo "Uninstall complete!"
 
@@ -137,12 +137,9 @@ demos:
 		echo "Running demo scripts..."; \
 		if [ -f demo-scripts/run_demos.sh ]; then \
 			if [ ! -x demo-scripts/run_demos.sh ]; then \
-				if ! chmod +x demo-scripts/run_demos.sh; then \
-					echo "Error: failed to make demo-scripts/run_demos.sh executable"; \
-					exit 1; \
-				fi; \
+				chmod +x demo-scripts/run_demos.sh || { echo "Error: Cannot make demo runner executable"; exit 1; }; \
 			fi; \
-			./demo-scripts/run_demos.sh; \
+			./demo-scripts/run_demos.sh all; \
 		else \
 			echo "Error: demo-scripts/run_demos.sh not found"; \
 			exit 1; \
