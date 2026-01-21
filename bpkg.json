@@ -17,13 +17,13 @@
     "systemd",
     "journal"
   ],
+  "global": true,
+  "install": "install -d ${PREFIX:-/usr/local}/lib/bash-logger && install -m 644 logging.sh ${PREFIX:-/usr/local}/lib/bash-logger/logging.sh",
   "scripts": [
     "logging.sh"
   ],
   "files": [
-    "logging.sh",
-    "configuration/",
-    "demo-scripts/",
-    "docs/"
+    "LICENSE",
+    "README.md"
   ]
 }
