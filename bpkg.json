@@ -18,7 +18,7 @@
     "journal"
   ],
   "global": true,
-  "install": "install -d ${PREFIX:-/usr/local}/lib/bash-logger && install -m 644 logging.sh ${PREFIX:-/usr/local}/lib/bash-logger/logging.sh",
+  "install": "install -d $PREFIX/lib/bash-logger && install -m 644 logging.sh $PREFIX/lib/bash-logger/logging.sh",
   "scripts": [
     "logging.sh"
   ],
