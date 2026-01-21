@@ -68,10 +68,10 @@ install:
 	@echo "Installation complete!"
 	@echo ""
 	@echo "To use bash-logger, add this to your script:"
-	@echo "  source $(PREFIX)/lib/bash-logger/logging.sh"
+	@echo "  source $(BINDIR)/logging.sh"
 	@echo ""
 	@echo "Or add to your ~/.bashrc:"
-	@echo "  source $(PREFIX)/lib/bash-logger/logging.sh"
+	@echo "  source $(BINDIR)/logging.sh"
 
 install-user:
 	@echo "Installing bash-logger to $(USER_BINDIR)..."
@@ -90,10 +90,10 @@ install-user:
 	@echo "Installation complete!"
 	@echo ""
 	@echo "To use bash-logger, add this to your script:"
-	@echo "  source $(USER_PREFIX)/lib/bash-logger/logging.sh"
+	@echo "  source $(USER_BINDIR)/logging.sh"
 	@echo ""
 	@echo "Or add to your ~/.bashrc:"
-	@echo "  source $(USER_PREFIX)/lib/bash-logger/logging.sh"
+	@echo "  source $(USER_BINDIR)/logging.sh"
 
 uninstall:
 	@echo "Removing bash-logger installation from $(DESTDIR)$(PREFIX)..."
