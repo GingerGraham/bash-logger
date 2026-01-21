@@ -12,6 +12,7 @@ This guide will help you get started with the Bash Logging Module quickly.
   * [Installing from a Tagged Release](#installing-from-a-tagged-release)
     * [Verifying the Download with SHA256](#verifying-the-download-with-sha256)
   * [Install with bpkg](#install-with-bpkg)
+    * [Update an existing installation:](#update-an-existing-installation)
 * [Basic Usage](#basic-usage)
 * [Your First Script](#your-first-script)
 * [Common Options](#common-options)
@@ -176,7 +177,10 @@ init_logger
 log_info "Installed via bpkg!"
 ```
 
-**Update an existing installation:**
+**Note:** the `@main` branch reference **is required** as `bpkg` defaults to looking for
+the `master` branch, which does not exist in this repository.
+
+#### Update an existing installation:
 
 ```bash
 bpkg update bash-logger
