@@ -41,6 +41,8 @@ help:
 	@echo "  make pre-commit      Run pre-commit hooks on all files"
 	@echo "  make clean           Remove temporary files"
 	@echo ""
+	@echo "Note: pre-commit must be installed to run linting and pre-commit targets."
+	@echo ""
 	@echo "Installation options:"
 	@echo "  PREFIX=/path         Change installation prefix (default: /usr/local)"
 	@echo "  USER_PREFIX=/path    Change user prefix (default: ~/.local)"
