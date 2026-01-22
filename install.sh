@@ -205,9 +205,29 @@ download_release() {
     info "Extracting files..."
     tar -xzf "${temp_dir}/release.tar.gz" -C "$temp_dir" --strip-components=1 || error "Failed to extract release"
 
-    # Verify the library file exists
+    # Verify the library file exists in the expected location.
+    # If not, attempt a fallback extraction without --strip-components
+    # to handle unexpected archive structures more gracefully.
     if [[ ! -f "${temp_dir}/${LIBRARY_FILE}" ]]; then
-        error "Library file ${LIBRARY_FILE} not found in release archive"
+        info "Expected ${LIBRARY_FILE} in archive root not found, checking full archive structure..."
+
+        local alt_extract_dir
+        alt_extract_dir="${temp_dir}/full_extract"
+        mkdir -p "$alt_extract_dir"
+
+        if ! tar -xzf "${temp_dir}/release.tar.gz" -C "$alt_extract_dir"; then
+            error "Failed to extract release when checking archive structure"
+        fi
+
+        local found_library
+        # Use '|| true' so that an empty result does not cause the script to exit due to 'set -e'
+        found_library=$(find "$alt_extract_dir" -type f -name "${LIBRARY_FILE}" | head -n 1 || true)
+
+        if [ -z "$found_library" ]; then
+            error "Library file ${LIBRARY_FILE} not found in release archive (unexpected archive structure)"
+        fi
+
+        cp "$found_library" "${temp_dir}/${LIBRARY_FILE}" || error "Failed to copy library file from archive"
     fi
 }
 
