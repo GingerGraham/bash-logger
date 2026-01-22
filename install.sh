@@ -452,8 +452,8 @@ main() {
     download_release "$latest_tag" "$temp_dir"
     install_files "$temp_dir" "$latest_tag"
 
-    # Only update RC for user installations and new installs
-    if [[ $INSTALL_MODE == "user" ]] && [[ $is_update == false ]]; then
+    # Update RC for all user installations (new installs and updates)
+    if [[ $INSTALL_MODE == "user" ]]; then
         update_rc_file
     fi
 
