@@ -338,8 +338,17 @@ update_rc_file() {
             return
             ;;
     esac
-    # Check if already present
-    if grep -qF "$source_line" "$rc_file" 2>/dev/null; then
+    # Ensure RC file exists when AUTO_RC is enabled so grep and appends are safe
+    if [[ $AUTO_RC == true && ! -f "$rc_file" ]]; then
+        info "RC file $rc_file does not exist. Creating it."
+        if ! touch "$rc_file"; then
+            warn "Failed to create RC file $rc_file. Skipping RC file update."
+            return
+        fi
+    fi
+
+    # Check if source line is already present
+    if [[ -f "$rc_file" ]] && grep -qF "$source_line" "$rc_file"; then
         info "Source line already present in $rc_file"
         return
     fi
