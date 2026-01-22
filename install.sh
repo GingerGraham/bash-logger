@@ -175,7 +175,8 @@ backup_existing_installation() {
 
     info "Creating backup at ${backup_dir}..." >&2
 
-    if cp -r "$INSTALL_DIR" "$backup_dir" 2>/dev/null; then
+    # Use archive mode to preserve symlinks, permissions, and timestamps
+    if cp -a "$INSTALL_DIR" "$backup_dir" 2>/dev/null; then
         success "Backup created successfully" >&2
         echo "$backup_dir"
     else
