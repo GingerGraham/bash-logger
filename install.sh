@@ -125,15 +125,18 @@ get_latest_release() {
     # Try to get the latest release tag from GitHub API
     local release_info
     if command -v curl >/dev/null 2>&1; then
-        release_info=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || echo "")
+        # Try IPv4 first, then fallback to default
+        release_info=$(curl -4 --connect-timeout 10 --max-time 30 -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || \
+                      curl --connect-timeout 10 --max-time 30 -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || \
+                      echo "")
     elif command -v wget >/dev/null 2>&1; then
-        release_info=$(wget -qO- "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || echo "")
+        release_info=$(wget --timeout=30 --dns-timeout=10 --connect-timeout=10 -qO- "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || echo "")
     else
         error "Neither curl nor wget found. Please install one of them."
     fi
 
     if [[ -z "$release_info" ]]; then
-        error "Failed to fetch release information from GitHub."
+        error "Failed to fetch release information from GitHub. Check your network connection."
     fi
 
     # Extract tag name
@@ -184,9 +187,13 @@ download_release() {
     local download_url="https://github.com/${GITHUB_REPO}/archive/refs/tags/${tag}.tar.gz"
 
     if command -v curl >/dev/null 2>&1; then
-        curl --max-time 60 -fsSL "$download_url" -o "${temp_dir}/release.tar.gz" || error "Failed to download release"
+        # Try IPv4 first with shorter timeout, then fallback
+        if ! curl -4 --connect-timeout 10 --max-time 60 -fsSL "$download_url" -o "${temp_dir}/release.tar.gz" 2>/dev/null; then
+            info "IPv4 download failed, retrying with default settings..." >&2
+            curl --connect-timeout 10 --max-time 60 -fsSL "$download_url" -o "${temp_dir}/release.tar.gz" || error "Failed to download release"
+        fi
     elif command -v wget >/dev/null 2>&1; then
-        wget --timeout=60 -qO "${temp_dir}/release.tar.gz" "$download_url" || error "Failed to download release"
+        wget --timeout=60 --dns-timeout=10 --connect-timeout=10 -qO "${temp_dir}/release.tar.gz" "$download_url" || error "Failed to download release"
     fi
 
     info "Extracting files..."
