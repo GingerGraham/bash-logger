@@ -147,7 +147,7 @@ get_latest_release() {
 
     # Extract tag name
     local tag
-    tag=$(echo "$release_info" | grep -oP '"tag_name":\s*"\K[^"]+' || echo "")
+    tag=$(printf '%s\n' "$release_info" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
 
     if [[ -z "$tag" ]]; then
         error "Could not determine latest release tag."
