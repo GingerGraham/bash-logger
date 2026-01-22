@@ -3,7 +3,7 @@
 # bash-logger installation script
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | bash -s --
 #   curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | bash -s -- --user
 #   curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | sudo bash -s -- --system
 
