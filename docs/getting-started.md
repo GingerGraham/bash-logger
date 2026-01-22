@@ -80,7 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/insta
 * `--auto-rc` - Automatically add source line to shell RC file
 * `--no-backup` - Skip backing up existing installation
 
-For more details, see the [install script documentation](../install.sh).
+For more details on available options, run the install script with the `--help` flag.
 
 ### Manual Installation
 
