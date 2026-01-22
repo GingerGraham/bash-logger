@@ -331,28 +331,44 @@ main() {
     local existing_version
     existing_version=$(check_existing_installation)
 
+    # Get latest release (or specified version)
+    local latest_tag
+    if [[ -n "${INSTALL_VERSION:-}" ]]; then
+        latest_tag="$INSTALL_VERSION"
+        info "Installing specified version: ${latest_tag}"
+    else
+        latest_tag=$(get_latest_release)
+        info "Latest release: ${latest_tag}"
+    fi
+
+    # Check if same version is already installed
+    if [[ -n "$existing_version" ]] && [[ "$existing_version" == "$latest_tag" ]]; then
+        success "bash-logger ${latest_tag} is already installed"
+        info "Installation location: ${INSTALL_DIR}"
+        info "Documentation location: ${DOC_DIR}"
+        echo ""
+        info "To reinstall, first uninstall with:"
+        if [[ $INSTALL_MODE == "system" ]]; then
+            echo "    sudo rm -rf ${INSTALL_DIR} ${DOC_DIR}"
+        else
+            echo "    rm -rf ${INSTALL_DIR} ${DOC_DIR}"
+        fi
+        echo ""
+        exit 0
+    fi
+
     # Create temporary directory
     local temp_dir
     temp_dir=$(mktemp -d)
     trap 'if [[ -n "${temp_dir:-}" ]] && [[ -d "$temp_dir" ]]; then rm -rf "$temp_dir"; fi' EXIT
 
-    # Get and download latest release
-    local latest_tag
-    latest_tag=$(get_latest_release)
-    info "Latest release: ${latest_tag}"
-
-    # Handle existing installation
+    # Handle existing installation (different version)
     local is_update=false
     local backup_path=""
     if [[ -n "$existing_version" ]]; then
         is_update=true
-        if [[ "$existing_version" == "$latest_tag" ]]; then
-            warn "bash-logger ${latest_tag} is already installed"
-            info "Reinstalling anyway..."
-        else
-            info "Found existing installation: ${existing_version}"
-            info "Upgrading to: ${latest_tag}"
-        fi
+        info "Found existing installation: ${existing_version}"
+        info "Upgrading to: ${latest_tag}"
 
         if [[ $BACKUP == true ]]; then
             backup_path=$(backup_existing_installation)
