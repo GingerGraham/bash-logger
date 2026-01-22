@@ -434,7 +434,7 @@ main() {
     # Create temporary directory
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap 'if [[ -n "${temp_dir:-}" ]] && [[ -d "$temp_dir" ]]; then rm -rf "$temp_dir"; fi' EXIT
+    trap 'if [[ -n "${temp_dir:-}" ]] && [[ -d "${temp_dir}" ]]; then rm -rf "$temp_dir"; fi' EXIT
 
     # Handle existing installation (different version)
     local is_update=false
