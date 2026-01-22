@@ -284,16 +284,31 @@ update_rc_file() {
     local source_line="source ${INSTALL_DIR}/${LIBRARY_FILE}"
     local rc_file=""
 
-    # Determine RC file based on shell
-    if [[ -n "${BASH_VERSION:-}" ]]; then
-        rc_file="${HOME}/.bashrc"
-    elif [[ -n "${ZSH_VERSION:-}" ]]; then
-        rc_file="${HOME}/.zshrc"
-    else
-        warn "Unknown shell. Skipping RC file update."
-        return
+    # Determine RC file based on user's login shell, not the interpreter running this script
+    local shell_path="${SHELL:-}"
+
+    # Fallback: try to get shell from passwd entry if SHELL is not set
+    if [ -z "$shell_path" ]; then
+        shell_path="$(getent passwd "${USER:-}" 2>/dev/null | cut -d: -f7 || true)"
     fi
 
+    # Fallback: parse /etc/passwd directly if getent did not return a shell
+    if [ -z "$shell_path" ] && [ -r /etc/passwd ] && [ -n "${USER:-}" ]; then
+        shell_path="$(grep "^${USER}:" /etc/passwd 2>/dev/null | cut -d: -f7 || true)"
+    fi
+
+    case "$shell_path" in
+        */bash)
+            rc_file="${HOME}/.bashrc"
+            ;;
+        */zsh)
+            rc_file="${HOME}/.zshrc"
+            ;;
+        *)
+            warn "Unknown shell. Skipping RC file update."
+            return
+            ;;
+    esac
     # Check if already present
     if grep -qF "$source_line" "$rc_file" 2>/dev/null; then
         info "Source line already present in $rc_file"
