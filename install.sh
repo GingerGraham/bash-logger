@@ -285,7 +285,6 @@ update_rc_file() {
         if [[ ! -f "$rc_file" ]]; then
             info "RC file $rc_file does not exist and will be created"
         fi
-        
         info "Adding source line to $rc_file"
         echo "" >> "$rc_file"
         echo "# bash-logger" >> "$rc_file"
