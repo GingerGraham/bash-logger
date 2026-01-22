@@ -90,6 +90,12 @@ parse_args() {
                 shift
                 ;;
             --prefix)
+                if [[ -z "${2:-}" ]]; then
+                    error "--prefix requires a non-empty path argument"
+                fi
+                if [[ "$2" == --* ]]; then
+                    error "--prefix requires a path argument, not an option"
+                fi
                 PREFIX="$2"
                 INSTALL_MODE="custom"
                 shift 2
