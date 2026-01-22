@@ -248,12 +248,41 @@ determine_install_paths() {
     DOC_DIR="${INSTALL_PREFIX}/share/doc/bash-logger"
 }
 
+check_install_prefix_writable() {
+    # Ensure we have a prefix to validate
+    if [ -z "${INSTALL_PREFIX:-}" ]; then
+        error "INSTALL_PREFIX is not set"
+    fi
+
+    # If the prefix already exists, it itself must be writable
+    if [ -e "$INSTALL_PREFIX" ]; then
+        if [ ! -w "$INSTALL_PREFIX" ]; then
+            error "No write permission to INSTALL_PREFIX (${INSTALL_PREFIX})"
+        fi
+        return
+    fi
+
+    # For a non-existent prefix, find the nearest existing directory
+    local probe_dir
+    probe_dir=$(dirname "$INSTALL_PREFIX")
+    while [ ! -d "$probe_dir" ] && [ "$probe_dir" != "/" ]; do
+        probe_dir=$(dirname "$probe_dir")
+    done
+
+    # The directory under which we will create the prefix must be writable
+    if [ ! -w "$probe_dir" ]; then
+        error "No write permission to create INSTALL_PREFIX under ${probe_dir}"
+    fi
+}
+
 install_files() {
     local temp_dir=$1
     local new_version=$2
 
     info "Installing to ${INSTALL_DIR}..."
 
+    # Verify write permissions before creating directories
+    check_install_prefix_writable
     # Create directories
     mkdir -p "$INSTALL_DIR" || error "Failed to create ${INSTALL_DIR}"
     mkdir -p "$DOC_DIR" || error "Failed to create ${DOC_DIR}"
