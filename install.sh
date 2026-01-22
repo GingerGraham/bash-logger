@@ -466,4 +466,7 @@ main() {
     fi
 }
 
-main "$@"
+# Only run main if not in test mode
+if [[ "${INSTALL_SH_TEST_MODE:-false}" != "true" ]]; then
+    main "$@"
+fi
