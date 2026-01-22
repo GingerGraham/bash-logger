@@ -50,8 +50,9 @@ bash-logger can be installed in several ways. Choose the method that best fits y
 
 ### Using the Install Script
 
-The easiest way to install bash-logger is with the provided installation script. It handles downloading the latest release,
-verifying integrity, and setting up the module for you.
+The easiest way to install bash-logger is with the provided installation script. It handles downloading the latest release
+and setting up the module for you. For integrity verification, see
+[Verifying the Download with SHA256](#verifying-the-download-with-sha256).
 
 **Quick Install (User):**
 
