@@ -950,6 +950,347 @@ rm -rf "$temp_install_root" "$mock_temp_dir"
     pass_test
 }
 
+# Test: configure_rc_file adds source line to RC file when missing
+test_configure_rc_file_adds_source_line() {
+    start_test "configure_rc_file adds source line when missing"
+
+    local output
+    output=$(run_install_test_script '
+# Setup mock environment
+AUTO_RC=true
+INSTALL_MODE="user"
+INSTALL_DIR="${TEST_TMP_DIR}/lib/bash-logger"
+LIBRARY_FILE="logging.sh"
+mock_rc_file="${TEST_TMP_DIR}/.bashrc"
+
+# Create empty RC file
+touch "$mock_rc_file"
+
+# Override HOME to use our test directory
+HOME="${TEST_TMP_DIR}"
+
+# Mock SHELL to bash
+SHELL="/bin/bash"
+
+configure_rc_file
+
+# Check if source line was added
+if grep -q "source ${INSTALL_DIR}/${LIBRARY_FILE}" "$mock_rc_file"; then
+    echo "SOURCE_LINE_ADDED=true"
+else
+    echo "SOURCE_LINE_ADDED=false"
+fi
+
+# Check for bash-logger comment
+if grep -q "# bash-logger" "$mock_rc_file"; then
+    echo "COMMENT_ADDED=true"
+else
+    echo "COMMENT_ADDED=false"
+fi
+')
+
+    assert_contains "$output" "SOURCE_LINE_ADDED=true" || return
+    assert_contains "$output" "COMMENT_ADDED=true" || return
+
+    pass_test
+}
+
+# Test: configure_rc_file skips if source line already present
+test_configure_rc_file_skips_if_present() {
+    start_test "configure_rc_file skips if source line already present"
+
+    local output
+    output=$(run_install_test_script '
+# Setup mock environment
+AUTO_RC=true
+INSTALL_MODE="user"
+INSTALL_DIR="${TEST_TMP_DIR}/lib/bash-logger"
+LIBRARY_FILE="logging.sh"
+mock_rc_file="${TEST_TMP_DIR}/.bashrc"
+
+# Create RC file with source line already present
+mkdir -p "${TEST_TMP_DIR}"
+echo "# bash-logger" > "$mock_rc_file"
+echo "source ${INSTALL_DIR}/${LIBRARY_FILE}" >> "$mock_rc_file"
+
+# Override HOME to use our test directory
+HOME="${TEST_TMP_DIR}"
+
+# Mock SHELL to bash
+SHELL="/bin/bash"
+
+configure_rc_file
+
+# Count occurrences of source line
+count=$(grep -c "source ${INSTALL_DIR}/${LIBRARY_FILE}" "$mock_rc_file" || echo "0")
+echo "SOURCE_LINE_COUNT=${count}"
+')
+
+    assert_contains "$output" "Source line already present" || return
+    assert_contains "$output" "SOURCE_LINE_COUNT=1" || return
+
+    pass_test
+}
+
+# Test: configure_rc_file detects bash shell and uses .bashrc
+test_configure_rc_file_detects_bash() {
+    start_test "configure_rc_file detects bash shell and uses .bashrc"
+
+    local output
+    output=$(run_install_test_script '
+# Setup mock environment
+AUTO_RC=true
+INSTALL_MODE="user"
+INSTALL_DIR="${TEST_TMP_DIR}/lib/bash-logger"
+LIBRARY_FILE="logging.sh"
+
+# Override HOME to use our test directory
+HOME="${TEST_TMP_DIR}"
+
+# Mock SHELL to bash
+SHELL="/bin/bash"
+
+# Create the bashrc file
+touch "${TEST_TMP_DIR}/.bashrc"
+
+configure_rc_file
+
+# Check .bashrc was updated
+if grep -q "source ${INSTALL_DIR}/${LIBRARY_FILE}" "${TEST_TMP_DIR}/.bashrc"; then
+    echo "BASHRC_UPDATED=true"
+else
+    echo "BASHRC_UPDATED=false"
+fi
+
+# Make sure .zshrc was NOT created/updated
+if [[ -f "${TEST_TMP_DIR}/.zshrc" ]]; then
+    echo "ZSHRC_EXISTS=true"
+else
+    echo "ZSHRC_EXISTS=false"
+fi
+')
+
+    assert_contains "$output" "BASHRC_UPDATED=true" || return
+    assert_contains "$output" "ZSHRC_EXISTS=false" || return
+
+    pass_test
+}
+
+# Test: configure_rc_file detects zsh shell and uses .zshrc
+test_configure_rc_file_detects_zsh() {
+    start_test "configure_rc_file detects zsh shell and uses .zshrc"
+
+    local output
+    output=$(run_install_test_script '
+# Use unique subdirectory to avoid state pollution from other tests
+TEST_HOME="${TEST_TMP_DIR}/zsh_test_home"
+mkdir -p "$TEST_HOME"
+
+# Setup mock environment
+AUTO_RC=true
+INSTALL_MODE="user"
+INSTALL_DIR="${TEST_HOME}/lib/bash-logger"
+LIBRARY_FILE="logging.sh"
+
+# Override HOME to use our test directory
+HOME="${TEST_HOME}"
+
+# Mock SHELL to zsh
+SHELL="/bin/zsh"
+
+# Create the zshrc file
+touch "${TEST_HOME}/.zshrc"
+
+configure_rc_file
+
+# Check .zshrc was updated
+if grep -q "source ${INSTALL_DIR}/${LIBRARY_FILE}" "${TEST_HOME}/.zshrc"; then
+    echo "ZSHRC_UPDATED=true"
+else
+    echo "ZSHRC_UPDATED=false"
+fi
+
+# Make sure .bashrc was NOT created/updated
+if [[ -f "${TEST_HOME}/.bashrc" ]]; then
+    echo "BASHRC_EXISTS=true"
+else
+    echo "BASHRC_EXISTS=false"
+fi
+')
+
+    assert_contains "$output" "ZSHRC_UPDATED=true" || return
+    assert_contains "$output" "BASHRC_EXISTS=false" || return
+
+    pass_test
+}
+
+# Test: configure_rc_file runs when already installed with AUTO_RC=true
+test_configure_rc_file_already_installed_with_auto_rc() {
+    start_test "configure_rc_file runs when already installed with AUTO_RC=true"
+
+    local output
+    output=$(run_install_test_script '
+# Setup mock environment
+AUTO_RC=true
+INSTALL_MODE="user"
+INSTALL_DIR="${TEST_TMP_DIR}/lib/bash-logger"
+LIBRARY_FILE="logging.sh"
+VERSION_FILE="VERSION"
+
+# Override HOME to use our test directory
+HOME="${TEST_TMP_DIR}"
+SHELL="/bin/bash"
+
+# Create mock existing installation
+mkdir -p "$INSTALL_DIR"
+echo "v1.0.0" > "${INSTALL_DIR}/${VERSION_FILE}"
+touch "${INSTALL_DIR}/${LIBRARY_FILE}"
+
+# Create empty RC file
+touch "${TEST_TMP_DIR}/.bashrc"
+
+# Simulate the check in main() for same version already installed
+existing_version="v1.0.0"
+latest_tag="v1.0.0"
+
+if [[ -n "$existing_version" ]] && [[ "$existing_version" == "$latest_tag" ]]; then
+    # This is the new logic we added
+    if [[ $INSTALL_MODE == "user" ]] && [[ $AUTO_RC == true ]]; then
+        configure_rc_file
+        echo "CONFIGURE_RC_CALLED=true"
+    else
+        echo "CONFIGURE_RC_CALLED=false"
+    fi
+fi
+
+# Check if source line was added
+if grep -q "source ${INSTALL_DIR}/${LIBRARY_FILE}" "${TEST_TMP_DIR}/.bashrc"; then
+    echo "SOURCE_LINE_ADDED=true"
+else
+    echo "SOURCE_LINE_ADDED=false"
+fi
+')
+
+    assert_contains "$output" "CONFIGURE_RC_CALLED=true" || return
+    assert_contains "$output" "SOURCE_LINE_ADDED=true" || return
+
+    pass_test
+}
+
+# Test: configure_rc_file does NOT run when already installed with AUTO_RC=false
+test_configure_rc_file_already_installed_without_auto_rc() {
+    start_test "configure_rc_file does NOT run when already installed with AUTO_RC=false"
+
+    local output
+    output=$(run_install_test_script '
+# Use unique subdirectory to avoid state pollution from other tests
+TEST_HOME="${TEST_TMP_DIR}/no_auto_rc_test_home"
+mkdir -p "$TEST_HOME"
+
+# Setup mock environment
+AUTO_RC=false
+INSTALL_MODE="user"
+INSTALL_DIR="${TEST_HOME}/lib/bash-logger"
+LIBRARY_FILE="logging.sh"
+VERSION_FILE="VERSION"
+
+# Override HOME to use our test directory
+HOME="${TEST_HOME}"
+SHELL="/bin/bash"
+
+# Create mock existing installation
+mkdir -p "$INSTALL_DIR"
+echo "v1.0.0" > "${INSTALL_DIR}/${VERSION_FILE}"
+touch "${INSTALL_DIR}/${LIBRARY_FILE}"
+
+# Create empty RC file
+touch "${TEST_HOME}/.bashrc"
+
+# Simulate the check in main() for same version already installed
+existing_version="v1.0.0"
+latest_tag="v1.0.0"
+
+if [[ -n "$existing_version" ]] && [[ "$existing_version" == "$latest_tag" ]]; then
+    # This is the new logic we added
+    if [[ $INSTALL_MODE == "user" ]] && [[ $AUTO_RC == true ]]; then
+        configure_rc_file
+        echo "CONFIGURE_RC_CALLED=true"
+    else
+        echo "CONFIGURE_RC_CALLED=false"
+    fi
+fi
+
+# Check if source line was added (should NOT be)
+if grep -q "source ${INSTALL_DIR}/${LIBRARY_FILE}" "${TEST_HOME}/.bashrc"; then
+    echo "SOURCE_LINE_ADDED=true"
+else
+    echo "SOURCE_LINE_ADDED=false"
+fi
+')
+
+    assert_contains "$output" "CONFIGURE_RC_CALLED=false" || return
+    assert_contains "$output" "SOURCE_LINE_ADDED=false" || return
+
+    pass_test
+}
+
+# Test: configure_rc_file does NOT run when already installed in system mode
+test_configure_rc_file_already_installed_system_mode() {
+    start_test "configure_rc_file does NOT run when already installed in system mode"
+
+    local output
+    output=$(run_install_test_script '
+# Use unique subdirectory to avoid state pollution from other tests
+TEST_HOME="${TEST_TMP_DIR}/system_mode_test_home"
+mkdir -p "$TEST_HOME"
+
+# Setup mock environment
+AUTO_RC=true
+INSTALL_MODE="system"
+INSTALL_DIR="${TEST_HOME}/lib/bash-logger"
+LIBRARY_FILE="logging.sh"
+VERSION_FILE="VERSION"
+
+# Override HOME to use our test directory
+HOME="${TEST_HOME}"
+SHELL="/bin/bash"
+
+# Create mock existing installation
+mkdir -p "$INSTALL_DIR"
+echo "v1.0.0" > "${INSTALL_DIR}/${VERSION_FILE}"
+touch "${INSTALL_DIR}/${LIBRARY_FILE}"
+
+# Create empty RC file
+touch "${TEST_HOME}/.bashrc"
+
+# Simulate the check in main() for same version already installed
+existing_version="v1.0.0"
+latest_tag="v1.0.0"
+
+if [[ -n "$existing_version" ]] && [[ "$existing_version" == "$latest_tag" ]]; then
+    # This is the new logic we added
+    if [[ $INSTALL_MODE == "user" ]] && [[ $AUTO_RC == true ]]; then
+        configure_rc_file
+        echo "CONFIGURE_RC_CALLED=true"
+    else
+        echo "CONFIGURE_RC_CALLED=false"
+    fi
+fi
+
+# Check if source line was added (should NOT be for system mode)
+if grep -q "source ${INSTALL_DIR}/${LIBRARY_FILE}" "${TEST_HOME}/.bashrc"; then
+    echo "SOURCE_LINE_ADDED=true"
+else
+    echo "SOURCE_LINE_ADDED=false"
+fi
+')
+
+    assert_contains "$output" "CONFIGURE_RC_CALLED=false" || return
+    assert_contains "$output" "SOURCE_LINE_ADDED=false" || return
+
+    pass_test
+}
+
 # Run all tests
 test_parse_args_user
 test_parse_args_system
@@ -994,3 +1335,10 @@ test_determine_install_paths_unexpected_mode
 test_cleanup_state_variables_initialized
 test_cleanup_on_failure_preserves_on_success
 test_install_files_tracks_directory_creation
+test_configure_rc_file_adds_source_line
+test_configure_rc_file_skips_if_present
+test_configure_rc_file_detects_bash
+test_configure_rc_file_detects_zsh
+test_configure_rc_file_already_installed_with_auto_rc
+test_configure_rc_file_already_installed_without_auto_rc
+test_configure_rc_file_already_installed_system_mode

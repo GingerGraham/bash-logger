@@ -596,7 +596,7 @@ install_files() {
     success "Installation complete!"
 }
 
-update_rc_file() {
+configure_rc_file() {
     local source_line="source ${INSTALL_DIR}/${LIBRARY_FILE}"
     local rc_file=""
 
@@ -713,6 +713,10 @@ main() {
 
     # Check if same version is already installed
     if [[ -n "$existing_version" ]] && [[ "$existing_version" == "$latest_tag" ]]; then
+        # Configure RC file if requested, even when already installed
+        if [[ $INSTALL_MODE == "user" ]] && [[ $AUTO_RC == true ]]; then
+            configure_rc_file
+        fi
         success "bash-logger ${latest_tag} is already installed"
         info "Installation location: ${INSTALL_DIR}"
         info "Documentation location: ${DOC_DIR}"
@@ -756,9 +760,9 @@ main() {
     # Mark installation as successful (prevents cleanup_on_failure from removing files)
     INSTALL_SUCCESS=true
 
-    # Update RC for all user installations (new installs and updates)
+    # Configure RC for all user installations (new installs and updates)
     if [[ $INSTALL_MODE == "user" ]]; then
-        update_rc_file
+        configure_rc_file
     fi
 
     show_usage_instructions "$is_update" "$existing_version" "$latest_tag"
