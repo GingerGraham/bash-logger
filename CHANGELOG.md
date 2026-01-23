@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-* add bpkg support and update release preparation commands ([#14](https://github.com/GingerGraham/bash-logger/issues/14)) ([a577cfc](https://github.com/GingerGraham/bash-logger/commit/a577cfc5591848a0bdda03f053a53636506c2b05)), closes [#13](https://github.com/GingerGraham/bash-logger/issues/13)
-* **bpkg:** resolved installation issue and updated documentation ([#17](https://github.com/GingerGraham/bash-logger/issues/17)) ([1a3ff44](https://github.com/GingerGraham/bash-logger/commit/1a3ff440de9143fb686c0dc62a4c23e00904ee9c)), closes [#15](https://github.com/GingerGraham/bash-logger/issues/15) [#16](https://github.com/GingerGraham/bash-logger/issues/16)
+* add bpkg support and update release preparation commands
+  ([#14](https://github.com/GingerGraham/bash-logger/issues/14)) ([a577cfc](https://github.com/GingerGraham/bash-logger/commit/a577cfc5591848a0bdda03f053a53636506c2b05)),
+  closes [#13](https://github.com/GingerGraham/bash-logger/issues/13)
+* **bpkg:** resolved installation issue and updated documentation
+  ([#17](https://github.com/GingerGraham/bash-logger/issues/17))
+  ([1a3ff44](https://github.com/GingerGraham/bash-logger/commit/1a3ff440de9143fb686c0dc62a4c23e00904ee9c)), closes [#15](https://github.com/GingerGraham/bash-logger/issues/15)
+  [#16](https://github.com/GingerGraham/bash-logger/issues/16)
 * trigger manual patch release [skip ci] ([7f601e6](https://github.com/GingerGraham/bash-logger/commit/7f601e6fc87f1c9f036e5ac051a5205b4e8f248f))
 
 ### Documentation
