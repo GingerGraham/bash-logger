@@ -59,28 +59,28 @@ cleanup_on_failure() {
     local exit_code=$?
 
     # Clean up temp directory if it exists
-    if [[ -n "${temp_dir:-}" ]] && [[ -d "${temp_dir}" ]]; then
+    if [ -n "${temp_dir:-}" ] && [ -d "${temp_dir}" ]; then
         rm -rf "$temp_dir"
     fi
 
     # If installation was successful, nothing more to do
-    if [[ $INSTALL_SUCCESS == true ]]; then
+    if [ "$INSTALL_SUCCESS" = true ]; then
         return $exit_code
     fi
 
     # Installation failed - clean up partially created resources
-    if [[ $CREATED_DOC_DIR == true ]] && [[ -d "${DOC_DIR:-}" ]]; then
+    if [ "$CREATED_DOC_DIR" = true ] && [ -d "${DOC_DIR:-}" ]; then
         warn "Cleaning up partially created documentation directory: ${DOC_DIR}"
         rm -rf "$DOC_DIR" 2>/dev/null || true
     fi
 
-    if [[ $CREATED_INSTALL_DIR == true ]] && [[ -d "${INSTALL_DIR:-}" ]]; then
+    if [ "$CREATED_INSTALL_DIR" = true ] && [ -d "${INSTALL_DIR:-}" ]; then
         warn "Cleaning up partially created installation directory: ${INSTALL_DIR}"
         rm -rf "$INSTALL_DIR" 2>/dev/null || true
     fi
 
     # If we have a backup, offer guidance on restoration
-    if [[ -n "$BACKUP_PATH" ]] && [[ -d "$BACKUP_PATH" ]]; then
+    if [ -n "$BACKUP_PATH" ] && [ -d "$BACKUP_PATH" ]; then
         warn "Installation failed. Your previous installation was backed up to:"
         warn "    ${BACKUP_PATH}"
         warn "To restore, run:"
@@ -127,7 +127,7 @@ EOF
 }
 
 parse_args() {
-    while [[ $# -gt 0 ]]; do
+    while [ $# -gt 0 ]; do
         case $1 in
             --user)
                 INSTALL_MODE="user"
@@ -138,12 +138,14 @@ parse_args() {
                 shift
                 ;;
             --prefix)
-                if [[ -z "${2:-}" ]]; then
+                if [ -z "${2:-}" ]; then
                     error "--prefix requires a non-empty path argument"
                 fi
-                if [[ "$2" == --* ]]; then
-                    error "--prefix requires a path argument, not an option"
-                fi
+                case "${2:-}" in
+                    --*)
+                        error "--prefix requires a path argument, not an option"
+                        ;;
+                esac
                 PREFIX=$(validate_prefix "$2")
                 INSTALL_MODE="custom"
                 shift 2
@@ -172,7 +174,7 @@ parse_args() {
 }
 
 check_root() {
-    if [[ $INSTALL_MODE == "system" ]] && [[ $EUID -ne 0 ]]; then
+    if [ "$INSTALL_MODE" = "system" ] && [ "$EUID" -ne 0 ]; then
         error "System-wide installation requires root privileges. Use sudo."
     fi
 }
@@ -192,39 +194,121 @@ validate_prefix() {
     # Check if path is just whitespace
     local trimmed="${path#"${path%%[![:space:]]*}"}"
     trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-    if [[ -z "$trimmed" ]]; then
+    if [ -z "$trimmed" ]; then
         error "--prefix path cannot be empty or whitespace only"
     fi
 
     # Expand ~ to home directory if present at start
-    if [[ "$path" == "~"* ]]; then
-        path="${HOME}${path:1}"
-    fi
+    case "$path" in
+        "~"*)
+            path="${HOME}${path#"~"}"
+            ;;
+    esac
 
     # Convert to absolute path if relative
-    if [[ "$path" != /* ]]; then
-        # Use pwd to get current directory and combine
-        path="$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")" || \
-            path="$(pwd)/$path"
-    fi
+    case "$path" in
+        /*)
+            # Already absolute
+            ;;
+        *)
+            # Use pwd to get current directory and combine
+            path="$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")" || \
+                path="$(pwd)/$path"
+            ;;
+    esac
 
     # Remove trailing slashes (except for root /)
-    while [[ "$path" == */ ]] && [[ "$path" != "/" ]]; do
-        path="${path%/}"
+    while :; do
+        case "$path" in
+            /)
+                break
+                ;;
+            */)
+                path="${path%/}"
+                ;;
+            *)
+                break
+                ;;
+        esac
     done
 
     # Check path length (most filesystems have limits around 4096)
-    if [[ ${#path} -gt 4096 ]]; then
+    if [ ${#path} -gt 4096 ]; then
         error "--prefix path is too long (max 4096 characters)"
     fi
 
     # Warn about potentially problematic paths (but don't block)
     # Send warning to stderr so it doesn't interfere with the returned path
-    if [[ "$path" == /tmp* ]] || [[ "$path" == /var/tmp* ]]; then
-        warn "Installing to temporary directory '$path' - files may be deleted on reboot" >&2
-    fi
+    case "$path" in
+        /tmp*|/var/tmp*)
+            warn "Installing to temporary directory '$path' - files may be deleted on reboot" >&2
+            ;;
+    esac
 
     echo "$path"
+}
+
+# Validate version string format (e.g. v1.2.3 or 1.2.3 or v1.0.0-beta.1)
+# Returns 0 if valid, 1 if invalid
+is_valid_version() {
+    local version="$1"
+
+    # Must not be empty
+    [ -z "$version" ] && return 1
+
+    # Strip optional leading 'v'
+    case "$version" in
+        v*) version="${version#v}" ;;
+    esac
+
+    # Must start with a digit
+    case "$version" in
+        [0-9]*) ;;
+        *) return 1 ;;
+    esac
+
+    # Split on hyphen to separate version from pre-release suffix
+    local main_version suffix
+    case "$version" in
+        *-*)
+            main_version="${version%%-*}"
+            suffix="${version#*-}"
+            ;;
+        *)
+            main_version="$version"
+            suffix=""
+            ;;
+    esac
+
+    # Validate main version (digits separated by dots)
+    local remaining="$main_version"
+    while [ -n "$remaining" ]; do
+        local segment
+        case "$remaining" in
+            *.*)
+                segment="${remaining%%.*}"
+                remaining="${remaining#*.}"
+                ;;
+            *)
+                segment="$remaining"
+                remaining=""
+                ;;
+        esac
+        # Each segment must be non-empty and contain only digits
+        case "$segment" in
+            "") return 1 ;;
+            *[!0-9]*) return 1 ;;
+        esac
+    done
+
+    # If there's a suffix, validate it (alphanumeric, dots, hyphens, plus signs)
+    if [ -n "$suffix" ]; then
+        case "$suffix" in
+            *[!0-9A-Za-z.+-]*) return 1 ;;
+        esac
+    fi
+
+    return 0
 }
 
 # Detect available SHA256 checksum tool
@@ -244,11 +328,11 @@ prompt_continue() {
     local prompt_msg=$1
 
     # Check if /dev/tty is available for interactive input
-    if [[ -t 0 ]] || [[ -e /dev/tty ]]; then
+    if [ -t 0 ] || [ -e /dev/tty ]; then
         local response
         echo -e "${YELLOW}${prompt_msg}${NC}"
         echo -n "Continue without verification? [y/N]: "
-        if [[ -t 0 ]]; then
+        if [ -t 0 ]; then
             read -r response
         else
             read -r response < /dev/tty
@@ -294,7 +378,7 @@ verify_file_checksum() {
     local library_path="${temp_dir}/${LIBRARY_FILE}"
     local checksum_path="${temp_dir}/${LIBRARY_FILE}.sha256"
 
-    if [[ ! -f "$checksum_path" ]]; then
+    if [ ! -f "$checksum_path" ]; then
         return 1
     fi
 
@@ -302,21 +386,21 @@ verify_file_checksum() {
     local expected_checksum
     expected_checksum=$(cut -d' ' -f1 < "$checksum_path" | tr '[:upper:]' '[:lower:]')
 
-    if [[ -z "$expected_checksum" ]]; then
+    if [ -z "$expected_checksum" ]; then
         return 1
     fi
 
     # Calculate actual checksum
     local actual_checksum
-    if [[ "$CHECKSUM_CMD" == "sha256sum" ]]; then
+    if [ "$CHECKSUM_CMD" = "sha256sum" ]; then
         actual_checksum=$(sha256sum "$library_path" | cut -d' ' -f1 | tr '[:upper:]' '[:lower:]')
-    elif [[ "$CHECKSUM_CMD" == "shasum -a 256" ]]; then
+    elif [ "$CHECKSUM_CMD" = "shasum -a 256" ]; then
         actual_checksum=$(shasum -a 256 "$library_path" | cut -d' ' -f1 | tr '[:upper:]' '[:lower:]')
     else
         return 1
     fi
 
-    if [[ "$expected_checksum" == "$actual_checksum" ]]; then
+    if [ "$expected_checksum" = "$actual_checksum" ]; then
         return 0
     else
         return 1
@@ -331,7 +415,7 @@ verify_release() {
     local temp_dir=$2
 
     # If user explicitly skipped verification, just return success
-    if [[ $SKIP_VERIFY == true ]]; then
+    if [ "$SKIP_VERIFY" = true ]; then
         info "Skipping checksum verification (--skip-verify specified)"
         return 0
     fi
@@ -339,9 +423,9 @@ verify_release() {
     # Detect checksum tool
     detect_checksum_tool
 
-    if [[ -z "$CHECKSUM_CMD" ]]; then
+    if [ -z "$CHECKSUM_CMD" ]; then
         warn "No SHA256 checksum tool found (sha256sum or shasum required)"
-        if [[ $INSTALL_MODE == "system" ]]; then
+        if [ "$INSTALL_MODE" = "system" ]; then
             warn "System-wide installation requested - verification is strongly recommended"
         fi
         if prompt_continue "Cannot verify download integrity."; then
@@ -396,7 +480,7 @@ get_latest_release() {
         error "Neither curl nor wget found. Please install one of them."
     fi
 
-    if [[ -z "$release_info" ]]; then
+    if [ -z "$release_info" ]; then
         error "Failed to fetch release information from GitHub. Check your network connection."
     fi
 
@@ -404,7 +488,7 @@ get_latest_release() {
     local tag
     tag=$(printf '%s\n' "$release_info" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
 
-    if [[ -z "$tag" ]]; then
+    if [ -z "$tag" ]; then
         error "Could not determine latest release tag."
     fi
 
@@ -412,7 +496,7 @@ get_latest_release() {
 }
 
 check_existing_installation() {
-    if [[ -f "${INSTALL_DIR}/${VERSION_FILE}" ]]; then
+    if [ -f "${INSTALL_DIR}/${VERSION_FILE}" ]; then
         local current_version
         # Read only the first line from the version file and handle read failures
         if ! IFS= read -r current_version < "${INSTALL_DIR}/${VERSION_FILE}"; then
@@ -426,15 +510,14 @@ check_existing_installation() {
         current_version=${current_version%[[:space:]]*}
 
         # Validate that the version looks like a typical version string (e.g. v1.2.3 or 1.2.3)
-        if [[ -z "$current_version" ]] || \
-           [[ ! "$current_version" =~ ^v?[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.+-]+)?$ ]]; then
+        if [ -z "$current_version" ] || ! is_valid_version "$current_version"; then
             warn "Invalid version string in ${INSTALL_DIR}/${VERSION_FILE}: '${current_version:-<empty>}'" >&2
             echo "unknown"
             return
         fi
 
         echo "$current_version"
-    elif [[ -f "${INSTALL_DIR}/${LIBRARY_FILE}" ]]; then
+    elif [ -f "${INSTALL_DIR}/${LIBRARY_FILE}" ]; then
         # Installation exists but no version file (or invalid version)
         echo "unknown"
     else
@@ -482,7 +565,7 @@ download_release() {
     # Verify the library file exists in the expected location.
     # If not, attempt a fallback extraction without --strip-components
     # to handle unexpected archive structures more gracefully.
-    if [[ ! -f "${temp_dir}/${LIBRARY_FILE}" ]]; then
+    if [ ! -f "${temp_dir}/${LIBRARY_FILE}" ]; then
         info "Expected ${LIBRARY_FILE} in archive root not found, checking full archive structure..."
 
         local alt_extract_dir
@@ -564,15 +647,15 @@ install_files() {
     # Track whether we're creating new directories (for cleanup on failure)
     local install_dir_existed=false
     local doc_dir_existed=false
-    [[ -d "$INSTALL_DIR" ]] && install_dir_existed=true
-    [[ -d "$DOC_DIR" ]] && doc_dir_existed=true
+    [ -d "$INSTALL_DIR" ] && install_dir_existed=true
+    [ -d "$DOC_DIR" ] && doc_dir_existed=true
 
     # Create directories
     mkdir -p "$INSTALL_DIR" || error "Failed to create ${INSTALL_DIR}"
-    [[ $install_dir_existed == false ]] && CREATED_INSTALL_DIR=true
+    [ "$install_dir_existed" = false ] && CREATED_INSTALL_DIR=true
 
     mkdir -p "$DOC_DIR" || error "Failed to create ${DOC_DIR}"
-    [[ $doc_dir_existed == false ]] && CREATED_DOC_DIR=true
+    [ "$doc_dir_existed" = false ] && CREATED_DOC_DIR=true
 
     # Install library
     if ! install -m 644 "${temp_dir}/${LIBRARY_FILE}" "${INSTALL_DIR}/${LIBRARY_FILE}"; then
@@ -586,7 +669,7 @@ install_files() {
 
     # Install documentation
     for doc in README.md LICENSE CHANGELOG.md; do
-        if [[ -f "${temp_dir}/${doc}" ]]; then
+        if [ -f "${temp_dir}/${doc}" ]; then
             if ! install -m 644 "${temp_dir}/${doc}" "${DOC_DIR}/"; then
                 warn "Failed to install ${doc}, continuing..."
             fi
@@ -626,7 +709,7 @@ configure_rc_file() {
             ;;
     esac
     # Ensure RC file exists when AUTO_RC is enabled so grep and appends are safe
-    if [[ $AUTO_RC == true && ! -f "$rc_file" ]]; then
+    if [ "$AUTO_RC" = true ] && [ ! -f "$rc_file" ]; then
         info "RC file $rc_file does not exist. Creating it."
         if ! touch "$rc_file"; then
             warn "Failed to create RC file $rc_file. Skipping RC file update."
@@ -635,14 +718,14 @@ configure_rc_file() {
     fi
 
     # Check if source line is already present
-    if [[ -f "$rc_file" ]] && grep -qF "$source_line" "$rc_file"; then
+    if [ -f "$rc_file" ] && grep -qF "$source_line" "$rc_file"; then
         info "Source line already present in $rc_file"
         return
     fi
 
-    if [[ $AUTO_RC == true ]]; then
+    if [ "$AUTO_RC" = true ]; then
         # Check if RC file exists before appending
-        if [[ ! -f "$rc_file" ]]; then
+        if [ ! -f "$rc_file" ]; then
             info "RC file $rc_file does not exist and will be created"
         fi
         info "Adding source line to $rc_file"
@@ -664,9 +747,9 @@ show_usage_instructions() {
     local new_version=$3
 
     echo ""
-    if [[ $is_update == true ]]; then
+    if [ "$is_update" = true ]; then
         success "bash-logger has been updated!"
-        if [[ -n "$old_version" ]]; then
+        if [ -n "$old_version" ]; then
             info "Previous version: ${old_version}"
         fi
         info "New version: ${new_version}"
@@ -680,7 +763,7 @@ show_usage_instructions() {
     echo "    source ${INSTALL_DIR}/${LIBRARY_FILE}"
     echo ""
 
-    if [[ $AUTO_RC != true ]]; then
+    if [ "$AUTO_RC" != true ]; then
         info "To use in your shell, add to your RC file:"
         echo "    source ${INSTALL_DIR}/${LIBRARY_FILE}"
         echo ""
@@ -703,7 +786,7 @@ main() {
 
     # Get latest release (or specified version)
     local latest_tag
-    if [[ -n "${INSTALL_VERSION:-}" ]]; then
+    if [ -n "${INSTALL_VERSION:-}" ]; then
         latest_tag="$INSTALL_VERSION"
         info "Installing specified version: ${latest_tag}"
     else
@@ -712,9 +795,9 @@ main() {
     fi
 
     # Check if same version is already installed
-    if [[ -n "$existing_version" ]] && [[ "$existing_version" == "$latest_tag" ]]; then
+    if [ -n "$existing_version" ] && [ "$existing_version" = "$latest_tag" ]; then
         # Configure RC file if requested, even when already installed
-        if [[ $INSTALL_MODE == "user" ]] && [[ $AUTO_RC == true ]]; then
+        if [ "$INSTALL_MODE" = "user" ] && [ "$AUTO_RC" = true ]; then
             configure_rc_file
         fi
         success "bash-logger ${latest_tag} is already installed"
@@ -722,7 +805,7 @@ main() {
         info "Documentation location: ${DOC_DIR}"
         echo ""
         info "To reinstall, first uninstall with:"
-        if [[ $INSTALL_MODE == "system" ]]; then
+        if [ "$INSTALL_MODE" = "system" ]; then
             echo "    sudo rm -rf ${INSTALL_DIR} ${DOC_DIR}"
         else
             echo "    rm -rf ${INSTALL_DIR} ${DOC_DIR}"
@@ -738,12 +821,12 @@ main() {
 
     # Handle existing installation (different version)
     local is_update=false
-    if [[ -n "$existing_version" ]]; then
+    if [ -n "$existing_version" ]; then
         is_update=true
         info "Found existing installation: ${existing_version}"
         info "Upgrading to: ${latest_tag}"
 
-        if [[ $BACKUP == true ]]; then
+        if [ "$BACKUP" = true ]; then
             BACKUP_PATH=$(backup_existing_installation)
         fi
     fi
@@ -761,20 +844,20 @@ main() {
     INSTALL_SUCCESS=true
 
     # Configure RC for all user installations (new installs and updates)
-    if [[ $INSTALL_MODE == "user" ]]; then
+    if [ "$INSTALL_MODE" = "user" ]; then
         configure_rc_file
     fi
 
     show_usage_instructions "$is_update" "$existing_version" "$latest_tag"
 
     # Show backup location if created
-    if [[ -n "$BACKUP_PATH" ]]; then
+    if [ -n "$BACKUP_PATH" ]; then
         info "Previous installation backed up to: ${BACKUP_PATH}"
         echo ""
     fi
 }
 
 # Only run main if not in test mode
-if [[ "${INSTALL_SH_TEST_MODE:-false}" != "true" ]]; then
+if [ "${INSTALL_SH_TEST_MODE:-false}" != "true" ]; then
     main "$@"
 fi
