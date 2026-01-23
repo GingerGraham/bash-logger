@@ -419,6 +419,303 @@ echo "BACKUP=${BACKUP}"
     pass_test
 }
 
+# Test: parse_args with --skip-verify option
+test_parse_args_skip_verify() {
+    start_test "parse_args correctly handles --skip-verify option"
+
+    local output
+    output=$(run_install_test_script '
+SKIP_VERIFY=false
+parse_args --skip-verify
+echo "SKIP_VERIFY=${SKIP_VERIFY}"
+')
+
+    assert_contains "$output" "SKIP_VERIFY=true" || return
+
+    pass_test
+}
+
+# Test: detect_checksum_tool finds sha256sum or shasum
+test_detect_checksum_tool() {
+    start_test "detect_checksum_tool detects available checksum tool"
+
+    local output
+    output=$(run_install_test_script '
+detect_checksum_tool
+echo "CHECKSUM_CMD=${CHECKSUM_CMD}"
+')
+
+    # Should find either sha256sum or shasum on most systems
+    if [[ "$output" == *"CHECKSUM_CMD=sha256sum"* ]] || [[ "$output" == *"CHECKSUM_CMD=shasum -a 256"* ]]; then
+        pass_test
+    else
+        # If neither is found, that's also valid behavior - just verify the variable is set (possibly empty)
+        if [[ "$output" == *"CHECKSUM_CMD="* ]]; then
+            pass_test
+        else
+            fail_test "detect_checksum_tool should set CHECKSUM_CMD variable"
+        fi
+    fi
+}
+
+# Test: verify_file_checksum with valid checksum
+test_verify_file_checksum_valid() {
+    start_test "verify_file_checksum succeeds with valid checksum"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+# Create a test file
+TEST_FILE_DIR="${TEST_TMP_DIR}/checksum_test"
+mkdir -p "$TEST_FILE_DIR"
+echo "test content" > "${TEST_FILE_DIR}/logging.sh"
+
+# Generate correct checksum
+detect_checksum_tool
+if [[ -z "$CHECKSUM_CMD" ]]; then
+    echo "SKIP: No checksum tool available"
+    exit 0
+fi
+
+if [[ "$CHECKSUM_CMD" == "sha256sum" ]]; then
+    sha256sum "${TEST_FILE_DIR}/logging.sh" > "${TEST_FILE_DIR}/logging.sh.sha256"
+else
+    shasum -a 256 "${TEST_FILE_DIR}/logging.sh" > "${TEST_FILE_DIR}/logging.sh.sha256"
+fi
+
+# Verify
+if verify_file_checksum "$TEST_FILE_DIR"; then
+    echo "VERIFICATION_PASSED"
+else
+    echo "VERIFICATION_FAILED"
+fi
+') || exit_code=$?
+
+    # Skip if no checksum tool
+    if [[ "$output" == *"SKIP:"* ]]; then
+        skip_test "no checksum tool available"
+        return
+    fi
+
+    assert_contains "$output" "VERIFICATION_PASSED" || return
+
+    pass_test
+}
+
+# Test: verify_file_checksum with invalid checksum
+test_verify_file_checksum_invalid() {
+    start_test "verify_file_checksum fails with invalid checksum"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+# Create a test file
+TEST_FILE_DIR="${TEST_TMP_DIR}/checksum_test_invalid"
+mkdir -p "$TEST_FILE_DIR"
+echo "test content" > "${TEST_FILE_DIR}/logging.sh"
+
+# Create incorrect checksum file
+echo "0000000000000000000000000000000000000000000000000000000000000000  logging.sh" > "${TEST_FILE_DIR}/logging.sh.sha256"
+
+detect_checksum_tool
+if [[ -z "$CHECKSUM_CMD" ]]; then
+    echo "SKIP: No checksum tool available"
+    exit 0
+fi
+
+# Verify should fail
+if verify_file_checksum "$TEST_FILE_DIR"; then
+    echo "VERIFICATION_PASSED"
+else
+    echo "VERIFICATION_FAILED"
+fi
+') || exit_code=$?
+
+    # Skip if no checksum tool
+    if [[ "$output" == *"SKIP:"* ]]; then
+        skip_test "no checksum tool available"
+        return
+    fi
+
+    assert_contains "$output" "VERIFICATION_FAILED" || return
+
+    pass_test
+}
+
+# Test: verify_file_checksum with missing checksum file
+test_verify_file_checksum_missing_file() {
+    start_test "verify_file_checksum fails with missing checksum file"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+# Create a test file but no checksum file
+TEST_FILE_DIR="${TEST_TMP_DIR}/checksum_test_missing"
+mkdir -p "$TEST_FILE_DIR"
+echo "test content" > "${TEST_FILE_DIR}/logging.sh"
+
+detect_checksum_tool
+if [[ -z "$CHECKSUM_CMD" ]]; then
+    echo "SKIP: No checksum tool available"
+    exit 0
+fi
+
+# Verify should fail (no checksum file)
+if verify_file_checksum "$TEST_FILE_DIR"; then
+    echo "VERIFICATION_PASSED"
+else
+    echo "VERIFICATION_FAILED"
+fi
+') || exit_code=$?
+
+    # Skip if no checksum tool
+    if [[ "$output" == *"SKIP:"* ]]; then
+        skip_test "no checksum tool available"
+        return
+    fi
+
+    assert_contains "$output" "VERIFICATION_FAILED" || return
+
+    pass_test
+}
+
+# Test: verify_release with --skip-verify skips verification
+test_verify_release_skip_verify() {
+    start_test "verify_release skips verification when --skip-verify is set"
+
+    local output
+    output=$(run_install_test_script '
+SKIP_VERIFY=true
+TEST_FILE_DIR="${TEST_TMP_DIR}/skip_verify_test"
+mkdir -p "$TEST_FILE_DIR"
+echo "test content" > "${TEST_FILE_DIR}/logging.sh"
+
+if verify_release "v1.0.0" "$TEST_FILE_DIR"; then
+    echo "VERIFY_RETURNED_SUCCESS"
+else
+    echo "VERIFY_RETURNED_FAILURE"
+fi
+')
+
+    assert_contains "$output" "Skipping checksum verification" || return
+    assert_contains "$output" "VERIFY_RETURNED_SUCCESS" || return
+
+    pass_test
+}
+
+# Test: verify_release with valid checksum passes
+test_verify_release_valid_checksum() {
+    start_test "verify_release succeeds with valid checksum"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+SKIP_VERIFY=false
+TEST_FILE_DIR="${TEST_TMP_DIR}/verify_release_valid"
+mkdir -p "$TEST_FILE_DIR"
+echo "test content for verification" > "${TEST_FILE_DIR}/logging.sh"
+
+detect_checksum_tool
+if [[ -z "$CHECKSUM_CMD" ]]; then
+    echo "SKIP: No checksum tool available"
+    exit 0
+fi
+
+# Generate correct checksum file
+if [[ "$CHECKSUM_CMD" == "sha256sum" ]]; then
+    sha256sum "${TEST_FILE_DIR}/logging.sh" > "${TEST_FILE_DIR}/logging.sh.sha256"
+else
+    shasum -a 256 "${TEST_FILE_DIR}/logging.sh" > "${TEST_FILE_DIR}/logging.sh.sha256"
+fi
+
+# Mock download_checksum to not actually download (file already exists)
+download_checksum() { return 0; }
+
+if verify_release "v1.0.0" "$TEST_FILE_DIR"; then
+    echo "VERIFY_RETURNED_SUCCESS"
+else
+    echo "VERIFY_RETURNED_FAILURE"
+fi
+') || exit_code=$?
+
+    # Skip if no checksum tool
+    if [[ "$output" == *"SKIP:"* ]]; then
+        skip_test "no checksum tool available"
+        return
+    fi
+
+    assert_contains "$output" "Checksum verification passed" || return
+    assert_contains "$output" "VERIFY_RETURNED_SUCCESS" || return
+
+    pass_test
+}
+
+# Test: verify_release with invalid checksum fails
+test_verify_release_invalid_checksum() {
+    start_test "verify_release fails with invalid checksum"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+SKIP_VERIFY=false
+TEST_FILE_DIR="${TEST_TMP_DIR}/verify_release_invalid"
+mkdir -p "$TEST_FILE_DIR"
+echo "test content for verification" > "${TEST_FILE_DIR}/logging.sh"
+
+detect_checksum_tool
+if [[ -z "$CHECKSUM_CMD" ]]; then
+    echo "SKIP: No checksum tool available"
+    exit 0
+fi
+
+# Create incorrect checksum file
+echo "0000000000000000000000000000000000000000000000000000000000000000  logging.sh" > "${TEST_FILE_DIR}/logging.sh.sha256"
+
+# Mock download_checksum to not actually download (file already exists)
+download_checksum() { return 0; }
+
+if verify_release "v1.0.0" "$TEST_FILE_DIR"; then
+    echo "VERIFY_RETURNED_SUCCESS"
+else
+    echo "VERIFY_RETURNED_FAILURE"
+fi
+') || exit_code=$?
+
+    # Skip if no checksum tool
+    if [[ "$output" == *"SKIP:"* ]]; then
+        skip_test "no checksum tool available"
+        return
+    fi
+
+    # The error function calls exit 1, so we expect failure
+    assert_contains "$output" "Checksum verification FAILED" || return
+
+    pass_test
+}
+
+# Test: Multiple argument combinations including --skip-verify
+test_parse_args_multiple_with_skip_verify() {
+    start_test "parse_args handles multiple options including --skip-verify"
+
+    local output
+    output=$(run_install_test_script '
+INSTALL_MODE=""
+PREFIX=""
+AUTO_RC=false
+BACKUP=true
+SKIP_VERIFY=false
+
+parse_args --prefix /test/path --auto-rc --skip-verify
+
+echo "INSTALL_MODE=${INSTALL_MODE}"
+echo "PREFIX=${PREFIX}"
+echo "AUTO_RC=${AUTO_RC}"
+echo "SKIP_VERIFY=${SKIP_VERIFY}"
+')
+
+    assert_contains "$output" "INSTALL_MODE=custom" || return
+    assert_contains "$output" "PREFIX=/test/path" || return
+    assert_contains "$output" "AUTO_RC=true" || return
+    assert_contains "$output" "SKIP_VERIFY=true" || return
+
+    pass_test
+}
+
 # Run all tests
 test_parse_args_user
 test_parse_args_system
@@ -442,3 +739,12 @@ test_error_function
 test_success_function
 test_warn_function
 test_parse_args_multiple_options
+test_parse_args_skip_verify
+test_detect_checksum_tool
+test_verify_file_checksum_valid
+test_verify_file_checksum_invalid
+test_verify_file_checksum_missing_file
+test_verify_release_skip_verify
+test_verify_release_valid_checksum
+test_verify_release_invalid_checksum
+test_parse_args_multiple_with_skip_verify

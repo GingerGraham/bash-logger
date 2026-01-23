@@ -50,9 +50,8 @@ bash-logger can be installed in several ways. Choose the method that best fits y
 
 ### Using the Install Script
 
-The easiest way to install bash-logger is with the provided installation script. It handles downloading the latest release
-and setting up the module for you. For integrity verification, see
-[Verifying the Download with SHA256](#verifying-the-download-with-sha256).
+The easiest way to install bash-logger is with the provided installation script. It handles downloading the latest release,
+verifying integrity via SHA256 checksum, and setting up the module for you.
 
 **Quick Install (User):**
 
@@ -79,6 +78,23 @@ curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/insta
 * `--prefix PATH` - Custom installation prefix
 * `--auto-rc` - Automatically add source line to shell RC file
 * `--no-backup` - Skip backing up existing installation
+* `--skip-verify` - Skip SHA256 checksum verification (not recommended)
+
+**Automatic Checksum Verification:**
+
+The install script automatically verifies the integrity of downloaded files using SHA256 checksums. This helps ensure
+the files haven't been corrupted or tampered with during download.
+
+* The script requires either `sha256sum` (Linux) or `shasum` (macOS) to be available
+* If a checksum tool isn't available, you'll be prompted to confirm whether to continue without verification
+* If verification fails, the installation is aborted to protect your system
+* For system-wide installations (`--system`), verification is strongly recommended
+
+To skip verification (not recommended), use the `--skip-verify` flag:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | bash -s -- --skip-verify
+```
 
 **Installing a Specific Version:**
 

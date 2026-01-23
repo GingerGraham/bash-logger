@@ -28,6 +28,7 @@ INSTALL_MODE="user"
 PREFIX=""
 AUTO_RC=false
 BACKUP=true
+SKIP_VERIFY=false
 
 # Functions
 info() {
@@ -60,6 +61,7 @@ Options:
     --prefix PATH       Custom installation prefix
     --auto-rc           Automatically add source line to shell RC file
     --no-backup         Skip backing up existing installation
+    --skip-verify       Skip SHA256 checksum verification (not recommended)
     --help              Show this help message
 
 Environment Variables:
@@ -112,6 +114,10 @@ parse_args() {
                 BACKUP=false
                 shift
                 ;;
+            --skip-verify)
+                SKIP_VERIFY=true
+                shift
+                ;;
             --help)
                 usage
                 exit 0
@@ -126,6 +132,158 @@ parse_args() {
 check_root() {
     if [[ $INSTALL_MODE == "system" ]] && [[ $EUID -ne 0 ]]; then
         error "System-wide installation requires root privileges. Use sudo."
+    fi
+}
+
+# Detect available SHA256 checksum tool
+# Sets CHECKSUM_CMD to the command to use, or empty if none available
+detect_checksum_tool() {
+    CHECKSUM_CMD=""
+    if command -v sha256sum >/dev/null 2>&1; then
+        CHECKSUM_CMD="sha256sum"
+    elif command -v shasum >/dev/null 2>&1; then
+        CHECKSUM_CMD="shasum -a 256"
+    fi
+}
+
+# Prompt user for yes/no confirmation via /dev/tty if available
+# Returns 0 for yes, 1 for no
+prompt_continue() {
+    local prompt_msg=$1
+
+    # Check if /dev/tty is available for interactive input
+    if [[ -t 0 ]] || [[ -e /dev/tty ]]; then
+        local response
+        echo -e "${YELLOW}${prompt_msg}${NC}"
+        echo -n "Continue without verification? [y/N]: "
+        if [[ -t 0 ]]; then
+            read -r response
+        else
+            read -r response < /dev/tty
+        fi
+        case "$response" in
+            [yY]|[yY][eE][sS])
+                return 0
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    else
+        # Non-interactive, cannot prompt
+        return 1
+    fi
+}
+
+# Download the checksum file for a release
+# Returns 0 on success, 1 on failure
+download_checksum() {
+    local tag=$1
+    local temp_dir=$2
+    local checksum_url="https://github.com/${GITHUB_REPO}/releases/download/${tag}/${LIBRARY_FILE}.sha256"
+
+    if command -v curl >/dev/null 2>&1; then
+        if curl -4 --connect-timeout 10 --max-time 30 -fsSL "$checksum_url" -o "${temp_dir}/${LIBRARY_FILE}.sha256" 2>/dev/null || \
+           curl --connect-timeout 10 --max-time 30 -fsSL "$checksum_url" -o "${temp_dir}/${LIBRARY_FILE}.sha256" 2>/dev/null; then
+            return 0
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if wget --timeout=30 --dns-timeout=10 --connect-timeout=10 -qO "${temp_dir}/${LIBRARY_FILE}.sha256" "$checksum_url" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Verify the downloaded library file against the checksum
+# Returns 0 on success, 1 on failure
+verify_file_checksum() {
+    local temp_dir=$1
+    local library_path="${temp_dir}/${LIBRARY_FILE}"
+    local checksum_path="${temp_dir}/${LIBRARY_FILE}.sha256"
+
+    if [[ ! -f "$checksum_path" ]]; then
+        return 1
+    fi
+
+    # Extract expected checksum (first field of the checksum file)
+    local expected_checksum
+    expected_checksum=$(cut -d' ' -f1 < "$checksum_path" | tr '[:upper:]' '[:lower:]')
+
+    if [[ -z "$expected_checksum" ]]; then
+        return 1
+    fi
+
+    # Calculate actual checksum
+    local actual_checksum
+    if [[ "$CHECKSUM_CMD" == "sha256sum" ]]; then
+        actual_checksum=$(sha256sum "$library_path" | cut -d' ' -f1 | tr '[:upper:]' '[:lower:]')
+    elif [[ "$CHECKSUM_CMD" == "shasum -a 256" ]]; then
+        actual_checksum=$(shasum -a 256 "$library_path" | cut -d' ' -f1 | tr '[:upper:]' '[:lower:]')
+    else
+        return 1
+    fi
+
+    if [[ "$expected_checksum" == "$actual_checksum" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Main verification function that handles the full verification flow
+# Returns 0 if verification passed or user chose to continue, 1 to abort
+verify_release() {
+    local tag=$1
+    local temp_dir=$2
+
+    # If user explicitly skipped verification, just return success
+    if [[ $SKIP_VERIFY == true ]]; then
+        info "Skipping checksum verification (--skip-verify specified)"
+        return 0
+    fi
+
+    # Detect checksum tool
+    detect_checksum_tool
+
+    if [[ -z "$CHECKSUM_CMD" ]]; then
+        warn "No SHA256 checksum tool found (sha256sum or shasum required)"
+        if [[ $INSTALL_MODE == "system" ]]; then
+            warn "System-wide installation requested - verification is strongly recommended"
+        fi
+        if prompt_continue "Cannot verify download integrity."; then
+            warn "Proceeding without checksum verification"
+            return 0
+        else
+            echo ""
+            info "Installation aborted. To proceed without verification, use --skip-verify"
+            return 1
+        fi
+    fi
+
+    info "Verifying download integrity..."
+
+    # Try to download checksum file
+    if ! download_checksum "$tag" "$temp_dir"; then
+        warn "Could not download checksum file for ${tag}"
+        warn "The checksum file may not be available for this release"
+        if prompt_continue "Cannot verify download integrity."; then
+            warn "Proceeding without checksum verification"
+            return 0
+        else
+            echo ""
+            info "Installation aborted. To proceed without verification, use --skip-verify"
+            return 1
+        fi
+    fi
+
+    # Verify the checksum
+    if verify_file_checksum "$temp_dir"; then
+        success "Checksum verification passed"
+        return 0
+    else
+        echo ""
+        error "Checksum verification FAILED! The downloaded file may be corrupted or tampered with."
     fi
 }
 
@@ -482,6 +640,12 @@ main() {
     fi
 
     download_release "$latest_tag" "$temp_dir"
+
+    # Verify the downloaded release
+    if ! verify_release "$latest_tag" "$temp_dir"; then
+        exit 1
+    fi
+
     install_files "$temp_dir" "$latest_tag"
 
     # Update RC for all user installations (new installs and updates)
