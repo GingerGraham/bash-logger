@@ -163,10 +163,28 @@ get_latest_release() {
 check_existing_installation() {
     if [[ -f "${INSTALL_DIR}/${VERSION_FILE}" ]]; then
         local current_version
-        current_version=$(cat "${INSTALL_DIR}/${VERSION_FILE}")
+        # Read only the first line from the version file and handle read failures
+        if ! IFS= read -r current_version < "${INSTALL_DIR}/${VERSION_FILE}"; then
+            warn "Failed to read version file at ${INSTALL_DIR}/${VERSION_FILE}, treating as unknown" >&2
+            echo "unknown"
+            return
+        fi
+
+        # Trim leading and trailing whitespace
+        current_version=${current_version#"${current_version%%[![:space:]]*}"}
+        current_version=${current_version%[[:space:]]*}
+
+        # Validate that the version looks like a typical version string (e.g. v1.2.3 or 1.2.3)
+        if [[ -z "$current_version" ]] || \
+           [[ ! "$current_version" =~ ^v?[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.+-]+)?$ ]]; then
+            warn "Invalid version string in ${INSTALL_DIR}/${VERSION_FILE}: '${current_version:-<empty>}'" >&2
+            echo "unknown"
+            return
+        fi
+
         echo "$current_version"
     elif [[ -f "${INSTALL_DIR}/${LIBRARY_FILE}" ]]; then
-        # Installation exists but no version file (pre-versioning install)
+        # Installation exists but no version file (or invalid version)
         echo "unknown"
     else
         echo ""
@@ -179,7 +197,8 @@ backup_existing_installation() {
 
     info "Creating backup at ${backup_dir}..." >&2
 
-    if cp -r "$INSTALL_DIR" "$backup_dir" 2>/dev/null; then
+    # Use archive mode to preserve symlinks, permissions, and timestamps
+    if cp -a "$INSTALL_DIR" "$backup_dir" 2>/dev/null; then
         success "Backup created successfully" >&2
         echo "$backup_dir"
     else
@@ -342,8 +361,17 @@ update_rc_file() {
             return
             ;;
     esac
-    # Check if already present
-    if grep -qF "$source_line" "$rc_file" 2>/dev/null; then
+    # Ensure RC file exists when AUTO_RC is enabled so grep and appends are safe
+    if [[ $AUTO_RC == true && ! -f "$rc_file" ]]; then
+        info "RC file $rc_file does not exist. Creating it."
+        if ! touch "$rc_file"; then
+            warn "Failed to create RC file $rc_file. Skipping RC file update."
+            return
+        fi
+    fi
+
+    # Check if source line is already present
+    if [[ -f "$rc_file" ]] && grep -qF "$source_line" "$rc_file"; then
         info "Source line already present in $rc_file"
         return
     fi
@@ -456,8 +484,8 @@ main() {
     download_release "$latest_tag" "$temp_dir"
     install_files "$temp_dir" "$latest_tag"
 
-    # Only update RC for user installations and new installs
-    if [[ $INSTALL_MODE == "user" ]] && [[ $is_update == false ]]; then
+    # Update RC for all user installations (new installs and updates)
+    if [[ $INSTALL_MODE == "user" ]]; then
         update_rc_file
     fi
 
