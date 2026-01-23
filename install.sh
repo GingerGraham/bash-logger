@@ -30,6 +30,12 @@ AUTO_RC=false
 BACKUP=true
 SKIP_VERIFY=false
 
+# Installation state tracking for cleanup
+INSTALL_SUCCESS=false
+CREATED_INSTALL_DIR=false
+CREATED_DOC_DIR=false
+BACKUP_PATH=""
+
 # Functions
 info() {
     echo -e "${BLUE}==>${NC} $*"
@@ -46,6 +52,42 @@ warn() {
 error() {
     echo -e "${RED}Error:${NC} $*" >&2
     exit 1
+}
+
+# Cleanup function called on EXIT to handle partial installation failures
+cleanup_on_failure() {
+    local exit_code=$?
+
+    # Clean up temp directory if it exists
+    if [[ -n "${temp_dir:-}" ]] && [[ -d "${temp_dir}" ]]; then
+        rm -rf "$temp_dir"
+    fi
+
+    # If installation was successful, nothing more to do
+    if [[ $INSTALL_SUCCESS == true ]]; then
+        return $exit_code
+    fi
+
+    # Installation failed - clean up partially created resources
+    if [[ $CREATED_DOC_DIR == true ]] && [[ -d "${DOC_DIR:-}" ]]; then
+        warn "Cleaning up partially created documentation directory: ${DOC_DIR}"
+        rm -rf "$DOC_DIR" 2>/dev/null || true
+    fi
+
+    if [[ $CREATED_INSTALL_DIR == true ]] && [[ -d "${INSTALL_DIR:-}" ]]; then
+        warn "Cleaning up partially created installation directory: ${INSTALL_DIR}"
+        rm -rf "$INSTALL_DIR" 2>/dev/null || true
+    fi
+
+    # If we have a backup, offer guidance on restoration
+    if [[ -n "$BACKUP_PATH" ]] && [[ -d "$BACKUP_PATH" ]]; then
+        warn "Installation failed. Your previous installation was backed up to:"
+        warn "    ${BACKUP_PATH}"
+        warn "To restore, run:"
+        warn "    rm -rf '${INSTALL_DIR}' && mv '${BACKUP_PATH}' '${INSTALL_DIR}'"
+    fi
+
+    return $exit_code
 }
 
 usage() {
@@ -474,6 +516,9 @@ determine_install_paths() {
         custom)
             INSTALL_PREFIX="$PREFIX"
             ;;
+        *)
+            error "Internal error: unexpected INSTALL_MODE '${INSTALL_MODE}'"
+            ;;
     esac
 
     INSTALL_DIR="${INSTALL_PREFIX}/lib/bash-logger"
@@ -515,9 +560,19 @@ install_files() {
 
     # Verify write permissions before creating directories
     check_install_prefix_writable
+
+    # Track whether we're creating new directories (for cleanup on failure)
+    local install_dir_existed=false
+    local doc_dir_existed=false
+    [[ -d "$INSTALL_DIR" ]] && install_dir_existed=true
+    [[ -d "$DOC_DIR" ]] && doc_dir_existed=true
+
     # Create directories
     mkdir -p "$INSTALL_DIR" || error "Failed to create ${INSTALL_DIR}"
+    [[ $install_dir_existed == false ]] && CREATED_INSTALL_DIR=true
+
     mkdir -p "$DOC_DIR" || error "Failed to create ${DOC_DIR}"
+    [[ $doc_dir_existed == false ]] && CREATED_DOC_DIR=true
 
     # Install library
     if ! install -m 644 "${temp_dir}/${LIBRARY_FILE}" "${INSTALL_DIR}/${LIBRARY_FILE}"; then
@@ -675,18 +730,17 @@ main() {
     # Create temporary directory
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap 'if [[ -n "${temp_dir:-}" ]] && [[ -d "${temp_dir}" ]]; then rm -rf "$temp_dir"; fi' EXIT
+    trap 'cleanup_on_failure' EXIT
 
     # Handle existing installation (different version)
     local is_update=false
-    local backup_path=""
     if [[ -n "$existing_version" ]]; then
         is_update=true
         info "Found existing installation: ${existing_version}"
         info "Upgrading to: ${latest_tag}"
 
         if [[ $BACKUP == true ]]; then
-            backup_path=$(backup_existing_installation)
+            BACKUP_PATH=$(backup_existing_installation)
         fi
     fi
 
@@ -699,6 +753,9 @@ main() {
 
     install_files "$temp_dir" "$latest_tag"
 
+    # Mark installation as successful (prevents cleanup_on_failure from removing files)
+    INSTALL_SUCCESS=true
+
     # Update RC for all user installations (new installs and updates)
     if [[ $INSTALL_MODE == "user" ]]; then
         update_rc_file
@@ -707,8 +764,8 @@ main() {
     show_usage_instructions "$is_update" "$existing_version" "$latest_tag"
 
     # Show backup location if created
-    if [[ -n "$backup_path" ]]; then
-        info "Previous installation backed up to: ${backup_path}"
+    if [[ -n "$BACKUP_PATH" ]]; then
+        info "Previous installation backed up to: ${BACKUP_PATH}"
         echo ""
     fi
 }

@@ -852,6 +852,104 @@ echo "RESULT=${result}"
     pass_test
 }
 
+# Test: determine_install_paths fails with unexpected INSTALL_MODE
+test_determine_install_paths_unexpected_mode() {
+    start_test "determine_install_paths fails with unexpected INSTALL_MODE"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+INSTALL_MODE="invalid_mode"
+determine_install_paths
+echo "This should not print"
+') || exit_code=$?
+
+    assert_command_failed "$exit_code" "determine_install_paths should fail with unexpected INSTALL_MODE" || return
+    assert_contains "$output" "Internal error" || return
+    assert_contains "$output" "unexpected INSTALL_MODE" || return
+
+    pass_test
+}
+
+# Test: cleanup state tracking variables are initialized
+test_cleanup_state_variables_initialized() {
+    start_test "cleanup state tracking variables are initialized"
+
+    local output
+    output=$(run_install_test_script '
+echo "INSTALL_SUCCESS=${INSTALL_SUCCESS}"
+echo "CREATED_INSTALL_DIR=${CREATED_INSTALL_DIR}"
+echo "CREATED_DOC_DIR=${CREATED_DOC_DIR}"
+echo "BACKUP_PATH=${BACKUP_PATH}"
+')
+
+    assert_contains "$output" "INSTALL_SUCCESS=false" || return
+    assert_contains "$output" "CREATED_INSTALL_DIR=false" || return
+    assert_contains "$output" "CREATED_DOC_DIR=false" || return
+    assert_contains "$output" "BACKUP_PATH=" || return
+
+    pass_test
+}
+
+# Test: cleanup_on_failure cleans temp directory on success
+test_cleanup_on_failure_preserves_on_success() {
+    start_test "cleanup_on_failure preserves exit code when successful"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+INSTALL_SUCCESS=true
+temp_dir=$(mktemp -d)
+touch "${temp_dir}/testfile"
+
+# Simulate exit handler
+cleanup_on_failure
+exit_code=$?
+
+# Verify temp directory was cleaned up
+if [[ -d "$temp_dir" ]]; then
+    echo "TEMP_DIR_CLEANED=false"
+else
+    echo "TEMP_DIR_CLEANED=true"
+fi
+echo "EXIT_CODE=${exit_code}"
+') || exit_code=$?
+
+    assert_contains "$output" "TEMP_DIR_CLEANED=true" || return
+    assert_contains "$output" "EXIT_CODE=0" || return
+
+    pass_test
+}
+
+# Test: install_files tracks directory creation correctly
+test_install_files_tracks_directory_creation() {
+    start_test "install_files tracks new directory creation"
+
+    local output
+    output=$(run_install_test_script '
+INSTALL_MODE="custom"
+temp_install_root=$(mktemp -d)
+PREFIX="${temp_install_root}/custom"
+determine_install_paths
+
+# Create a mock library file
+mock_temp_dir=$(mktemp -d)
+touch "${mock_temp_dir}/logging.sh"
+
+# Run install_files
+install_files "$mock_temp_dir" "v1.0.0"
+
+echo "CREATED_INSTALL_DIR=${CREATED_INSTALL_DIR}"
+echo "CREATED_DOC_DIR=${CREATED_DOC_DIR}"
+
+# Cleanup
+rm -rf "$temp_install_root" "$mock_temp_dir"
+')
+
+    assert_contains "$output" "CREATED_INSTALL_DIR=true" || return
+    assert_contains "$output" "CREATED_DOC_DIR=true" || return
+
+    pass_test
+}
+
 # Run all tests
 test_parse_args_user
 test_parse_args_system
@@ -892,3 +990,7 @@ test_validate_prefix_rejects_whitespace
 test_validate_prefix_rejects_long_path
 test_validate_prefix_warns_tmp
 test_validate_prefix_absolute_path
+test_determine_install_paths_unexpected_mode
+test_cleanup_state_variables_initialized
+test_cleanup_on_failure_preserves_on_success
+test_install_files_tracks_directory_creation
