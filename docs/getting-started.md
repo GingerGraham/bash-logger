@@ -80,6 +80,19 @@ curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/insta
 * `--auto-rc` - Automatically add source line to shell RC file
 * `--no-backup` - Skip backing up existing installation
 
+**Installing a Specific Version:**
+
+To install a specific version instead of the latest release, set the `INSTALL_VERSION` environment variable to a valid
+release tag:
+
+```bash
+# Install a specific version (user installation)
+INSTALL_VERSION=v1.0.0 bash -c "$(curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh)"
+
+# Install a specific version (system-wide)
+curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | sudo INSTALL_VERSION=v1.0.0 bash -s -- --system
+```
+
 For more details on available options, run the install script with the `--help` flag.
 
 ### Manual Installation

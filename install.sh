@@ -62,6 +62,10 @@ Options:
     --no-backup         Skip backing up existing installation
     --help              Show this help message
 
+Environment Variables:
+    INSTALL_VERSION     Install a specific version instead of the latest release.
+                        Set to a valid release tag (e.g., "v1.0.0").
+
 Examples:
     # User installation
     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | bash
