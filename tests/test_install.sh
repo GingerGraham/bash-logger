@@ -716,6 +716,142 @@ echo "SKIP_VERIFY=${SKIP_VERIFY}"
     pass_test
 }
 
+# Test: validate_prefix expands tilde to home directory
+test_validate_prefix_tilde_expansion() {
+    start_test "validate_prefix expands ~ to home directory"
+
+    local output
+    output=$(run_install_test_script '
+result=$(validate_prefix "~/test/path")
+echo "RESULT=${result}"
+')
+
+    assert_contains "$output" "RESULT=${HOME}/test/path" || return
+
+    pass_test
+}
+
+# Test: validate_prefix converts relative to absolute path
+test_validate_prefix_relative_path() {
+    start_test "validate_prefix converts relative path to absolute"
+
+    local output
+    output=$(run_install_test_script '
+result=$(validate_prefix "relative/path")
+echo "RESULT=${result}"
+')
+
+    # Should start with / (absolute path)
+    if [[ "$output" == *"RESULT=/"* ]]; then
+        pass_test
+    else
+        fail_test "validate_prefix should convert relative path to absolute"
+    fi
+}
+
+# Test: validate_prefix removes trailing slashes
+test_validate_prefix_trailing_slashes() {
+    start_test "validate_prefix removes trailing slashes"
+
+    local output
+    output=$(run_install_test_script '
+result=$(validate_prefix "/test/path///")
+echo "RESULT=${result}"
+')
+
+    assert_contains "$output" "RESULT=/test/path" || return
+    # Make sure trailing slashes are removed
+    if [[ "$output" == *"RESULT=/test/path/"* ]]; then
+        fail_test "Should remove trailing slashes"
+        return
+    fi
+
+    pass_test
+}
+
+# Test: validate_prefix rejects path with newlines
+test_validate_prefix_rejects_newlines() {
+    start_test "validate_prefix rejects path containing newlines"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+validate_prefix "/test/path
+with/newline"
+') || exit_code=$?
+
+    assert_command_failed "$exit_code" "Should reject path with newlines" || return
+    assert_contains "$output" "invalid newline" || return
+
+    pass_test
+}
+
+# Test: validate_prefix rejects whitespace-only path
+test_validate_prefix_rejects_whitespace() {
+    start_test "validate_prefix rejects whitespace-only path"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+validate_prefix "   "
+') || exit_code=$?
+
+    assert_command_failed "$exit_code" "Should reject whitespace-only path" || return
+    assert_contains "$output" "empty or whitespace" || return
+
+    pass_test
+}
+
+# Test: validate_prefix rejects excessively long paths
+test_validate_prefix_rejects_long_path() {
+    start_test "validate_prefix rejects excessively long paths"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+# Create a path longer than 4096 characters
+long_path="/$(printf "a%.0s" {1..4100})"
+validate_prefix "$long_path"
+') || exit_code=$?
+
+    assert_command_failed "$exit_code" "Should reject path longer than 4096 chars" || return
+    assert_contains "$output" "too long" || return
+
+    pass_test
+}
+
+# Test: validate_prefix warns about tmp directory
+test_validate_prefix_warns_tmp() {
+    start_test "validate_prefix warns about temporary directory installation"
+
+    local output
+    # Capture both stdout and stderr (2>&1) to see the warning
+    output=$(run_install_test_script '
+result=$(validate_prefix "/tmp/test-install" 2>&1)
+echo "WARNING_OUTPUT=${result}"
+result2=$(validate_prefix "/tmp/test-install" 2>/dev/null)
+echo "RESULT=${result2}"
+')
+
+    assert_contains "$output" "Warning:" || return
+    assert_contains "$output" "temporary directory" || return
+    assert_contains "$output" "RESULT=/tmp/test-install" || return
+
+    pass_test
+}
+
+# Test: validate_prefix handles absolute path correctly
+test_validate_prefix_absolute_path() {
+    start_test "validate_prefix preserves valid absolute path"
+
+    local output
+    output=$(run_install_test_script '
+result=$(validate_prefix "/usr/local/custom")
+echo "RESULT=${result}"
+')
+
+    assert_contains "$output" "RESULT=/usr/local/custom" || return
+
+    pass_test
+}
+
 # Run all tests
 test_parse_args_user
 test_parse_args_system
@@ -748,3 +884,11 @@ test_verify_release_skip_verify
 test_verify_release_valid_checksum
 test_verify_release_invalid_checksum
 test_parse_args_multiple_with_skip_verify
+test_validate_prefix_tilde_expansion
+test_validate_prefix_relative_path
+test_validate_prefix_trailing_slashes
+test_validate_prefix_rejects_newlines
+test_validate_prefix_rejects_whitespace
+test_validate_prefix_rejects_long_path
+test_validate_prefix_warns_tmp
+test_validate_prefix_absolute_path

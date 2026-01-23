@@ -102,7 +102,7 @@ parse_args() {
                 if [[ "$2" == --* ]]; then
                     error "--prefix requires a path argument, not an option"
                 fi
-                PREFIX="$2"
+                PREFIX=$(validate_prefix "$2")
                 INSTALL_MODE="custom"
                 shift 2
                 ;;
@@ -133,6 +133,56 @@ check_root() {
     if [[ $INSTALL_MODE == "system" ]] && [[ $EUID -ne 0 ]]; then
         error "System-wide installation requires root privileges. Use sudo."
     fi
+}
+
+# Validate and normalize the prefix path
+# Returns the normalized path on stdout, exits with error if invalid
+validate_prefix() {
+    local path="$1"
+
+    # Check for newlines and carriage returns (problematic in paths)
+    case "$path" in
+        *$'\n'*|*$'\r'*)
+            error "--prefix path contains invalid newline character"
+            ;;
+    esac
+
+    # Check if path is just whitespace
+    local trimmed="${path#"${path%%[![:space:]]*}"}"
+    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+    if [[ -z "$trimmed" ]]; then
+        error "--prefix path cannot be empty or whitespace only"
+    fi
+
+    # Expand ~ to home directory if present at start
+    if [[ "$path" == "~"* ]]; then
+        path="${HOME}${path:1}"
+    fi
+
+    # Convert to absolute path if relative
+    if [[ "$path" != /* ]]; then
+        # Use pwd to get current directory and combine
+        path="$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")" || \
+            path="$(pwd)/$path"
+    fi
+
+    # Remove trailing slashes (except for root /)
+    while [[ "$path" == */ ]] && [[ "$path" != "/" ]]; do
+        path="${path%/}"
+    done
+
+    # Check path length (most filesystems have limits around 4096)
+    if [[ ${#path} -gt 4096 ]]; then
+        error "--prefix path is too long (max 4096 characters)"
+    fi
+
+    # Warn about potentially problematic paths (but don't block)
+    # Send warning to stderr so it doesn't interfere with the returned path
+    if [[ "$path" == /tmp* ]] || [[ "$path" == /var/tmp* ]]; then
+        warn "Installing to temporary directory '$path' - files may be deleted on reboot" >&2
+    fi
+
+    echo "$path"
 }
 
 # Detect available SHA256 checksum tool
