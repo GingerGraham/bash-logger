@@ -282,7 +282,8 @@ verify_file_checksum() {
 }
 
 # Main verification function that handles the full verification flow
-# Returns 0 if verification passed or user chose to continue, 1 to abort
+# Returns 0 if verification passed or user chose to continue.
+# On other failures, returns 1 or may terminate the script via error().
 verify_release() {
     local tag=$1
     local temp_dir=$2
