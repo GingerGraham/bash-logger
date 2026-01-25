@@ -69,7 +69,7 @@ CURRENT_LOG_LEVEL=$LOG_LEVEL_INFO
 USE_UTC="false" # Set to true to use UTC time in logs
 
 # Journal logging settings
-USE_JOURNAL="true"
+USE_JOURNAL="false"
 JOURNAL_TAG=""  # Tag for syslog/journal entries
 
 # Color settings
