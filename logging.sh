@@ -4,6 +4,8 @@
 #
 # Repository: https://github.com/GingerGraham/bash-logger
 #
+# License: MIT License
+#
 # shellcheck disable=SC2034
 # Note: SC2034 (unused variable) is disabled because this script is designed to be
 # sourced by other scripts. Variables like LOG_LEVEL_FATAL, LOG_CONFIG_FILE, VERBOSE,

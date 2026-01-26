@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-* adding install script option ([#21](https://github.com/GingerGraham/bash-logger/issues/21)) ([382b8bc](https://github.com/GingerGraham/bash-logger/commit/382b8bcb8cf091160ef083cce9896883eea1b71a)), closes [#22](https://github.com/GingerGraham/bash-logger/issues/22)
+* adding install script option ([#21](https://github.com/GingerGraham/bash-logger/issues/21)) ([382b8bc](https://github.com/GingerGraham/bash-logger/commit/382b8bcb8cf091160ef083cce9896883eea1b71a)),
+  closes [#22](https://github.com/GingerGraham/bash-logger/issues/22)
 * disable journal logging by default ([#27](https://github.com/GingerGraham/bash-logger/issues/27)) ([9b378e7](https://github.com/GingerGraham/bash-logger/commit/9b378e70ff4e05041803822493a125d6e8b9511f))
 
 ## [1.2.1](https://github.com/GingerGraham/bash-logger/compare/1.2.0...1.2.1) (2026-01-21)

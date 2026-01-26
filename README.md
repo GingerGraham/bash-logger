@@ -1,8 +1,10 @@
 # Bash Logger
 
 ![GitHub Release](https://img.shields.io/github/v/release/GingerGraham/bash-logger)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Release](https://github.com/GingerGraham/bash-logger/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/GingerGraham/bash-logger/actions/workflows/release.yml)
 [![Tests](https://github.com/GingerGraham/bash-logger/actions/workflows/tests.yml/badge.svg)](https://github.com/GingerGraham/bash-logger/actions/workflows/tests.yml)
+![GitHub Repo stars](https://img.shields.io/github/stars/GingerGraham/bash-logger?style=social)
 
 A flexible, reusable logging module for Bash scripts that provides standardized logging functionality with various configuration options.
 
