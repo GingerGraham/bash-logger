@@ -48,7 +48,7 @@
 
 # Version (updated by release workflow)
 if [[ -z "${BASH_LOGGER_VERSION:-}" ]]; then
-    readonly BASH_LOGGER_VERSION="1.2.2"
+    readonly BASH_LOGGER_VERSION="1.3.0"
 fi
 
 # Log levels (following complete syslog standard - higher number = less severe)
