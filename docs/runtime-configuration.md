@@ -8,8 +8,9 @@ different phases of operation.
 * [Overview](#overview)
 * [Available Functions](#available-functions)
   * [set_log_level](#set_log_level)
-  * [set_timezone_utc](#set_timezone_utc)
   * [set_log_format](#set_log_format)
+  * [set_script_name](#set_script_name)
+  * [set_timezone_utc](#set_timezone_utc)
   * [set_journal_logging](#set_journal_logging)
   * [set_journal_tag](#set_journal_tag)
 * [Use Cases](#use-cases)
@@ -21,6 +22,7 @@ different phases of operation.
   * [Environment-Based Settings](#environment-based-settings)
   * [Error Recovery](#error-recovery)
   * [Temporary Format Change](#temporary-format-change)
+  * [Script Name for Different Phases](#script-name-for-different-phases)
   * [Tag-Based Component Logging](#tag-based-component-logging)
 * [Runtime vs. Initialization](#runtime-vs-initialization)
   * [When to Use Initialization Options](#when-to-use-initialization-options)
@@ -133,6 +135,39 @@ set_log_format "%d [%s] %l: %m"
 ```
 
 See [Formatting](formatting.md) for format options.
+
+### set_script_name
+
+Change the script name that appears in log messages.
+
+**Syntax:**
+
+```bash
+set_script_name NAME
+```
+
+**Parameters:**
+
+* `NAME` - String identifier for the script in log messages
+
+**Examples:**
+
+```bash
+# Change script name for a specific phase
+set_script_name "init-phase"
+
+# Use component name
+set_script_name "database-module"
+
+# Restore original name
+set_script_name "main-script"
+```
+
+This is particularly useful when:
+
+* The logger was sourced from a shell RC file (where auto-detection returns "unknown")
+* Different phases of a script should be logged with different identifiers
+* Multiple components in a script need distinct log identifiers
 
 ### set_journal_logging
 
@@ -399,6 +434,37 @@ log_info "Record 3"
 set_log_format "$ORIGINAL_FORMAT"
 
 log_info "Export complete"
+```
+
+### Script Name for Different Phases
+
+Change script name to identify different execution phases:
+
+```bash
+#!/bin/bash
+source /path/to/logging.sh
+
+# Initialize with a default name (useful for RC files or complex scripts)
+init_logger --name "my-app"
+
+log_info "Application starting"
+
+# Change name for initialization phase
+set_script_name "my-app:init"
+log_info "Loading configuration"
+log_info "Connecting to database"
+
+# Change name for main processing
+set_script_name "my-app:main"
+log_info "Processing data"
+
+# Change name for cleanup
+set_script_name "my-app:cleanup"
+log_info "Cleaning up resources"
+
+# Restore original name
+set_script_name "my-app"
+log_info "Application complete"
 ```
 
 ### Tag-Based Component Logging

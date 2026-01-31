@@ -360,6 +360,89 @@ test_set_log_level_invalid() {
     pass_test
 }
 
+# Test: set_script_name function
+test_set_script_name() {
+    start_test "set_script_name changes script name"
+
+    init_logger --name "original"
+
+    assert_equals "original" "$SCRIPT_NAME" || return
+
+    set_script_name "new-name"
+
+    assert_equals "new-name" "$SCRIPT_NAME" || return
+
+    pass_test
+}
+
+# Test: set_script_name affects log output
+test_set_script_name_in_output() {
+    start_test "set_script_name affects log output"
+
+    init_logger --quiet --name "first-name" --format "[%s] %m"
+    local log_file="$TEST_DIR/script_name_change.log"
+    LOG_FILE="$log_file"
+
+    log_info "First message"
+
+    set_script_name "second-name"
+
+    log_info "Second message"
+
+    assert_file_contains "$log_file" "[first-name] First message" || return
+    assert_file_contains "$log_file" "[second-name] Second message" || return
+
+    pass_test
+}
+
+# Test: set_script_name multiple changes
+test_set_script_name_multiple() {
+    start_test "set_script_name can be called multiple times"
+
+    init_logger
+
+    set_script_name "name1"
+    assert_equals "name1" "$SCRIPT_NAME" || return
+
+    set_script_name "name2"
+    assert_equals "name2" "$SCRIPT_NAME" || return
+
+    set_script_name "name3"
+    assert_equals "name3" "$SCRIPT_NAME" || return
+
+    pass_test
+}
+
+# Test: set_script_name with empty string
+test_set_script_name_empty() {
+    start_test "set_script_name accepts empty string"
+
+    init_logger --name "test"
+
+    set_script_name ""
+
+    assert_equals "" "$SCRIPT_NAME" || return
+
+    pass_test
+}
+
+# Test: set_script_name logs config change
+test_set_script_name_logs_change() {
+    start_test "set_script_name logs the configuration change"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/script_name_config.log"
+    LOG_FILE="$log_file"
+
+    set_script_name "new-script"
+
+    # The config change message should be in the log
+    assert_file_contains "$log_file" "Script name changed" || return
+    assert_file_contains "$log_file" "new-script" || return
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -377,3 +460,8 @@ test_set_log_level_verbose_interaction
 test_set_log_format_empty
 test_runtime_config_isolation
 test_set_log_level_invalid
+test_set_script_name
+test_set_script_name_in_output
+test_set_script_name_multiple
+test_set_script_name_empty
+test_set_script_name_logs_change
