@@ -27,6 +27,7 @@
 #   Runtime Configuration:
 #     - set_log_level <level>           : Change log level dynamically
 #     - set_log_format <format>         : Change message format
+#     - set_script_name <name>          : Change script name in log messages
 #     - set_timezone_utc <true|false>   : Toggle UTC timestamps
 #     - set_journal_logging <true|false>: Toggle system journal logging
 #     - set_journal_tag <tag>           : Change journal tag
@@ -321,6 +322,9 @@ _parse_config_file() {
                             ;;
                     esac
                     ;;
+                script_name|scriptname|name)
+                    SCRIPT_NAME="$value"
+                    ;;
                 verbose)
                     case "${value,,}" in
                         true|yes|1|on)
@@ -537,13 +541,16 @@ _format_log_message() {
 
 # Function to initialize logger with custom settings
 init_logger() {
-    # Get the calling script's name
+    # Get the calling script's name (can be overridden with -n|--name option)
     local caller_script
     if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
         caller_script=$(basename "${BASH_SOURCE[1]}")
     else
         caller_script="unknown"
     fi
+
+    # Variable to hold custom script name if provided
+    local custom_script_name=""
 
     # First pass: look for config file option and process it first
     # This allows CLI arguments to override config file values
@@ -604,6 +611,10 @@ init_logger() {
                 LOG_FILE="$2"
                 shift 2
                 ;;
+            -n|--name|--script-name)
+                custom_script_name="$2"
+                shift 2
+                ;;
             -q|--quiet)
                 CONSOLE_LOG="false"
                 shift
@@ -635,7 +646,15 @@ init_logger() {
     done
 
     # Set a global variable for the script name to use in log messages
-    SCRIPT_NAME="$caller_script"
+    # Priority: CLI option > config file > auto-detected caller script
+    if [[ -n "$custom_script_name" ]]; then
+        # CLI option takes highest priority
+        SCRIPT_NAME="$custom_script_name"
+    elif [[ -z "${SCRIPT_NAME:-}" ]]; then
+        # Only use auto-detected name if not already set (e.g., by config file)
+        SCRIPT_NAME="$caller_script"
+    fi
+    # If SCRIPT_NAME was set by config file, keep that value
 
     # Set default journal tag if not specified but journal logging is enabled
     if [[ "$USE_JOURNAL" == "true" && -z "$JOURNAL_TAG" ]]; then
@@ -679,7 +698,7 @@ init_logger() {
     fi
 
     # Log initialization success
-    log_debug "Logger initialized by '$caller_script' with: console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(_get_log_level_name "$CURRENT_LOG_LEVEL"), stderr level=$(_get_log_level_name "$LOG_STDERR_LEVEL"), format=\"$LOG_FORMAT\""
+    log_debug "Logger initialized with script_name='$SCRIPT_NAME': console=$CONSOLE_LOG, file=$LOG_FILE, journal=$USE_JOURNAL, colors=$USE_COLORS, log level=$(_get_log_level_name "$CURRENT_LOG_LEVEL"), stderr level=$(_get_log_level_name "$LOG_STDERR_LEVEL"), format=\"$LOG_FORMAT\""
     return 0
 }
 
@@ -881,6 +900,35 @@ set_color_mode() {
     fi
 
     # Log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
+# Function to set script name dynamically
+set_script_name() {
+    local old_name="$SCRIPT_NAME"
+    SCRIPT_NAME="$1"
+
+    local message="Script name changed from \"$old_name\" to \"$SCRIPT_NAME\""
+    local log_entry
+    log_entry=$(_format_log_message "CONFIG" "$message")
+
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        if _should_use_colors; then
+            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+        else
+            echo "${log_entry}"
+        fi
+    fi
+
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+
+    # Always log to journal if enabled
     if [[ "$USE_JOURNAL" == "true" ]]; then
         logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi

@@ -22,6 +22,7 @@ declare -A DEMOS=(
     ["combined"]="demo_combined.sh|Combined Features|Multiple features working together"
     ["quiet"]="demo_quiet.sh|Quiet Mode|Suppress console output"
     ["config"]="demo_config.sh|Configuration Files|Load settings from INI files"
+    ["script-name"]="demo_script_name.sh|Script Name|Custom script names and phase identification"
 )
 
 # Color codes for output

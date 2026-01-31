@@ -16,6 +16,7 @@ any logging functions.
   * [Custom Format](#custom-format)
   * [UTC Time](#utc-time)
   * [Color Control](#color-control)
+  * [Custom Script Name](#custom-script-name)
   * [Stderr Level Configuration](#stderr-level-configuration)
 * [Combining Options](#combining-options)
   * [Development Setup](#development-setup)
@@ -36,6 +37,7 @@ any logging functions.
   * [Script with File Logging](#script-with-file-logging)
   * [System Service](#system-service)
   * [Development Script](#development-script)
+  * [Shell RC File](#shell-rc-file)
 * [Related Documentation](#related-documentation)
 
 ## Basic Initialization
@@ -56,6 +58,7 @@ The `init_logger` function accepts the following options:
 | ----------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `-c, --config FILE`                             | Load configuration from an INI file (CLI args override config values)               |
 | `-l, --log, --logfile, --log-file, --file FILE` | Specify a log file to write logs to                                                 |
+| `-n, --name, --script-name NAME`                | Set custom script name for log messages (overrides auto-detection)                  |
 | `-q, --quiet`                                   | Disable console output                                                              |
 | `-v, --verbose, --debug`                        | Set log level to DEBUG (most verbose)                                               |
 | `-d, --level LEVEL`                             | Set log level (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY or 0-7) |
@@ -170,6 +173,24 @@ init_logger --no-color
 # Auto-detect (default)
 init_logger  # Colors enabled if stdout is a TTY
 ```
+
+### Custom Script Name
+
+By default, the logger auto-detects the calling script's name. This works well for most scenarios, but may return
+"unknown" when called from shell RC files or other non-standard contexts. Use the `-n` option to set a custom name:
+
+```bash
+# Set a custom script name
+init_logger --name "my-startup-script"
+
+# Useful for shell RC files
+init_logger --name "bashrc" --level INFO
+
+# Alternative syntax
+init_logger --script-name "my-app"
+```
+
+The script name appears in log messages where `%s` is used in the format string.
 
 ### Stderr Level Configuration
 
@@ -396,6 +417,18 @@ log_info "Service started"
 source /path/to/logging.sh
 init_logger --verbose --color --log "/tmp/debug.log"
 log_debug "Debug information"
+```
+
+### Shell RC File
+
+When sourcing the logger from shell RC files (`.bashrc`, `.zshrc`), auto-detection may fail. Use `--name` to set a
+meaningful identifier:
+
+```bash
+# In ~/.bashrc or ~/.zshrc
+source /path/to/logging.sh
+init_logger --name "bashrc" --level INFO --log "$HOME/.local/log/shell.log"
+log_info "Shell session started"
 ```
 
 ## Related Documentation

@@ -293,6 +293,88 @@ test_stderr_level_option() {
     pass_test
 }
 
+# Test: Script name option
+test_script_name_option() {
+    start_test "Script name option sets custom name"
+
+    init_logger --name "custom-script"
+
+    assert_equals "custom-script" "$SCRIPT_NAME" || return
+
+    pass_test
+}
+
+# Test: Script name option with long form
+test_script_name_long_option() {
+    start_test "Script name long option works"
+
+    init_logger --script-name "my-app"
+
+    assert_equals "my-app" "$SCRIPT_NAME" || return
+
+    pass_test
+}
+
+# Test: Script name option with short form
+test_script_name_short_option() {
+    start_test "Script name short option works"
+
+    init_logger -n "short-name"
+
+    assert_equals "short-name" "$SCRIPT_NAME" || return
+
+    pass_test
+}
+
+# Test: Script name appears in log output
+test_script_name_in_output() {
+    start_test "Script name appears in log output"
+
+    local log_file="$TEST_DIR/script_name.log"
+    init_logger --name "test-app" --log "$log_file" --format "[%s] %m"
+
+    log_info "Test message"
+
+    assert_file_contains "$log_file" "[test-app]" || return
+    assert_file_contains "$log_file" "Test message" || return
+
+    pass_test
+}
+
+# Test: Script name from config file
+test_script_name_from_config() {
+    start_test "Script name can be set from config file"
+
+    local config_file="$TEST_DIR/script_name.conf"
+    cat > "$config_file" << 'EOF'
+[logging]
+script_name = config-script
+EOF
+
+    init_logger --config "$config_file"
+
+    assert_equals "config-script" "$SCRIPT_NAME" || return
+
+    pass_test
+}
+
+# Test: CLI script name overrides config
+test_script_name_cli_overrides_config() {
+    start_test "CLI script name overrides config file"
+
+    local config_file="$TEST_DIR/script_name_override.conf"
+    cat > "$config_file" << 'EOF'
+[logging]
+script_name = config-name
+EOF
+
+    init_logger --config "$config_file" --name "cli-name"
+
+    assert_equals "cli-name" "$SCRIPT_NAME" "CLI should override config" || return
+
+    pass_test
+}
+
 # Run all tests
 test_default_initialization
 test_quiet_option
@@ -315,3 +397,9 @@ test_log_file_nested_directory
 test_config_file_option
 test_cli_overrides_config
 test_stderr_level_option
+test_script_name_option
+test_script_name_long_option
+test_script_name_short_option
+test_script_name_in_output
+test_script_name_from_config
+test_script_name_cli_overrides_config

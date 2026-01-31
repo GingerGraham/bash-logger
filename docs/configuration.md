@@ -55,6 +55,10 @@ format = %d [%l] [%s] %m
 # Log file path (leave empty to disable file logging)
 log_file = /var/log/myapp.log
 
+# Script name for log messages (overrides auto-detection)
+# Useful when sourcing from shell RC files or for custom identifiers
+# script_name = myapp
+
 # Enable systemd journal logging: true/false
 journal = false
 
@@ -84,6 +88,7 @@ verbose = false
 | `level`        | `log_level`                                 | DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, 0-7 | `INFO`            | Minimum log level                        |
 | `format`       | `log_format`                                | Format string                                                     | `%d [%l] [%s] %m` | Log message format                       |
 | `log_file`     | `logfile`, `file`                           | Path                                                              | (none)            | Log file path                            |
+| `script_name`  | `scriptname`, `name`                        | String                                                            | auto-detected     | Script name in log messages              |
 | `journal`      | `use_journal`                               | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable journal logging                   |
 | `tag`          | `journal_tag`                               | String                                                            | script name       | Journal/syslog tag                       |
 | `utc`          | `use_utc`                                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Use UTC timestamps                       |
