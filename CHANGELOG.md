@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-* add custom script name functionality and update documentation ([#33](https://github.com/GingerGraham/bash-logger/issues/33)) ([3eb4ba0](https://github.com/GingerGraham/bash-logger/commit/3eb4ba0ba5e18ecfa9c2ab7e3897976a96acf3d1)), closes [#28](https://github.com/GingerGraham/bash-logger/issues/28)
+* add custom script name functionality and update documentation ([#33](https://github.com/GingerGraham/bash-logger/issues/33))
+  ([3eb4ba0](https://github.com/GingerGraham/bash-logger/commit/3eb4ba0ba5e18ecfa9c2ab7e3897976a96acf3d1)), closes [#28](https://github.com/GingerGraham/bash-logger/issues/28)
 
 ## [1.2.2](https://github.com/GingerGraham/bash-logger/compare/1.2.1...1.2.2) (2026-01-25)
 
