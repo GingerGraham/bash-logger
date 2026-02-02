@@ -6,7 +6,7 @@
 [![Tests](https://github.com/GingerGraham/bash-logger/actions/workflows/tests.yml/badge.svg)](https://github.com/GingerGraham/bash-logger/actions/workflows/tests.yml)
 
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/GingerGraham/bash-logger/total?label=All%20Downloads&logo=github)
-![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/GingerGraham/bash-logger/latest/total?label=Latest%20Release&logo=github)
+![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/GingerGraham/bash-logger/latest/total?label=Latest%20Release%20Downloads&logo=github)
 ![GitHub Repo stars](https://img.shields.io/github/stars/GingerGraham/bash-logger?style=social)
 
 A flexible, reusable logging module for Bash scripts that provides standardized logging functionality with various configuration options.
