@@ -138,7 +138,7 @@ The coverage and SonarQube targets require the following tools:
 
 | Tool                                                                                            | Purpose                                    | Installation                                                                                |
 | ----------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| [kcov](https://github.com/SimonKagworshipmann/kcov)                                             | Code coverage for Bash scripts             | `sudo dnf install kcov` (Fedora) or `sudo apt install kcov` (Debian/Ubuntu)                 |
+| [kcov](https://github.com/SimonKagstrom/kcov)                                                   | Code coverage for Bash scripts             | `sudo dnf install kcov` (Fedora) or `sudo apt install kcov` (Debian/Ubuntu)                 |
 | [sonar-scanner](https://docs.sonarqube.org/latest/analyzing-source-code/scanners/sonarscanner/) | SonarQube CLI scanner                      | Download from SonarQube docs or use package manager                                         |
 | [secret-tool](https://wiki.gnome.org/Projects/Libsecret)                                        | GNOME Keyring CLI for secure token storage | `sudo dnf install libsecret` (Fedora) or `sudo apt install libsecret-tools` (Debian/Ubuntu) |
 
