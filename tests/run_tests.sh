@@ -116,6 +116,7 @@ run_test_suite() {
 
     # Source the test helpers in current shell
     # shellcheck source=tests/test_helpers.sh
+    # shellcheck disable=SC1091
     source "$SCRIPT_DIR/test_helpers.sh"
 
     # Reset test counters for this suite
