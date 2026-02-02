@@ -111,6 +111,12 @@ _add_junit_testcase() {
             escaped_msg=$(_junit_xml_escape "$message")
             testcase="<testCase name=\"$escaped_name\" duration=\"$duration_ms\"><skipped message=\"$escaped_msg\"/></testCase>"
             ;;
+        *)
+            # Fallback for unexpected status values to keep XML consistent
+            local escaped_status
+            escaped_status=$(_junit_xml_escape "$status")
+            testcase="<testCase name=\"$escaped_name\" duration=\"$duration_ms\"><error message=\"Unknown status: $escaped_status\"/></testCase>"
+            ;;
     esac
 
     # Append to current suite's testcases (pipe-delimited)
