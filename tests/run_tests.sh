@@ -89,7 +89,7 @@ generate_junit_xml() {
         echo '<testExecutions version="1">'
 
         local suite_idx=0
-        for suite_name in "${SUITE_NAMES[@]}"; do
+        for suite_name in "${SUITE_NAMES[@]+"${SUITE_NAMES[@]}"}"; do
             # Path relative to project root for the test file
             local test_file_path="tests/${suite_name}.sh"
 
