@@ -126,7 +126,7 @@ run_test_suite() {
 
     # Reset JUnit testcase collection for this suite
     CURRENT_SUITE_TESTCASES=""
-    export JUNIT_OUTPUT CURRENT_SUITE_TESTCASES
+    export JUNIT_OUTPUT
 
     # Record start time for suite
     local suite_start_time
