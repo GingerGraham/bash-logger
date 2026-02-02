@@ -665,6 +665,7 @@ jobs:
 * Bash 4.0 or later
 * Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
 * Optional: `logger` command for journal logging tests
+* Optional: `bc` for accurate test timing in JUnit XML output (durations show as 0 if unavailable)
 
 **CI Characteristics**:
 

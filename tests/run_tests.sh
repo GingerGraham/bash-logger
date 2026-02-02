@@ -70,14 +70,6 @@ print_banner() {
     echo ""
 }
 
-# XML escape function for JUnit output
-xml_escape() {
-    local str="$1"
-    # Use sed for reliable XML entity escaping
-    # Order matters: & must be escaped first
-    printf '%s' "$str" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e "s/'/\&apos;/g" -e 's/"/\&quot;/g'
-}
-
 # Generate SonarQube Generic Test Execution report
 generate_junit_xml() {
     local output_file="$1"
@@ -264,6 +256,10 @@ main() {
 
     if [[ "$JUNIT_OUTPUT" == "true" ]]; then
         echo -e "${COLOR_BLUE}JUnit XML output enabled${COLOR_RESET}"
+        # Warn if bc is not available (needed for accurate timing)
+        if ! command -v bc >/dev/null 2>&1; then
+            echo -e "${COLOR_YELLOW}Warning: 'bc' not found - test durations will show as 0${COLOR_RESET}"
+        fi
         echo ""
     fi
 

@@ -163,7 +163,7 @@ sonar:
 		exit 1; \
 	fi
 	@echo "Syncing version from logging.sh to sonar-project.properties..."
-	@VERSION=$$(grep -oP 'BASH_LOGGER_VERSION="\K[^"]+' logging.sh) && \
+	@VERSION=$$(grep 'BASH_LOGGER_VERSION=' logging.sh | sed 's/.*BASH_LOGGER_VERSION="\([^"]*\)".*/\1/') && \
 		sed -i "s/^sonar.projectVersion=.*/sonar.projectVersion=$$VERSION/" sonar-project.properties && \
 		echo "  Version set to: $$VERSION"
 	@echo "Running SonarQube scanner..."
