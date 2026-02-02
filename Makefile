@@ -18,7 +18,7 @@ DOCS = README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURIT
 # Shell for execution
 SHELL := /bin/bash
 
-.PHONY: all help install install-user uninstall uninstall-user test lint lint-shell lint-markdown check demo demos clean pre-commit
+.PHONY: all help install install-user uninstall uninstall-user test test-junit coverage sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
 
 all: help
 
@@ -33,6 +33,10 @@ help:
 	@echo ""
 	@echo "Development targets:"
 	@echo "  make test            Run test suite"
+	@echo "  make test-junit      Run tests with JUnit XML output"
+	@echo "  make coverage        Run tests with kcov coverage"
+	@echo "  make sonar           Run SonarQube scanner (syncs version from logging.sh)"
+	@echo "  make sonar-analysis  Run coverage, JUnit tests, and SonarQube scan"
 	@echo "  make demo            Run all demo scripts"
 	@echo "  make lint            Run all linters (shellcheck + markdownlint)"
 	@echo "  make lint-shell      Run shellcheck only"
@@ -126,6 +130,49 @@ test:
 		exit 1; \
 	fi
 
+test-junit:
+	@echo "Running tests with JUnit XML output..."
+	@if [ ! -x tests/run_tests.sh ]; then \
+		chmod +x tests/run_tests.sh || { echo "Error: Cannot make test runner executable"; exit 1; }; \
+	fi
+	@./tests/run_tests.sh --junit
+
+coverage:
+	@if ! command -v kcov >/dev/null 2>&1; then \
+		echo "Error: kcov not found."; \
+		echo "Install with: sudo dnf install kcov (Fedora) or sudo apt install kcov (Debian/Ubuntu)"; \
+		exit 1; \
+	fi
+	@echo "Running tests with kcov coverage..."
+	@if [ ! -x tests/run_tests.sh ]; then \
+		chmod +x tests/run_tests.sh || { echo "Error: Cannot make test runner executable"; exit 1; }; \
+	fi
+	@kcov --include-path=./logging.sh coverage-report ./tests/run_tests.sh
+	@echo ""
+	@echo "✓ Coverage report generated in coverage-report/"
+
+sonar:
+	@if ! command -v sonar-scanner >/dev/null 2>&1; then \
+		echo "Error: sonar-scanner not found."; \
+		echo "Install from: https://docs.sonarqube.org/latest/analyzing-source-code/scanners/sonarscanner/"; \
+		exit 1; \
+	fi
+	@if ! command -v secret-tool >/dev/null 2>&1; then \
+		echo "Error: secret-tool not found (needed for SonarQube token)."; \
+		echo "Install with: sudo dnf install libsecret (Fedora) or sudo apt install libsecret-tools (Debian/Ubuntu)"; \
+		exit 1; \
+	fi
+	@echo "Syncing version from logging.sh to sonar-project.properties..."
+	@VERSION=$$(grep -oP 'BASH_LOGGER_VERSION="\K[^"]+' logging.sh) && \
+		sed -i "s/^sonar.projectVersion=.*/sonar.projectVersion=$$VERSION/" sonar-project.properties && \
+		echo "  Version set to: $$VERSION"
+	@echo "Running SonarQube scanner..."
+	@sonar-scanner -Dsonar.token=$$(secret-tool lookup service sonarqube account scanner)
+
+sonar-analysis: coverage test-junit sonar
+	@echo ""
+	@echo "✓ Full SonarQube analysis complete!"
+
 demo: demos
 
 demos:
@@ -185,4 +232,6 @@ clean:
 	@find . -name "*.log" -type f -delete 2>/dev/null || true
 	@find . -name "*~" -type f -delete 2>/dev/null || true
 	@find . -name ".*.swp" -type f -delete 2>/dev/null || true
+	@rm -rf coverage-report/ 2>/dev/null || true
+	@rm -rf test-reports/ 2>/dev/null || true
 	@echo "✓ Clean complete!"
