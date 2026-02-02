@@ -232,6 +232,10 @@ main() {
                 shift
                 ;;
             --output-dir)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --output-dir requires a directory argument" >&2
+                    exit 1
+                fi
                 OUTPUT_DIR="$2"
                 shift 2
                 ;;
