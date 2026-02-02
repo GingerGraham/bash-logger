@@ -167,7 +167,7 @@ sonar:
 		sed -i "s/^sonar.projectVersion=.*/sonar.projectVersion=$$VERSION/" sonar-project.properties && \
 		echo "  Version set to: $$VERSION"
 	@echo "Running SonarQube scanner..."
-	@sonar-scanner -Dsonar.token=$$(secret-tool lookup service sonarqube account scanner)
+	@SONAR_TOKEN=$$(secret-tool lookup service sonarqube account scanner) sonar-scanner
 
 sonar-analysis: coverage test-junit sonar
 	@echo ""
