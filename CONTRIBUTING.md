@@ -24,7 +24,6 @@ Please [open a bug report issue](../../issues/new?template=bug_report.md) with:
 Great! Here's the process:
 
 1. **Set up pre-commit hooks** (recommended)
-
    * Pre-commit hooks automatically validate your code before committing
    * This ensures your changes pass checks before you push
    * See [Pre-commit Setup Guide](docs/PRE-COMMIT.md) for instructions
@@ -34,16 +33,15 @@ Great! Here's the process:
 2. **Fork the repository** and create a branch from `main`
 
 3. **Make your changes**
-
    * Keep changes focused on a single issue/feature
    * Follow existing code style (see below)
    * Add comments for complex logic
 
 4. **Test your changes**
-
    * Test with bash 4.x and 5.x if possible
    * Verify existing functionality still works
-   * Run tests locally: `./tests/run_tests.sh`
+   * Run tests locally: `./tests/run_tests.sh` or `make test`
+   * Optionally run coverage: `make coverage` (requires [kcov](https://github.com/SimonKagstrom/kcov))
 
 5. **Submit a PR** linking to any related issues
 
@@ -106,6 +104,21 @@ The pre-commit hooks will validate your commit message format automatically.
 ## 📋 Code of Conduct
 
 Please be respectful and professional in all interactions. Treat others with kindness and courtesy.
+
+## 🔍 Code Quality Tools
+
+The project supports additional code quality tools for local development:
+
+| Command               | Description                     | Requirements                                  |
+| --------------------- | ------------------------------- | --------------------------------------------- |
+| `make test`           | Run test suite                  | Bash 4.0+                                     |
+| `make test-junit`     | Run tests with JUnit XML output | Bash 4.0+                                     |
+| `make coverage`       | Run tests with code coverage    | [kcov](https://github.com/SimonKagstrom/kcov) |
+| `make sonar-analysis` | Full coverage + SonarQube scan  | kcov, sonar-scanner, secret-tool              |
+
+> **Note:** The `sonar` and `sonar-analysis` targets are configured for the maintainer's
+> private SonarQube instance. See [Testing Documentation](docs/testing.md#code-coverage-and-static-analysis)
+> for details on setting up your own analysis environment.
 
 ## ❓ Questions?
 

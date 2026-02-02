@@ -64,13 +64,79 @@ start_test() {
     local test_name="$1"
     current_test="$test_name"
     suite_tests=$((suite_tests + 1))
+    # Record test start time for JUnit
+    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
     setup_test
+}
+
+# XML escape helper for JUnit output
+_junit_xml_escape() {
+    local str="$1"
+    # Use sed for reliable XML entity escaping
+    # Order matters: & must be escaped first
+    printf '%s' "$str" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e "s/'/\&apos;/g" -e 's/"/\&quot;/g'
+}
+
+# Calculate test duration
+_get_test_duration() {
+    local end_time
+    end_time=$(date +%s.%N 2>/dev/null || date +%s)
+    echo "$end_time - ${TEST_START_TIME:-$end_time}" | bc 2>/dev/null || echo "0"
+}
+
+# Add testcase to SonarQube Generic Test Execution report
+_add_junit_testcase() {
+    local status="$1"
+    local message="${2:-}"
+    local duration_sec duration_ms
+    duration_sec=$(_get_test_duration)
+    # Convert to milliseconds (integer) for SonarQube
+    duration_ms=$(echo "($duration_sec * 1000)/1" | bc 2>/dev/null || echo "0")
+    local escaped_name
+    escaped_name=$(_junit_xml_escape "$current_test")
+
+    local testcase
+
+    case "$status" in
+        pass)
+            testcase="<testCase name=\"$escaped_name\" duration=\"$duration_ms\"/>"
+            ;;
+        fail)
+            local escaped_msg
+            escaped_msg=$(_junit_xml_escape "$message")
+            testcase="<testCase name=\"$escaped_name\" duration=\"$duration_ms\"><failure message=\"$escaped_msg\"/></testCase>"
+            ;;
+        skip)
+            local escaped_msg
+            escaped_msg=$(_junit_xml_escape "$message")
+            testcase="<testCase name=\"$escaped_name\" duration=\"$duration_ms\"><skipped message=\"$escaped_msg\"/></testCase>"
+            ;;
+        *)
+            # Fallback for unexpected status values to keep XML consistent
+            local escaped_status
+            escaped_status=$(_junit_xml_escape "$status")
+            testcase="<testCase name=\"$escaped_name\" duration=\"$duration_ms\"><error message=\"Unknown status: $escaped_status\"/></testCase>"
+            ;;
+    esac
+
+    # Append to current suite's testcases (pipe-delimited)
+    if [[ -n "${CURRENT_SUITE_TESTCASES:-}" ]]; then
+        CURRENT_SUITE_TESTCASES+="|$testcase"
+    else
+        CURRENT_SUITE_TESTCASES="$testcase"
+    fi
 }
 
 # Record test result
 pass_test() {
     suite_passed=$((suite_passed + 1))
     echo "  ✓ $current_test"
+
+    # Record for JUnit if enabled
+    if [[ "${JUNIT_OUTPUT:-false}" == "true" ]]; then
+        _add_junit_testcase "pass"
+    fi
+
     teardown_test 0
 }
 
@@ -82,6 +148,12 @@ fail_test() {
 
     # Store for summary
     FAILED_TEST_DETAILS+=("$current_test: $message")
+
+    # Record for JUnit if enabled
+    if [[ "${JUNIT_OUTPUT:-false}" == "true" ]]; then
+        _add_junit_testcase "fail" "$message"
+    fi
+
     teardown_test 1
 }
 
@@ -89,6 +161,12 @@ skip_test() {
     local reason="$1"
     suite_skipped=$((suite_skipped + 1))
     echo "  ⊘ $current_test (skipped: $reason)"
+
+    # Record for JUnit if enabled
+    if [[ "${JUNIT_OUTPUT:-false}" == "true" ]]; then
+        _add_junit_testcase "skip" "$reason"
+    fi
+
     teardown_test 0
 }
 

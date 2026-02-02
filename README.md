@@ -111,9 +111,21 @@ See: [Journal Logging](docs/journal-logging.md)
 The project includes a comprehensive test suite to verify all functionality. To run the tests:
 
 ```bash
-cd tests
-./run_tests.sh
+make test
+# Or directly:
+cd tests && ./run_tests.sh
 ```
+
+Additional testing tools are available via the Makefile:
+
+```bash
+make coverage        # Run tests with kcov code coverage
+make test-junit      # Generate JUnit XML report
+make sonar-analysis  # Full coverage + SonarQube analysis
+```
+
+> **Note:** Coverage and SonarQube targets require additional tools (kcov, sonar-scanner).
+> See [Testing Documentation](docs/testing.md#code-coverage-and-static-analysis) for setup details.
 
 See [tests/README.md](tests/README.md) and [Testing](docs/testing.md) for more information.
 

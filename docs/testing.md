@@ -9,6 +9,15 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
   * [Run All Tests](#run-all-tests)
   * [Run Specific Test Suites](#run-specific-test-suites)
   * [Understanding Test Output](#understanding-test-output)
+* [Code Coverage and Static Analysis](#code-coverage-and-static-analysis)
+  * [Prerequisites](#prerequisites)
+  * [Coverage with kcov](#coverage-with-kcov)
+  * [JUnit XML Output](#junit-xml-output)
+  * [SonarQube Integration](#sonarqube-integration)
+    * [Setting Up the SonarQube Token](#setting-up-the-sonarqube-token)
+    * [Configuring sonar-project.properties](#configuring-sonar-projectproperties)
+    * [Running the Scanner](#running-the-scanner)
+  * [Running the Full Analysis Pipeline](#running-the-full-analysis-pipeline)
 * [Test Suite Structure](#test-suite-structure)
   * [Test Files](#test-files)
   * [Test Coverage](#test-coverage)
@@ -112,6 +121,149 @@ All tests passed!
 
 * `0` - All tests passed
 * `1` - One or more tests failed
+
+## Code Coverage and Static Analysis
+
+The project supports code coverage reporting and static analysis via SonarQube. These tools
+are available through Makefile targets but require additional setup as they depend on
+external tools and services.
+
+> **Note:** These features are primarily used by the maintainer for local analysis against
+> a private SonarQube instance. They are documented here for completeness and for
+> contributors who wish to run similar analysis.
+
+### Prerequisites
+
+The coverage and SonarQube targets require the following tools:
+
+| Tool                                                                                            | Purpose                                    | Installation                                                                                |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [kcov](https://github.com/SimonKagstrom/kcov)                                                   | Code coverage for Bash scripts             | `sudo dnf install kcov` (Fedora) or `sudo apt install kcov` (Debian/Ubuntu)                 |
+| [sonar-scanner](https://docs.sonarqube.org/latest/analyzing-source-code/scanners/sonarscanner/) | SonarQube CLI scanner                      | Download from SonarQube docs or use package manager                                         |
+| [secret-tool](https://wiki.gnome.org/Projects/Libsecret)                                        | GNOME Keyring CLI for secure token storage | `sudo dnf install libsecret` (Fedora) or `sudo apt install libsecret-tools` (Debian/Ubuntu) |
+
+Additionally, you need:
+
+* **Access to a SonarQube server** - The project's `sonar-project.properties` is configured
+  for the maintainer's private instance. You'll need to modify this file for your own server.
+* **SonarQube authentication token** - Stored securely in the GNOME Keyring (see below).
+
+### Coverage with kcov
+
+[kcov](https://github.com/SimonKagstrom/kcov) provides code coverage for Bash scripts by
+instrumenting the script execution and tracking which lines are executed.
+
+```bash
+# Run tests with coverage
+make coverage
+```
+
+This executes:
+
+```bash
+kcov --include-path=./logging.sh coverage-report ./tests/run_tests.sh
+```
+
+**Output:**
+
+* Coverage report is generated in `coverage-report/`
+* HTML report: `coverage-report/run_tests.sh/index.html`
+* SonarQube-compatible XML: `coverage-report/run_tests.sh/sonarqube.xml`
+
+### JUnit XML Output
+
+The test runner can generate JUnit XML reports for CI systems and SonarQube:
+
+```bash
+# Run tests with JUnit XML output
+make test-junit
+```
+
+Or directly:
+
+```bash
+./tests/run_tests.sh --junit
+```
+
+**Output:**
+
+* JUnit XML report: `test-reports/junit.xml`
+* The report follows the SonarQube Generic Test Execution format
+
+### SonarQube Integration
+
+SonarQube provides static analysis, code quality metrics, and aggregates coverage data.
+
+#### Setting Up the SonarQube Token
+
+The project uses `secret-tool` (GNOME Keyring) to securely store the SonarQube authentication
+token rather than embedding it in files or environment variables.
+
+**Store your token:**
+
+```bash
+secret-tool store --label='SonarQube Token' service sonarqube account scanner
+```
+
+You'll be prompted to enter your token. This stores it securely in the GNOME Keyring.
+
+**Verify the token is stored:**
+
+```bash
+secret-tool lookup service sonarqube account scanner
+```
+
+#### Configuring sonar-project.properties
+
+The project includes a `sonar-project.properties` file configured for the maintainer's
+private SonarQube instance. To use your own server, update:
+
+```properties
+# Update the host URL (add this line if using a different server)
+sonar.host.url=https://your-sonarqube-server.example.com
+
+# Optionally update project key if needed
+sonar.projectKey=bash-logger
+```
+
+#### Running the Scanner
+
+```bash
+# Run SonarQube scanner
+make sonar
+```
+
+Before running the scanner, this target automatically syncs the version number from
+`logging.sh` (`BASH_LOGGER_VERSION`) to `sonar-project.properties` (`sonar.projectVersion`),
+ensuring the version reported to SonarQube always matches the source code.
+
+The scanner reads configuration from `sonar-project.properties` and uploads:
+
+* Source code for analysis
+* Coverage report from `coverage-report/run_tests.sh/sonarqube.xml`
+* Test execution report from `test-reports/junit.xml`
+
+### Running the Full Analysis Pipeline
+
+To run coverage, tests with JUnit output, and SonarQube scan in sequence:
+
+```bash
+make sonar-analysis
+```
+
+This runs the following targets in order:
+
+1. `coverage` - Generates coverage report via kcov
+2. `test-junit` - Generates JUnit XML test report
+3. `sonar` - Uploads everything to SonarQube
+
+**Cleaning up reports:**
+
+```bash
+make clean
+```
+
+This removes `coverage-report/` and `test-reports/` directories along with other temporary files.
 
 ## Test Suite Structure
 
@@ -513,6 +665,7 @@ jobs:
 * Bash 4.0 or later
 * Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
 * Optional: `logger` command for journal logging tests
+* Optional: `bc` for accurate test timing in JUnit XML output (durations show as 0 if unavailable)
 
 **CI Characteristics**:
 
