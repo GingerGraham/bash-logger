@@ -164,7 +164,7 @@ sonar:
 	fi
 	@echo "Syncing version from logging.sh to sonar-project.properties..."
 	@VERSION=$$(grep 'BASH_LOGGER_VERSION=' logging.sh | sed 's/.*BASH_LOGGER_VERSION="\([^"]*\)".*/\1/') && \
-		sed -i "s/^sonar.projectVersion=.*/sonar.projectVersion=$$VERSION/" sonar-project.properties && \
+		sed -i.bak "s/^sonar.projectVersion=.*/sonar.projectVersion=$$VERSION/" sonar-project.properties && rm -f sonar-project.properties.bak && \
 		echo "  Version set to: $$VERSION"
 	@echo "Running SonarQube scanner..."
 	@SONAR_TOKEN=$$(secret-tool lookup service sonarqube account scanner) sonar-scanner
