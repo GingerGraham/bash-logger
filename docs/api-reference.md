@@ -28,6 +28,7 @@ Complete reference for all public functions in the bash-logger module.
   * [set_journal_tag](#set_journal_tag)
   * [set_color_mode](#set_color_mode)
   * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
+  * [set_unsafe_allow_ansi_codes](#set_unsafe_allow_ansi_codes)
 * [Public Constants](#public-constants)
   * [Log Level Constants](#log-level-constants)
   * [Current Settings](#current-settings)
@@ -61,21 +62,22 @@ init_logger [options]
 
 **Options:**
 
-| Option                    | Short | Description                                    | Default     |
-| ------------------------- | ----- | ---------------------------------------------- | ----------- |
-| `--level LEVEL`           | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.) | INFO        |
-| `--log FILE`              | `-l`  | Write logs to file                             | (none)      |
-| `--quiet`                 | `-q`  | Disable console output                         | false       |
-| `--verbose`               | `-v`  | Enable DEBUG level logging                     | false       |
-| `--journal`               | `-j`  | Enable system journal logging                  | false       |
-| `--tag TAG`               | `-t`  | Set journal tag                                | (script)    |
-| `--utc`                   | `-u`  | Use UTC timestamps instead of local time       | false       |
-| `--format FORMAT`         | `-f`  | Set log message format                         | (see below) |
-| `--color`                 |       | Force color output                             | auto        |
-| `--no-color`              |       | Disable color output                           | auto        |
-| `--config FILE`           | `-c`  | Load configuration from INI file               | (none)      |
-| `--stderr-level LEVEL`    | `-e`  | Messages at/above this level go to stderr      | ERROR       |
-| `--unsafe-allow-newlines` | `-U`  | Allow newlines in log messages (unsafe)        | false       |
+| Option                      | Short | Description                                      | Default     |
+| --------------------------- | ----- | ------------------------------------------------ | ----------- |
+| `--level LEVEL`             | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.)   | INFO        |
+| `--log FILE`                | `-l`  | Write logs to file                               | (none)      |
+| `--quiet`                   | `-q`  | Disable console output                           | false       |
+| `--verbose`                 | `-v`  | Enable DEBUG level logging                       | false       |
+| `--journal`                 | `-j`  | Enable system journal logging                    | false       |
+| `--tag TAG`                 | `-t`  | Set journal tag                                  | (script)    |
+| `--utc`                     | `-u`  | Use UTC timestamps instead of local time         | false       |
+| `--format FORMAT`           | `-f`  | Set log message format                           | (see below) |
+| `--color`                   |       | Force color output                               | auto        |
+| `--no-color`                |       | Disable color output                             | auto        |
+| `--config FILE`             | `-c`  | Load configuration from INI file                 | (none)      |
+| `--stderr-level LEVEL`      | `-e`  | Messages at/above this level go to stderr        | ERROR       |
+| `--unsafe-allow-newlines`   | `-U`  | Allow newlines in log messages (unsafe)          | false       |
+| `--unsafe-allow-ansi-codes` | `-A`  | Allow ANSI escape codes in log messages (unsafe) | false       |
 
 **Default Format:**
 
@@ -877,6 +879,58 @@ set_unsafe_allow_newlines false
 
 * [Runtime Configuration Guide](runtime-configuration.md#set_unsafe_allow_newlines)
 * [Configuration Files](configuration.md)
+
+---
+
+### set_unsafe_allow_ansi_codes
+
+Enable or disable unsafe mode for ANSI escape codes in log messages.
+
+**Warning:** When enabled, ANSI code stripping is disabled and terminal manipulation attacks become possible.
+Only use this when you control all log inputs and trust their source completely.
+
+**Syntax:**
+
+```bash
+set_unsafe_allow_ansi_codes BOOLEAN
+```
+
+**Parameters:**
+
+* `BOOLEAN` - `true` to allow ANSI codes, `false` to strip them (default)
+
+**Examples:**
+
+```bash
+# Enable unsafe mode (not recommended)
+set_unsafe_allow_ansi_codes true
+
+# Restore secure default
+set_unsafe_allow_ansi_codes false
+```
+
+**Effects:**
+
+* Logs a CONFIG message documenting the change (in red when enabling unsafe mode as a warning)
+* Takes effect immediately for all subsequent log messages
+* Affects `_strip_ansi_codes()` behavior in `_sanitize_log_message()`
+
+**Security Considerations:**
+
+By default, bash-logger strips ANSI escape sequences from user input to prevent:
+
+* Terminal display manipulation (clearing screen, cursor positioning)
+* Window title changes for social engineering
+* Visual spoofing attacks (fake error messages)
+* Terminal emulator exploitation via crafted sequences
+
+Library-generated ANSI codes for colors and formatting are preserved.
+
+**See Also:**
+
+* [Runtime Configuration Guide](runtime-configuration.md#set_unsafe_allow_ansi_codes)
+* [Configuration Files](configuration.md)
+* [Sensitive Data](sensitive-data.md)
 
 ---
 

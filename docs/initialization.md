@@ -70,6 +70,7 @@ The `init_logger` function accepts the following options:
 | `--color, --colour`                             | Explicitly enable color output (default: auto-detect)                               |
 | `--no-color, --no-colour`                       | Disable color output                                                                |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
+| `-A, --unsafe-allow-ansi-codes`                 | Allow ANSI escape codes in log messages (not recommended; disables sanitization)    |
 
 ## Common Initialization Patterns
 
