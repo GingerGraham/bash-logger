@@ -135,6 +135,17 @@ Demonstrates loading settings from INI files:
 
 **Run:** `./demo_config.sh` or `./run_demos.sh config`
 
+### 10. Log Injection Prevention (`demo_unsafe_newlines.sh`)
+
+Demonstrates newline sanitization and the unsafe mode override:
+
+* Default secure behavior that removes newlines
+* Unsafe mode that preserves newlines (with warnings)
+* CLI, config file, and runtime toggles
+* Security guidance and best practices
+
+**Run:** `./demo_unsafe_newlines.sh` or `./run_demos.sh unsafe-newlines`
+
 ## Log Files
 
 All demos create log files in the `../logs/` directory:
@@ -148,6 +159,9 @@ All demos create log files in the `../logs/` directory:
 * `demo_combined.log`
 * `demo_quiet.log`
 * `demo_config.log`
+
+**Note:** The log injection prevention demo uses a temporary directory so it can show
+side-by-side secure vs unsafe output without overwriting other demo logs.
 
 ## Original Comprehensive Demo
 

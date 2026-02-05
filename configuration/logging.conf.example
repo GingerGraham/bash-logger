@@ -66,3 +66,16 @@ quiet = false
 # When true, sets log level to DEBUG
 # Note: If both 'verbose' and 'level' are set, 'level' takes precedence
 verbose = false
+# Allow newlines in log messages (default: false)
+# SECURITY WARNING: When set to true, disables sanitization of newline and carriage
+# return characters in log messages. This can enable log injection attacks where
+# malicious input containing newlines can inject fake log entries into your logs.
+#
+# ONLY enable this if:
+#  1. You have explicit control over ALL logged messages (no user input)
+#  2. Your log parsing/analysis systems handle embedded newlines safely
+#  3. You understand the security implications and accept the risk
+#
+# When false (RECOMMENDED), newlines (\n), carriage returns (\r), and tabs (\t)
+# are replaced with spaces to prevent log injection attacks.
+# unsafe_allow_newlines = false

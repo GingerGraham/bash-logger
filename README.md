@@ -33,6 +33,7 @@ demos, and pipeline scripts - exists to support using that file.
 * INI configuration file support
 * Runtime configuration changes
 * Special handling for sensitive data
+* Secure-by-default newline sanitization to prevent log injection
 
 ## Quick Start
 

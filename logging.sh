@@ -32,6 +32,7 @@
 #     - set_journal_logging <true|false>: Toggle system journal logging
 #     - set_journal_tag <tag>           : Change journal tag
 #     - set_color_mode <auto|always|never> : Change color output
+#     - set_unsafe_allow_newlines <true|false> : Allow newlines in log messages (NOT RECOMMENDED)
 #
 # Internal Functions (prefixed with _):
 #   Functions prefixed with underscore (_) are internal implementation details
@@ -106,6 +107,11 @@ LOG_STDERR_LEVEL=$LOG_LEVEL_ERROR
 #   "[%l] %d [%s] %m" => "[INFO] 2025-03-03 12:34:56 [myscript.sh] Hello world"
 #  "%d %z [%l] [%s] %m" => "2025-03-03 12:34:56 UTC [INFO] [myscript.sh] Hello world"
 LOG_FORMAT="%d [%l] [%s] %m"
+
+# Security: Allow newlines in log messages (NOT RECOMMENDED)
+# When false (default), newlines and carriage returns are sanitized to prevent log injection
+# Set to true ONLY if you have explicit control over all logged messages and log parsing is tolerant
+LOG_UNSAFE_ALLOW_NEWLINES="false"
 
 # Function to detect terminal color support (internal)
 _detect_color_support() {
@@ -339,6 +345,19 @@ _parse_config_file() {
                             ;;
                     esac
                     ;;
+                unsafe_allow_newlines|unsafe-allow-newlines)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            LOG_UNSAFE_ALLOW_NEWLINES="true"
+                            ;;
+                        false|no|0|off)
+                            LOG_UNSAFE_ALLOW_NEWLINES="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
                 *)
                     echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
                     ;;
@@ -501,6 +520,28 @@ _get_syslog_priority() {
     esac
 }
 
+# Function to sanitize log messages to prevent log injection (internal)
+# Removes control characters that could break log formats or inject fake entries
+_sanitize_log_message() {
+    local message="$1"
+
+    # If unsafe mode is enabled, skip sanitization and return message as-is
+    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+        echo "$message"
+        return
+    fi
+
+    # Replace control characters with spaces to prevent log injection
+    # These characters can break log formats and enable log injection attacks
+    message="${message//$'\n'/ }"   # newline (LF)
+    message="${message//$'\r'/ }"   # carriage return (CR)
+    message="${message//$'\t'/ }"   # tab (HT)
+    # Uncomment the line below if form feed characters should also be sanitized
+    # message="${message//$'\f'/ }"   # form feed (FF)
+
+    echo "$message"
+}
+
 # Function to format log message (internal)
 _format_log_message() {
     local level_name="$1"
@@ -637,6 +678,10 @@ init_logger() {
                 stderr_level_value=$(_get_log_level_value "$2")
                 LOG_STDERR_LEVEL=$stderr_level_value
                 shift 2
+                ;;
+            -U|--unsafe-allow-newlines)
+                LOG_UNSAFE_ALLOW_NEWLINES="true"
+                shift
                 ;;
             *)
                 echo "Unknown parameter for logger: $1" >&2
@@ -934,6 +979,51 @@ set_script_name() {
     fi
 }
 
+# Function to enable/disable unsafe mode for newlines in log messages
+# WARNING: Disabling sanitization can allow log injection attacks. Only use if you have
+#          explicit control over all logged messages and your log parsing handles newlines safely.
+set_unsafe_allow_newlines() {
+    local old_setting="$LOG_UNSAFE_ALLOW_NEWLINES"
+    LOG_UNSAFE_ALLOW_NEWLINES="$1"
+
+    local safety_notice=""
+    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+        safety_notice=" (WARNING: Log injection protection is disabled)"
+    fi
+
+    local message="Unsafe newline mode changed from $old_setting to $LOG_UNSAFE_ALLOW_NEWLINES$safety_notice"
+    local log_entry
+    log_entry=$(_format_log_message "CONFIG" "$message")
+
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        # Use warning color if enabling unsafe mode
+        if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+            if _should_use_colors; then
+                echo -e "${COLOR_RED}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
+        else
+            if _should_use_colors; then
+                echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
+        fi
+    fi
+
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+
+    # Always log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
 # Logs to console (internal)
 _log_to_console() {
     local log_entry="$1"
@@ -973,6 +1063,9 @@ _log_message() {
     if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]]; then
         return
     fi
+
+    # Sanitize message to prevent log injection via control characters
+    message=$(_sanitize_log_message "$message")
 
     # Format the log entry
     local log_entry

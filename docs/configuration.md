@@ -79,24 +79,29 @@ quiet = false
 
 # Enable debug logging: true/false
 verbose = false
+
+# Allow newlines in log messages: true/false
+# Warning: true disables sanitization and can allow log injection
+unsafe_allow_newlines = false
 ```
 
 ## Configuration Keys
 
-| Key            | Aliases                                     | Values                                                            | Default           | Description                              |
-| -------------- | ------------------------------------------- | ----------------------------------------------------------------- | ----------------- | ---------------------------------------- |
-| `level`        | `log_level`                                 | DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, 0-7 | `INFO`            | Minimum log level                        |
-| `format`       | `log_format`                                | Format string                                                     | `%d [%l] [%s] %m` | Log message format                       |
-| `log_file`     | `logfile`, `file`                           | Path                                                              | (none)            | Log file path                            |
-| `script_name`  | `scriptname`, `name`                        | String                                                            | auto-detected     | Script name in log messages              |
-| `journal`      | `use_journal`                               | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable journal logging                   |
-| `tag`          | `journal_tag`                               | String                                                            | script name       | Journal/syslog tag                       |
-| `utc`          | `use_utc`                                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Use UTC timestamps                       |
-| `color`        | `colour`, `colors`, `colours`, `use_colors` | auto, always, never                                               | `auto`            | Color mode                               |
-| `stderr_level` | `stderr-level`                              | Log level                                                         | `ERROR`           | Minimum level for stderr                 |
-| `quiet`        | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Disable console output                   |
-| `console_log`  | -                                           | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable console output (inverse of quiet) |
-| `verbose`      | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Enable DEBUG level                       |
+| Key                     | Aliases                                     | Values                                                            | Default           | Description                              |
+| ----------------------- | ------------------------------------------- | ----------------------------------------------------------------- | ----------------- | ---------------------------------------- |
+| `level`                 | `log_level`                                 | DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, 0-7 | `INFO`            | Minimum log level                        |
+| `format`                | `log_format`                                | Format string                                                     | `%d [%l] [%s] %m` | Log message format                       |
+| `log_file`              | `logfile`, `file`                           | Path                                                              | (none)            | Log file path                            |
+| `script_name`           | `scriptname`, `name`                        | String                                                            | auto-detected     | Script name in log messages              |
+| `journal`               | `use_journal`                               | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable journal logging                   |
+| `tag`                   | `journal_tag`                               | String                                                            | script name       | Journal/syslog tag                       |
+| `utc`                   | `use_utc`                                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Use UTC timestamps                       |
+| `color`                 | `colour`, `colors`, `colours`, `use_colors` | auto, always, never                                               | `auto`            | Color mode                               |
+| `stderr_level`          | `stderr-level`                              | Log level                                                         | `ERROR`           | Minimum level for stderr                 |
+| `quiet`                 | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Disable console output                   |
+| `console_log`           | -                                           | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable console output (inverse of quiet) |
+| `verbose`               | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Enable DEBUG level                       |
+| `unsafe_allow_newlines` | `unsafe-allow-newlines`                     | true/false, yes/no, on/off, 1/0                                   | `false`           | Allow newlines in log messages (unsafe)  |
 
 ### Boolean Values
 
