@@ -34,6 +34,7 @@ demos, and pipeline scripts - exists to support using that file.
 * Runtime configuration changes
 * Special handling for sensitive data
 * Secure-by-default newline sanitization to prevent log injection
+* Secure-by-default ANSI code stripping to prevent terminal manipulation attacks
 
 ## Quick Start
 

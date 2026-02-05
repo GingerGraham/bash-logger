@@ -33,6 +33,7 @@
 #     - set_journal_tag <tag>           : Change journal tag
 #     - set_color_mode <auto|always|never> : Change color output
 #     - set_unsafe_allow_newlines <true|false> : Allow newlines in log messages (NOT RECOMMENDED)
+#     - set_unsafe_allow_ansi_codes <true|false> : Allow ANSI codes in log messages (NOT RECOMMENDED)
 #
 # Internal Functions (prefixed with _):
 #   Functions prefixed with underscore (_) are internal implementation details
@@ -112,6 +113,12 @@ LOG_FORMAT="%d [%l] [%s] %m"
 # When false (default), newlines and carriage returns are sanitized to prevent log injection
 # Set to true ONLY if you have explicit control over all logged messages and log parsing is tolerant
 LOG_UNSAFE_ALLOW_NEWLINES="false"
+
+# Security: Allow ANSI escape codes in log messages (NOT RECOMMENDED)
+# When false (default), ANSI escape sequences are stripped from incoming messages to prevent
+# terminal manipulation attacks. ANSI codes in library-generated output (colors) are preserved.
+# Set to true ONLY if you have explicit control over all logged messages and trust their source.
+LOG_UNSAFE_ALLOW_ANSI_CODES="false"
 
 # Function to detect terminal color support (internal)
 _detect_color_support() {
@@ -358,6 +365,19 @@ _parse_config_file() {
                             ;;
                     esac
                     ;;
+                unsafe_allow_ansi_codes|unsafe-allow-ansi-codes)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            LOG_UNSAFE_ALLOW_ANSI_CODES="true"
+                            ;;
+                        false|no|0|off)
+                            LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
                 *)
                     echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
                     ;;
@@ -522,10 +542,46 @@ _get_syslog_priority() {
 
 # Function to sanitize log messages to prevent log injection (internal)
 # Removes control characters that could break log formats or inject fake entries
+_strip_ansi_codes() {
+    local input="$1"
+
+    # If unsafe mode is enabled, skip ANSI stripping and return input as-is
+    if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
+        echo "$input"
+        return
+    fi
+
+    # Remove various ANSI escape sequences using multiple patterns
+    # This approach removes ANSI codes that would otherwise manipulate terminal display
+
+    # Remove CSI (Control Sequence Introducer) sequences: ESC [ ... letter
+    # Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
+    # Pattern: \e[ followed by zero or more digits/semicolons, followed by a letter
+    local step1
+    # Use direct escapes to avoid quoting issues in patterns
+    # shellcheck disable=SC1117
+    step1=$(printf '%s' "$input" | sed 's/\x1b\[[0-9;]*[a-zA-Z@]//g')
+
+    # Remove OSC (Operating System Command) sequences: ESC ] ... BEL/ST
+    # Pattern: \e] followed by anything up to \a (BEL) or \e\\ (ST)
+    local step2
+    # shellcheck disable=SC1117
+    step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07]*\x07//g')
+
+    # Remove remaining escape sequences (simplified fallback)
+    local step3
+    # shellcheck disable=SC1117
+    step3=$(printf '%s' "$step2" | sed 's/\x1b[^[]//g')
+
+    echo "$step3"
+}
+
+# Function to sanitize log messages to prevent log injection (internal)
+# Removes control characters that could break log formats or inject fake entries
 _sanitize_log_message() {
     local message="$1"
 
-    # If unsafe mode is enabled, skip sanitization and return message as-is
+    # If unsafe newline mode is enabled, skip sanitization and return message as-is
     if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
         echo "$message"
         return
@@ -538,6 +594,9 @@ _sanitize_log_message() {
     message="${message//$'\t'/ }"   # tab (HT)
     # Uncomment the line below if form feed characters should also be sanitized
     # message="${message//$'\f'/ }"   # form feed (FF)
+
+    # Strip ANSI codes from user input to prevent terminal manipulation
+    message=$(_strip_ansi_codes "$message")
 
     echo "$message"
 }
@@ -681,6 +740,10 @@ init_logger() {
                 ;;
             -U|--unsafe-allow-newlines)
                 LOG_UNSAFE_ALLOW_NEWLINES="true"
+                shift
+                ;;
+            -A|--unsafe-allow-ansi-codes)
+                LOG_UNSAFE_ALLOW_ANSI_CODES="true"
                 shift
                 ;;
             *)
@@ -999,6 +1062,51 @@ set_unsafe_allow_newlines() {
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         # Use warning color if enabling unsafe mode
         if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+            if _should_use_colors; then
+                echo -e "${COLOR_RED}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
+        else
+            if _should_use_colors; then
+                echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
+        fi
+    fi
+
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+
+    # Always log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
+# Function to enable/disable unsafe mode for ANSI codes in log messages
+# WARNING: Disabling sanitization can allow terminal manipulation attacks. Only use if you have
+#          explicit control over all logged messages and trust their source.
+set_unsafe_allow_ansi_codes() {
+    local old_setting="$LOG_UNSAFE_ALLOW_ANSI_CODES"
+    LOG_UNSAFE_ALLOW_ANSI_CODES="$1"
+
+    local safety_notice=""
+    if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
+        safety_notice=" (WARNING: ANSI code injection protection is disabled)"
+    fi
+
+    local message="Unsafe ANSI codes mode changed from $old_setting to $LOG_UNSAFE_ALLOW_ANSI_CODES$safety_notice"
+    local log_entry
+    log_entry=$(_format_log_message "CONFIG" "$message")
+
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        # Use warning color if enabling unsafe mode
+        if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
             if _should_use_colors; then
                 echo -e "${COLOR_RED}${log_entry}${COLOR_RESET}"
             else

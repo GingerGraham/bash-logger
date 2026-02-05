@@ -16,6 +16,7 @@ persistent storage.
 * [Security Considerations](#security-considerations)
   * [Console Output Security](#console-output-security)
   * [Production Environments](#production-environments)
+  * [ANSI Code Injection Prevention](#ansi-code-injection-prevention)
   * [Alternative Approaches](#alternative-approaches)
     * [1. Redact Sensitive Values](#1-redact-sensitive-values)
     * [2. Hash for Verification](#2-hash-for-verification)
@@ -158,6 +159,49 @@ else
     log_info "Token loaded (not displayed in non-interactive mode)"
 fi
 ```
+
+### ANSI Code Injection Prevention
+
+bash-logger provides secure-by-default protection against ANSI escape sequence injection attacks. This is important
+because malicious ANSI codes can:
+
+* **Manipulate terminal display** - Clear screen, reposition cursor
+* **Hide information** - Make previous output invisible
+* **Spoof messages** - Create fake error or success messages
+* **Enable social engineering** - Change window titles, fake prompts
+* **Exploit terminal bugs** - Some terminal emulators have CVEs triggered by specific sequences
+
+**Default Behavior:**
+
+```bash
+# By default, ANSI codes in user input are stripped
+malicious_input=$'\e[2J\e[HFAKE ERROR\e[0m'
+log_error "Processing: $malicious_input"
+# Output: "Processing: FAKE ERROR" (without escape sequences)
+```
+
+**ANSI Code Protection:**
+
+* All user input is automatically scrubbed of ANSI escape sequences
+* Library-generated colors (for log levels) are preserved
+* This protection is transparent - no code changes needed
+
+**If You Need ANSI Codes in Log Messages:**
+
+Only enable unsafe mode if you have complete control over all logged content:
+
+```bash
+init_logger --unsafe-allow-ansi-codes  # Not recommended
+
+# Or at runtime:
+set_unsafe_allow_ansi_codes true
+```
+
+**See Also:**
+
+* [ANSI Code Injection Protection](../examples.md#ansi-code-injection-protection) in Examples
+* [api-reference.md](api-reference.md#set_unsafe_allow_ansi_codes) - set_unsafe_allow_ansi_codes function
+* [runtime-configuration.md](runtime-configuration.md#set_unsafe_allow_ansi_codes) - Runtime control
 
 ### Alternative Approaches
 

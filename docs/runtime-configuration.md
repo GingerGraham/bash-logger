@@ -13,7 +13,8 @@ different phases of operation.
   * [set_timezone_utc](#set_timezone_utc)
   * [set_journal_logging](#set_journal_logging)
   * [set_journal_tag](#set_journal_tag)
-    * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
+  * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
+  * [set_unsafe_allow_ansi_codes](#set_unsafe_allow_ansi_codes)
 * [Use Cases](#use-cases)
   * [Conditional Debug Mode](#conditional-debug-mode)
   * [Phase-Based Logging](#phase-based-logging)
@@ -248,6 +249,45 @@ set_unsafe_allow_newlines true
 # Restore secure default
 set_unsafe_allow_newlines false
 ```
+
+### set_unsafe_allow_ansi_codes
+
+Enable or disable unsafe mode for ANSI escape codes in log messages.
+
+**Warning:** When enabled, ANSI code stripping is disabled and terminal manipulation attacks become possible.
+Only use this when you control all log inputs and trust their source completely.
+
+**Syntax:**
+
+```bash
+set_unsafe_allow_ansi_codes BOOLEAN
+```
+
+**Parameters:**
+
+* `BOOLEAN` - `true` to allow ANSI codes, `false` to strip them (default)
+
+**Examples:**
+
+```bash
+# Enable unsafe mode (not recommended)
+set_unsafe_allow_ansi_codes true
+
+# Restore secure default
+set_unsafe_allow_ansi_codes false
+```
+
+**Security Note:**
+
+By default, bash-logger strips ANSI escape sequences from all user input to prevent:
+
+* Terminal display manipulation (clear screen, cursor repositioning)
+* Window title changes for social engineering or information disclosure
+* Fake log messages through visual spoofing
+* Terminal emulator exploits via malicious sequences
+
+Library-generated ANSI codes (for log level colors) are preserved and applied at output time, so colored
+logging still works when enabled.
 
 ## Use Cases
 
