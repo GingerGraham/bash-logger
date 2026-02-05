@@ -13,6 +13,7 @@ different phases of operation.
   * [set_timezone_utc](#set_timezone_utc)
   * [set_journal_logging](#set_journal_logging)
   * [set_journal_tag](#set_journal_tag)
+    * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
 * [Use Cases](#use-cases)
   * [Conditional Debug Mode](#conditional-debug-mode)
   * [Phase-Based Logging](#phase-based-logging)
@@ -218,6 +219,34 @@ set_journal_tag "database-backup"
 
 # Use operation name
 set_journal_tag "cleanup-job"
+```
+
+### set_unsafe_allow_newlines
+
+Enable or disable unsafe mode for newlines in log messages.
+
+**Warning:** When enabled, newline sanitization is disabled and log injection becomes possible.
+Only use this when you control all log inputs and your log processing can handle embedded
+newlines safely.
+
+**Syntax:**
+
+```bash
+set_unsafe_allow_newlines BOOLEAN
+```
+
+**Parameters:**
+
+* `BOOLEAN` - `true` to allow newlines, `false` to sanitize them (default)
+
+**Examples:**
+
+```bash
+# Enable unsafe mode (not recommended)
+set_unsafe_allow_newlines true
+
+# Restore secure default
+set_unsafe_allow_newlines false
 ```
 
 ## Use Cases

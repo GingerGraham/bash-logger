@@ -32,6 +32,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
   * [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
 * [Format Issues](#format-issues)
   * [Format Not Applied](#format-not-applied)
+  * [Newlines Replaced With Spaces](#newlines-replaced-with-spaces)
   * [Weird Characters in Output](#weird-characters-in-output)
 * [Debugging Tips](#debugging-tips)
   * [Enable Verbose Mode](#enable-verbose-mode)
@@ -484,6 +485,31 @@ init_logger --format [%l] %m        # Might be interpreted as separate args
 set_log_format "[%l] %m"
 log_info "Test message"
 ```
+
+### Newlines Replaced With Spaces
+
+**Problem:** Multi-line messages are flattened into a single line
+
+**Cause:** bash-logger sanitizes newline, carriage return, and tab characters by default
+to prevent log injection attacks.
+
+**Solutions:**
+
+```bash
+# Preferred: Keep the secure default and sanitize input yourself if needed
+safe_input=${user_input//$'\n'/ }
+safe_input=${safe_input//$'\r'/ }
+safe_input=${safe_input//$'\t'/ }
+log_info "User input: $safe_input"
+
+# If you fully control inputs and accept the risk (NOT RECOMMENDED):
+init_logger --unsafe-allow-newlines
+
+# Or enable it at runtime (NOT RECOMMENDED):
+set_unsafe_allow_newlines true
+```
+
+**Warning:** Allowing newlines can enable log injection and audit log forgery.
 
 ### Weird Characters in Output
 

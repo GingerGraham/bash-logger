@@ -344,6 +344,16 @@ init_logger --log "/var/log/myapp.log" --quiet
 init_logger --level WARN  # Only show WARN and above
 ```
 
+### Unsafe Newlines (Not Recommended)
+
+By default, bash-logger sanitizes newline, carriage return, and tab characters to
+prevent log injection. Only enable unsafe mode if you fully control all log inputs.
+
+```bash
+# Allow newlines in log messages (unsafe)
+init_logger --unsafe-allow-newlines
+```
+
 ## Quick Reference
 
 ### Logging Functions
