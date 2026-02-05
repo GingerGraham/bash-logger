@@ -336,7 +336,8 @@ _parse_config_file() {
                     esac
                     ;;
                 script_name|scriptname|name)
-                    SCRIPT_NAME="$value"
+                    # Sanitize to prevent shell metacharacter injection
+                    SCRIPT_NAME=$(_sanitize_script_name "$value")
                     ;;
                 verbose)
                     case "${value,,}" in
@@ -601,6 +602,17 @@ _sanitize_log_message() {
     echo "$message"
 }
 
+# Function to sanitize script names to prevent shell metacharacter injection (internal)
+# Replaces any character that is not alphanumeric, period, underscore, or hyphen with underscore
+# This is a defense-in-depth measure to prevent potential injection attacks via crafted filenames
+_sanitize_script_name() {
+    local name="$1"
+    # Replace any character that's not alphanumeric, period, underscore, or hyphen
+    # with an underscore to prevent shell metacharacter injection
+    name="${name//[^a-zA-Z0-9._-]/_}"
+    echo "$name"
+}
+
 # Function to format log message (internal)
 _format_log_message() {
     local level_name="$1"
@@ -645,6 +657,8 @@ init_logger() {
     local caller_script
     if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
         caller_script=$(basename "${BASH_SOURCE[1]}")
+        # Sanitize to prevent shell metacharacter injection
+        caller_script=$(_sanitize_script_name "$caller_script")
     else
         caller_script="unknown"
     fi
@@ -712,7 +726,8 @@ init_logger() {
                 shift 2
                 ;;
             -n|--name|--script-name)
-                custom_script_name="$2"
+                # Sanitize to prevent shell metacharacter injection
+                custom_script_name=$(_sanitize_script_name "$2")
                 shift 2
                 ;;
             -q|--quiet)
@@ -1029,7 +1044,8 @@ set_color_mode() {
 # Function to set script name dynamically
 set_script_name() {
     local old_name="$SCRIPT_NAME"
-    SCRIPT_NAME="$1"
+    # Sanitize to prevent shell metacharacter injection
+    SCRIPT_NAME=$(_sanitize_script_name "$1")
 
     local message="Script name changed from \"$old_name\" to \"$SCRIPT_NAME\""
     local log_entry
