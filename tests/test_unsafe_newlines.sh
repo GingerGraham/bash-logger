@@ -10,10 +10,6 @@
 # - Unsafe flag can be toggled at runtime
 # - Unsafe mode preserves newlines (not recommended)
 
-# Source test helpers
-# shellcheck source=test_helpers.sh
-source "$SCRIPT_DIR/test_helpers.sh"
-
 # Setup before running any tests
 setup_test_suite
 

@@ -148,6 +148,37 @@ df -h
 init_logger --log "/tmp/app.log"
 ```
 
+1. **Symbolic link or irregular file type**
+
+```bash
+# Error: "Log file path is a symbolic link"
+# This is a security protection against TOCTOU attacks
+
+# Check what the file actually is
+ls -l /path/to/logfile.log
+
+# If it's a symlink:
+file /path/to/logfile.log
+
+# Solution: Remove the symlink and use a direct path
+rm /path/to/logfile.log
+init_logger --log "/path/to/logfile.log"
+
+# Error: "Log file is not a regular file"
+# This prevents logging to devices or directories
+
+# Check the file type
+ls -ld /path/to/logfile.log
+
+# If it's a directory, use a file path instead:
+init_logger --log "/path/to/logfile.log/app.log"  # Add filename
+
+# If it's a device or special file, use a regular file path
+init_logger --log "$HOME/logs/app.log"
+```
+
+**Note:** bash-logger rejects symbolic links for security reasons. This prevents attackers from redirecting your logs to sensitive system files. Always use direct file paths for log files.
+
 ## Configuration File Issues
 
 ### Configuration File Not Loaded

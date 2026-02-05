@@ -15,12 +15,6 @@
 # - Unsafe mode preserves ANSI codes (not recommended)
 # - Library color output is not affected
 
-# Source test helpers
-# shellcheck source=test_helpers.sh disable=SC2218
-# SC2218 disabled: test functions are called before re-sourcing logging.sh,
-# which temporarily affects ShellCheck's function tracking
-source "$SCRIPT_DIR/test_helpers.sh"
-
 # Setup before running any tests
 setup_test_suite
 
@@ -138,7 +132,6 @@ test_unsafe_mode_preserves_ansi() {
 }
 
 # Test: CLI flag -A enables unsafe ANSI mode
-# shellcheck disable=SC2218
 test_cli_flag_a_unsafe_mode() {
     start_test "CLI flag -A enables unsafe ANSI mode"
 
@@ -155,7 +148,6 @@ test_cli_flag_a_unsafe_mode() {
 }
 
 # Test: CLI flag --unsafe-allow-ansi-codes enables unsafe ANSI mode
-# shellcheck disable=SC2218
 test_cli_long_flag_unsafe() {
     start_test "CLI flag --unsafe-allow-ansi-codes enables unsafe mode"
 
@@ -172,7 +164,6 @@ test_cli_long_flag_unsafe() {
 }
 
 # Test: Config file can set unsafe ANSI mode
-# shellcheck disable=SC2218
 test_config_file_unsafe_ansi() {
     start_test "Config file sets unsafe ANSI mode"
 
@@ -196,7 +187,6 @@ EOF
 }
 
 # Test: set_unsafe_allow_ansi_codes enables unsafe mode
-# shellcheck disable=SC2218
 test_setter_enable_unsafe() {
     start_test "set_unsafe_allow_ansi_codes enables unsafe mode"
 
@@ -219,7 +209,6 @@ test_setter_enable_unsafe() {
 }
 
 # Test: set_unsafe_allow_ansi_codes disables unsafe mode
-# shellcheck disable=SC2218
 test_setter_disable_unsafe() {
     start_test "set_unsafe_allow_ansi_codes disables unsafe mode"
 
@@ -242,7 +231,6 @@ test_setter_disable_unsafe() {
 }
 
 # Test: Default mode is secure (false)
-# shellcheck disable=SC2218
 test_default_is_secure() {
     start_test "Default ANSI mode is secure"
 

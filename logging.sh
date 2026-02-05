@@ -782,13 +782,26 @@ init_logger() {
             }
         fi
 
-        # Try to touch the file to ensure we can write to it
-        touch "$LOG_FILE" 2>/dev/null || {
-            echo "Error: Cannot write to log file '$LOG_FILE'" >&2
-            return 1
-        }
+        # Secure file creation to mitigate TOCTOU race condition (Issue #38)
+        # Use noclobber in subshell for atomic file creation if file doesn't exist
+        if [[ ! -e "$LOG_FILE" ]]; then
+            (set -C; : > "$LOG_FILE") 2>/dev/null || true
+        fi
 
-        # Verify one more time that file exists and is writable
+        # Immediately validate file security to minimize TOCTOU window
+        # Reject symbolic links to prevent log redirection attacks
+        if [[ -L "$LOG_FILE" ]]; then
+            echo "Error: Log file path is a symbolic link" >&2
+            return 1
+        fi
+
+        # Verify it's a regular file, not a device or other special file
+        if [[ ! -f "$LOG_FILE" ]]; then
+            echo "Error: Log file is not a regular file" >&2
+            return 1
+        fi
+
+        # Verify file is writable
         if [[ ! -w "$LOG_FILE" ]]; then
             echo "Error: Log file '$LOG_FILE' is not writable" >&2
             return 1
