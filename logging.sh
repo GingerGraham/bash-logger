@@ -592,7 +592,9 @@ _strip_ansi_codes() {
     # Remove BEL-terminated OSC sequences (match any char until BEL)
     step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07]*\x07//g')
     # Remove ST-terminated OSC sequences - loop to handle multiple sequences and embedded escapes
-    # Pattern matches shortest possible sequence by excluding ESC unless followed by backslash
+    # Pattern: \([^\x1b]\|\x1b[^\\]\)* matches any char except ESC, OR ESC if not followed by \
+    # This allows embedded ESC codes like \e[31m while still stopping at \e\\ terminator
+    # The loop ensures multiple consecutive OSC sequences are all removed
     # shellcheck disable=SC1117
     step2=$(printf '%s' "$step2" | sed ':loop; s/\x1b\]\(\([^\x1b]\|\x1b[^\\]\)*\)\x1b\\//g; t loop')
 
