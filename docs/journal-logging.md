@@ -497,6 +497,10 @@ Journal logging is generally fast, but consider:
 3. **Buffering** - systemd handles buffering and writes
 4. **Network logging** - Can be slower if sending to remote journal
 
+To avoid oversized journal entries and reduce DoS risk, log messages are capped by default. The
+journal limit matches the console/file limit unless you override it with `--max-journal-length`
+or `max_journal_length` in config files (set to `0` to disable limits).
+
 For high-throughput applications:
 
 ```bash

@@ -62,22 +62,24 @@ init_logger [options]
 
 **Options:**
 
-| Option                      | Short | Description                                      | Default     |
-| --------------------------- | ----- | ------------------------------------------------ | ----------- |
-| `--level LEVEL`             | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.)   | INFO        |
-| `--log FILE`                | `-l`  | Write logs to file                               | (none)      |
-| `--quiet`                   | `-q`  | Disable console output                           | false       |
-| `--verbose`                 | `-v`  | Enable DEBUG level logging                       | false       |
-| `--journal`                 | `-j`  | Enable system journal logging                    | false       |
-| `--tag TAG`                 | `-t`  | Set journal tag                                  | (script)    |
-| `--utc`                     | `-u`  | Use UTC timestamps instead of local time         | false       |
-| `--format FORMAT`           | `-f`  | Set log message format                           | (see below) |
-| `--color`                   |       | Force color output                               | auto        |
-| `--no-color`                |       | Disable color output                             | auto        |
-| `--config FILE`             | `-c`  | Load configuration from INI file                 | (none)      |
-| `--stderr-level LEVEL`      | `-e`  | Messages at/above this level go to stderr        | ERROR       |
-| `--unsafe-allow-newlines`   | `-U`  | Allow newlines in log messages (unsafe)          | false       |
-| `--unsafe-allow-ansi-codes` | `-A`  | Allow ANSI escape codes in log messages (unsafe) | false       |
+| Option                        | Short | Description                                      | Default     |
+| ----------------------------- | ----- | ------------------------------------------------ | ----------- |
+| `--level LEVEL`               | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.)   | INFO        |
+| `--log FILE`                  | `-l`  | Write logs to file                               | (none)      |
+| `--quiet`                     | `-q`  | Disable console output                           | false       |
+| `--verbose`                   | `-v`  | Enable DEBUG level logging                       | false       |
+| `--journal`                   | `-j`  | Enable system journal logging                    | false       |
+| `--tag TAG`                   | `-t`  | Set journal tag                                  | (script)    |
+| `--utc`                       | `-u`  | Use UTC timestamps instead of local time         | false       |
+| `--format FORMAT`             | `-f`  | Set log message format                           | (see below) |
+| `--color`                     |       | Force color output                               | auto        |
+| `--no-color`                  |       | Disable color output                             | auto        |
+| `--config FILE`               | `-c`  | Load configuration from INI file                 | (none)      |
+| `--stderr-level LEVEL`        | `-e`  | Messages at/above this level go to stderr        | ERROR       |
+| `--unsafe-allow-newlines`     | `-U`  | Allow newlines in log messages (unsafe)          | false       |
+| `--unsafe-allow-ansi-codes`   | `-A`  | Allow ANSI escape codes in log messages (unsafe) | false       |
+| `--max-line-length LENGTH`    |       | Max log line length for console/file output      | 4096        |
+| `--max-journal-length LENGTH` |       | Max log line length for journal output           | 4096        |
 
 **Default Format:**
 
