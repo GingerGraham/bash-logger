@@ -588,10 +588,14 @@ _strip_ansi_codes() {
     # shellcheck disable=SC1117
     step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07]*\x07//g')
 
-    # Remove remaining escape sequences (simplified fallback)
+    # Remove remaining escape sequences with specific patterns
+    # This intentionally targets known dangerous escape sequences:
+    # - \x1b followed by a single letter (e.g., \x1bM, \x1b7, \x1b8)
+    # - \x1b followed by other non-CSI/non-OSC patterns
+    # Pattern matches ESC + single char that's not '[' or ']' (already handled above)
     local step3
     # shellcheck disable=SC1117
-    step3=$(printf '%s' "$step2" | sed 's/\x1b[^[]//g')
+    step3=$(printf '%s' "$step2" | sed 's/\x1b[^\[\]]//g')
 
     echo "$step3"
 }
@@ -601,21 +605,20 @@ _strip_ansi_codes() {
 _sanitize_log_message() {
     local message="$1"
 
-    # If unsafe newline mode is enabled, skip sanitization and return message as-is
-    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
-        echo "$message"
-        return
+    # Sanitize newlines unless unsafe newline mode is enabled
+    # Control each unsafe mode independently to prevent unintended security bypasses
+    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]]; then
+        # Replace control characters with spaces to prevent log injection
+        # These characters can break log formats and enable log injection attacks
+        message="${message//$'\n'/ }"   # newline (LF)
+        message="${message//$'\r'/ }"   # carriage return (CR)
+        message="${message//$'\t'/ }"   # tab (HT)
+        # Uncomment the line below if form feed characters should also be sanitized
+        # message="${message//$'\f'/ }"   # form feed (FF)
     fi
 
-    # Replace control characters with spaces to prevent log injection
-    # These characters can break log formats and enable log injection attacks
-    message="${message//$'\n'/ }"   # newline (LF)
-    message="${message//$'\r'/ }"   # carriage return (CR)
-    message="${message//$'\t'/ }"   # tab (HT)
-    # Uncomment the line below if form feed characters should also be sanitized
-    # message="${message//$'\f'/ }"   # form feed (FF)
-
-    # Strip ANSI codes from user input to prevent terminal manipulation
+    # Strip ANSI codes unless unsafe ANSI mode is enabled
+    # This is independent of newline sanitization
     message=$(_strip_ansi_codes "$message")
 
     echo "$message"
