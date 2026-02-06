@@ -591,10 +591,10 @@ _strip_ansi_codes() {
     # shellcheck disable=SC1117
     # Remove BEL-terminated OSC sequences (match any char until BEL)
     step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07]*\x07//g')
-    # Remove ST-terminated OSC sequences (match any char sequence until \e\\)
-    # Use greedy matching with explicit ESC \ terminator to handle embedded ESCs
+    # Remove ST-terminated OSC sequences - loop to handle multiple sequences and embedded escapes
+    # Pattern matches shortest possible sequence by excluding ESC unless followed by backslash
     # shellcheck disable=SC1117
-    step2=$(printf '%s' "$step2" | sed 's/\x1b\].*\x1b\\//g')
+    step2=$(printf '%s' "$step2" | sed ':loop; s/\x1b\]\(\([^\x1b]\|\x1b[^\\]\)*\)\x1b\\//g; t loop')
 
     # Remove remaining escape sequences with specific patterns
     # This intentionally targets known dangerous escape sequences:

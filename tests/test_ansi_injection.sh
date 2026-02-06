@@ -325,6 +325,25 @@ test_osc_with_embedded_escapes_stripped() {
     fi
 }
 
+# Test: Multiple consecutive OSC sequences are all stripped
+test_multiple_consecutive_osc_stripped() {
+    start_test "Multiple consecutive OSC sequences are all stripped"
+
+    # Test that greedy matching doesn't skip over intermediate OSC sequences
+    local malicious_input=$'X\e]A\e\\Y\e]B\e\\Z'
+    local expected="XYZ"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "Multiple OSC sequences not all stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
 # Test: Mixed mode - newlines allowed but ANSI stripped
 test_mixed_mode_newlines_allowed_ansi_stripped() {
     start_test "Mixed mode: newlines preserved, ANSI codes stripped"
@@ -380,6 +399,7 @@ test_sanitize_integration
 test_dec_private_modes_stripped
 test_osc_st_terminated_stripped
 test_osc_with_embedded_escapes_stripped
+test_multiple_consecutive_osc_stripped
 test_mixed_mode_newlines_allowed_ansi_stripped
 test_other_csi_parameter_bytes_stripped
 
