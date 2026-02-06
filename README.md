@@ -35,6 +35,7 @@ demos, and pipeline scripts - exists to support using that file.
 * Special handling for sensitive data
 * Secure-by-default newline sanitization to prevent log injection
 * Secure-by-default ANSI code stripping to prevent terminal manipulation attacks
+* Configurable log line length limits for DoS resistance
 * TOCTOU race condition protection during log file creation
 
 ## Quick Start

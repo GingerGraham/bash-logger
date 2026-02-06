@@ -201,6 +201,25 @@ EOF
     pass_test
 }
 
+# Test: Log line length limits in config
+test_config_log_line_limits() {
+    start_test "Log line length limits set via config"
+
+    local config_file="$TEST_DIR/limits.conf"
+    cat > "$config_file" << 'EOF'
+[logging]
+max_line_length = 2048
+max_journal_length = 512
+EOF
+
+    init_logger --config "$config_file"
+
+    assert_equals "2048" "$LOG_MAX_LINE_LENGTH" || return
+    assert_equals "512" "$LOG_MAX_JOURNAL_LENGTH" || return
+
+    pass_test
+}
+
 # Test: Comments in config file
 test_config_comments() {
     start_test "Comments are ignored in config"
@@ -422,6 +441,7 @@ test_config_stderr_level
 test_config_quiet
 test_config_console_log
 test_config_verbose
+test_config_log_line_limits
 test_config_comments
 test_config_whitespace
 test_config_quoted_values

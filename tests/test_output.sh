@@ -344,6 +344,25 @@ test_special_characters() {
     pass_test
 }
 
+# Test: Log line length limits truncate messages
+test_log_line_truncation() {
+    start_test "Log messages are truncated to max line length"
+
+    local log_file="$TEST_DIR/limit.log"
+    local message="1234567890abcdefghijXYZ"
+    local expected="123456...[truncated]"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --log '$log_file' --quiet --format '%m' --max-line-length 20
+        log_info '$message'
+    "
+
+    assert_file_contains "$log_file" "$expected" || return
+
+    pass_test
+}
+
 # Run all tests
 test_console_output_default
 test_console_output_quiet
@@ -362,3 +381,4 @@ test_log_file_permissions
 test_empty_message
 test_multiline_message
 test_special_characters
+test_log_line_truncation

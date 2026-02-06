@@ -120,6 +120,11 @@ LOG_UNSAFE_ALLOW_NEWLINES="false"
 # Set to true ONLY if you have explicit control over all logged messages and trust their source.
 LOG_UNSAFE_ALLOW_ANSI_CODES="false"
 
+# Log line length limits (defense-in-depth against excessively large messages)
+# Set to 0 to disable limits.
+LOG_MAX_LINE_LENGTH=4096
+LOG_MAX_JOURNAL_LENGTH=4096
+
 # Function to detect terminal color support (internal)
 _detect_color_support() {
     # Default to no colors if explicitly disabled
@@ -379,6 +384,20 @@ _parse_config_file() {
                             ;;
                     esac
                     ;;
+                max_line_length|max-line-length|log_max_line_length|log-max-line-length)
+                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                        LOG_MAX_LINE_LENGTH="$value"
+                    else
+                        echo "Warning: Invalid max_line_length value '$value' at line $line_num, expected non-negative integer" >&2
+                    fi
+                    ;;
+                max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
+                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                        LOG_MAX_JOURNAL_LENGTH="$value"
+                    else
+                        echo "Warning: Invalid max_journal_length value '$value' at line $line_num, expected non-negative integer" >&2
+                    fi
+                    ;;
                 *)
                     echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
                     ;;
@@ -602,6 +621,41 @@ _sanitize_log_message() {
     echo "$message"
 }
 
+# Truncate log messages to a maximum length (internal)
+_truncate_log_message() {
+    local message="$1"
+    local limit="$2"
+    local suffix="...[truncated]"
+
+    if [[ -z "$limit" ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ ! "$limit" =~ ^[0-9]+$ ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ "$limit" -le 0 ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ ${#message} -le $limit ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ $limit -le ${#suffix} ]]; then
+        echo "${message:0:$limit}"
+        return
+    fi
+
+    local keep_length=$((limit - ${#suffix}))
+    echo "${message:0:$keep_length}${suffix}"
+}
+
 # Function to sanitize script names to prevent shell metacharacter injection (internal)
 # Replaces any character that is not alphanumeric, period, underscore, or hyphen with underscore
 # This is a defense-in-depth measure to prevent potential injection attacks via crafted filenames
@@ -760,6 +814,30 @@ init_logger() {
             -A|--unsafe-allow-ansi-codes)
                 LOG_UNSAFE_ALLOW_ANSI_CODES="true"
                 shift
+                ;;
+            --max-line-length)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --max-line-length requires a value" >&2
+                    return 1
+                fi
+                if [[ "$2" =~ ^[0-9]+$ ]]; then
+                    LOG_MAX_LINE_LENGTH="$2"
+                else
+                    echo "Warning: Invalid max-line-length value '$2', expected non-negative integer" >&2
+                fi
+                shift 2
+                ;;
+            --max-journal-length)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --max-journal-length requires a value" >&2
+                    return 1
+                fi
+                if [[ "$2" =~ ^[0-9]+$ ]]; then
+                    LOG_MAX_JOURNAL_LENGTH="$2"
+                else
+                    echo "Warning: Invalid max-journal-length value '$2', expected non-negative integer" >&2
+                fi
+                shift 2
                 ;;
             *)
                 echo "Unknown parameter for logger: $1" >&2
@@ -1202,11 +1280,15 @@ _log_message() {
     fi
 
     # Sanitize message to prevent log injection via control characters
-    message=$(_sanitize_log_message "$message")
+    local sanitized_message
+    sanitized_message=$(_sanitize_log_message "$message")
+
+    local console_message
+    console_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_LINE_LENGTH")
 
     # Format the log entry
     local log_entry
-    log_entry=$(_format_log_message "$level_name" "$message")
+    log_entry=$(_format_log_message "$level_name" "$console_message")
 
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -1238,7 +1320,10 @@ _log_message() {
 
             # Use the logger command to send to syslog/journal
             # Strip any ANSI color codes from the message
-            local plain_message="${message//\e\[[0-9;]*m/}"
+            local journal_message
+            journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
+            local plain_message
+            plain_message=$(_strip_ansi_codes "$journal_message")
             logger -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
         fi
     fi
