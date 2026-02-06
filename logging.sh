@@ -590,7 +590,7 @@ _strip_ansi_codes() {
 
     # Remove remaining escape sequences with specific patterns
     # This intentionally targets known dangerous escape sequences:
-    # - \x1b followed by a single letter (e.g., \x1bM, \x1b7, \x1b8)
+    # - \x1b followed by a single non-'['/']' character (e.g., \x1bM, \x1b7, \x1b8)
     # - \x1b followed by other non-CSI/non-OSC patterns
     # Pattern matches ESC + single char that's not '[' or ']' (already handled above)
     local step3
