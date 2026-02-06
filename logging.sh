@@ -576,17 +576,23 @@ _strip_ansi_codes() {
 
     # Remove CSI (Control Sequence Introducer) sequences: ESC [ ... letter
     # Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
-    # Pattern: \e[ followed by zero or more digits/semicolons, followed by a letter
+    # Also handles DEC private modes (e.g., \e[?25l, \e[?1049h) and other parameter bytes
+    # Pattern: \e[ followed by zero or more parameter bytes ([<=>?!] plus digits/semicolons), 
+    # followed by a letter or @
     local step1
     # Use direct escapes to avoid quoting issues in patterns
     # shellcheck disable=SC1117
-    step1=$(printf '%s' "$input" | sed 's/\x1b\[[0-9;]*[a-zA-Z@]//g')
+    step1=$(printf '%s' "$input" | sed 's/\x1b\[[0-9;<?>=!]*[a-zA-Z@]//g')
 
     # Remove OSC (Operating System Command) sequences: ESC ] ... BEL/ST
-    # Pattern: \e] followed by anything up to \a (BEL) or \e\\ (ST)
+    # Handles both BEL-terminated (\e]...\a) and ST-terminated (\e]...\e\\) OSC sequences
     local step2
     # shellcheck disable=SC1117
-    step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07]*\x07//g')
+    # First remove BEL-terminated OSC sequences
+    step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07\x1b]*\x07//g')
+    # Then remove ST-terminated OSC sequences (\e] ... \e\\)
+    # shellcheck disable=SC1117
+    step2=$(printf '%s' "$step2" | sed 's/\x1b\][^\x1b]*\x1b\\//g')
 
     # Remove remaining escape sequences with specific patterns
     # This intentionally targets known dangerous escape sequences:
