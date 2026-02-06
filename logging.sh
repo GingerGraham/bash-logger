@@ -384,14 +384,14 @@ _parse_config_file() {
                             ;;
                     esac
                     ;;
-                max_line_length|max-line-length|log_max_line_length|log-line-length)
+                max_line_length|max-line-length|log_max_line_length|log-max-line-length)
                     if [[ "$value" =~ ^[0-9]+$ ]]; then
                         LOG_MAX_LINE_LENGTH="$value"
                     else
                         echo "Warning: Invalid max_line_length value '$value' at line $line_num, expected non-negative integer" >&2
                     fi
                     ;;
-                max_journal_length|max-journal-length|journal_max_length|journal-line-length)
+                max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
                     if [[ "$value" =~ ^[0-9]+$ ]]; then
                         LOG_MAX_JOURNAL_LENGTH="$value"
                     else
