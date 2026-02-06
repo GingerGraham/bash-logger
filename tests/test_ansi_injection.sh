@@ -306,6 +306,25 @@ test_osc_st_terminated_stripped() {
     fi
 }
 
+# Test: OSC sequences with embedded escape sequences are stripped
+test_osc_with_embedded_escapes_stripped() {
+    start_test "OSC sequences with embedded escape sequences are stripped"
+
+    # OSC sequences can contain embedded ANSI codes in their payload
+    local malicious_input=$'A\e]0;test\e[31mhack\e\\B'
+    local expected="AB"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "OSC with embedded escapes not stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
 # Test: Mixed mode - newlines allowed but ANSI stripped
 test_mixed_mode_newlines_allowed_ansi_stripped() {
     start_test "Mixed mode: newlines preserved, ANSI codes stripped"
@@ -360,6 +379,7 @@ test_default_is_secure
 test_sanitize_integration
 test_dec_private_modes_stripped
 test_osc_st_terminated_stripped
+test_osc_with_embedded_escapes_stripped
 test_mixed_mode_newlines_allowed_ansi_stripped
 test_other_csi_parameter_bytes_stripped
 
