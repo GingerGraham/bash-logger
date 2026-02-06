@@ -267,6 +267,121 @@ test_sanitize_integration() {
     fi
 }
 
+# Test: DEC private mode sequences are stripped (e.g., cursor visibility)
+test_dec_private_modes_stripped() {
+    start_test "DEC private mode sequences are stripped"
+
+    # ESC[?25l hides cursor, ESC[?25h shows cursor
+    # ESC[?1049h enables alternate screen buffer
+    local malicious_input=$'Before\e[?25lHidden\e[?1049hAlt\e[?25hAfter'
+    local expected="BeforeHiddenAltAfter"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "DEC private modes not stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
+# Test: OSC ST-terminated sequences are stripped
+test_osc_st_terminated_stripped() {
+    start_test "OSC ST-terminated sequences are stripped"
+
+    # OSC sequences can be terminated with ST (ESC \) instead of BEL
+    local malicious_input=$'Title:\e]0;Hacked\e\\Content'
+    local expected="Title:Content"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "OSC ST-terminated sequences not stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
+# Test: OSC sequences with embedded escape sequences are stripped
+test_osc_with_embedded_escapes_stripped() {
+    start_test "OSC sequences with embedded escape sequences are stripped"
+
+    # OSC sequences can contain embedded ANSI codes in their payload
+    local malicious_input=$'A\e]0;test\e[31mhack\e\\B'
+    local expected="AB"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "OSC with embedded escapes not stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
+# Test: Multiple consecutive OSC sequences are all stripped
+test_multiple_consecutive_osc_stripped() {
+    start_test "Multiple consecutive OSC sequences are all stripped"
+
+    # Test that greedy matching doesn't skip over intermediate OSC sequences
+    local malicious_input=$'X\e]A\e\\Y\e]B\e\\Z'
+    local expected="XYZ"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "Multiple OSC sequences not all stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
+# Test: Mixed mode - newlines allowed but ANSI stripped
+test_mixed_mode_newlines_allowed_ansi_stripped() {
+    start_test "Mixed mode: newlines preserved, ANSI codes stripped"
+
+    local message_with_both=$'Line1\e[31mRED\e[0m\nLine2'
+    
+    LOG_UNSAFE_ALLOW_NEWLINES="true"
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_sanitize_log_message "$message_with_both")
+
+    # Should preserve newline but strip ANSI codes
+    if [[ "$sanitized" == $'Line1RED\nLine2' ]]; then
+        pass_test
+    else
+        fail_test "Mixed mode failed: got '$sanitized' expected 'Line1RED\\nLine2'"
+    fi
+}
+
+# Test: Other CSI parameter bytes are handled
+test_other_csi_parameter_bytes_stripped() {
+    start_test "CSI sequences with various parameter bytes are stripped"
+
+    # Test various parameter byte prefixes
+    local malicious_input=$'A\e[>cB\e[=cC\e[!pD'
+    local expected="ABCD"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "Other parameter bytes not stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
 # Run all tests
 test_default_strips_csi_sequences
 test_default_strips_screen_control
@@ -281,6 +396,12 @@ test_setter_enable_unsafe
 test_setter_disable_unsafe
 test_default_is_secure
 test_sanitize_integration
+test_dec_private_modes_stripped
+test_osc_st_terminated_stripped
+test_osc_with_embedded_escapes_stripped
+test_multiple_consecutive_osc_stripped
+test_mixed_mode_newlines_allowed_ansi_stripped
+test_other_csi_parameter_bytes_stripped
 
 # Cleanup after running all tests
 cleanup_test_suite

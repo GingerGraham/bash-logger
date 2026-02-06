@@ -576,22 +576,36 @@ _strip_ansi_codes() {
 
     # Remove CSI (Control Sequence Introducer) sequences: ESC [ ... letter
     # Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
-    # Pattern: \e[ followed by zero or more digits/semicolons, followed by a letter
+    # Also handles DEC private modes (e.g., \e[?25l, \e[?1049h) and other parameter bytes
+    # Pattern: \e[ followed by zero or more parameter bytes ([<=>?!] plus digits/semicolons),
+    # followed by a letter or @
     local step1
     # Use direct escapes to avoid quoting issues in patterns
     # shellcheck disable=SC1117
-    step1=$(printf '%s' "$input" | sed 's/\x1b\[[0-9;]*[a-zA-Z@]//g')
+    step1=$(printf '%s' "$input" | sed 's/\x1b\[[0-9;<?>=!]*[a-zA-Z@]//g')
 
     # Remove OSC (Operating System Command) sequences: ESC ] ... BEL/ST
-    # Pattern: \e] followed by anything up to \a (BEL) or \e\\ (ST)
+    # Handles both BEL-terminated (\e]...\a) and ST-terminated (\e]...\e\\) OSC sequences
+    # OSC sequences can contain any character including embedded escape sequences
     local step2
     # shellcheck disable=SC1117
+    # Remove BEL-terminated OSC sequences (match any char until BEL)
     step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07]*\x07//g')
+    # Remove ST-terminated OSC sequences - loop to handle multiple sequences and embedded escapes
+    # Pattern: \([^\x1b]\|\x1b[^\\]\)* matches any char except ESC, OR ESC if not followed by \
+    # This allows embedded ESC codes like \e[31m while still stopping at \e\\ terminator
+    # The loop ensures multiple consecutive OSC sequences are all removed
+    # shellcheck disable=SC1117
+    step2=$(printf '%s' "$step2" | sed ':loop; s/\x1b\]\(\([^\x1b]\|\x1b[^\\]\)*\)\x1b\\//g; t loop')
 
-    # Remove remaining escape sequences (simplified fallback)
+    # Remove remaining escape sequences with specific patterns
+    # This intentionally targets known dangerous escape sequences:
+    # - \x1b followed by a single non-'['/']' character (e.g., \x1bM, \x1b7, \x1b8)
+    # - \x1b followed by other non-CSI/non-OSC patterns
+    # Pattern matches ESC + single char that's not '[' or ']' (already handled above)
     local step3
     # shellcheck disable=SC1117
-    step3=$(printf '%s' "$step2" | sed 's/\x1b[^[]//g')
+    step3=$(printf '%s' "$step2" | sed 's/\x1b[^\[\]]//g')
 
     echo "$step3"
 }
@@ -601,21 +615,20 @@ _strip_ansi_codes() {
 _sanitize_log_message() {
     local message="$1"
 
-    # If unsafe newline mode is enabled, skip sanitization and return message as-is
-    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
-        echo "$message"
-        return
+    # Sanitize newlines unless unsafe newline mode is enabled
+    # Control each unsafe mode independently to prevent unintended security bypasses
+    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]]; then
+        # Replace control characters with spaces to prevent log injection
+        # These characters can break log formats and enable log injection attacks
+        message="${message//$'\n'/ }"   # newline (LF)
+        message="${message//$'\r'/ }"   # carriage return (CR)
+        message="${message//$'\t'/ }"   # tab (HT)
+        # Uncomment the line below if form feed characters should also be sanitized
+        # message="${message//$'\f'/ }"   # form feed (FF)
     fi
 
-    # Replace control characters with spaces to prevent log injection
-    # These characters can break log formats and enable log injection attacks
-    message="${message//$'\n'/ }"   # newline (LF)
-    message="${message//$'\r'/ }"   # carriage return (CR)
-    message="${message//$'\t'/ }"   # tab (HT)
-    # Uncomment the line below if form feed characters should also be sanitized
-    # message="${message//$'\f'/ }"   # form feed (FF)
-
-    # Strip ANSI codes from user input to prevent terminal manipulation
+    # Strip ANSI codes unless unsafe ANSI mode is enabled
+    # This is independent of newline sanitization
     message=$(_strip_ansi_codes "$message")
 
     echo "$message"
