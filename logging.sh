@@ -875,11 +875,11 @@ init_logger() {
             }
         fi
 
-        # Secure file creation to mitigate TOCTOU race condition (Issue #38)
-        # Use noclobber in subshell for atomic file creation if file doesn't exist
-        if [[ ! -e "$LOG_FILE" ]]; then
-            (set -C; : > "$LOG_FILE") 2>/dev/null || true
-        fi
+        # Secure file creation to mitigate TOCTOU race condition (Issue #38, #52)
+        # Always attempt atomic file creation with noclobber (safe on existing files)
+        # Removing existence check eliminates TOCTOU window where attacker could
+        # create symlink between check and creation attempt
+        (set -C; : > "$LOG_FILE") 2>/dev/null || true
 
         # Immediately validate file security to minimize TOCTOU window
         # Reject symbolic links to prevent log redirection attacks
@@ -888,9 +888,16 @@ init_logger() {
             return 1
         fi
 
+        # Check if file exists (may not have been created due to permissions)
+        # This provides clearer error messaging than the regular file check alone
+        if [[ ! -e "$LOG_FILE" ]]; then
+            echo "Error: Cannot create log file '$LOG_FILE' (check directory permissions)" >&2
+            return 1
+        fi
+
         # Verify it's a regular file, not a device or other special file
         if [[ ! -f "$LOG_FILE" ]]; then
-            echo "Error: Log file is not a regular file" >&2
+            echo "Error: Log file exists but is not a regular file (may be a directory or device)" >&2
             return 1
         fi
 

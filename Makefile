@@ -18,7 +18,7 @@ DOCS = README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURIT
 # Shell for execution
 SHELL := /bin/bash
 
-.PHONY: all help install install-user uninstall uninstall-user test test-junit coverage sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
+.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit coverage sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
 
 all: help
 
@@ -130,6 +130,9 @@ test:
 		exit 1; \
 	fi
 
+test-quiet:
+	@output=$$(./tests/run_tests.sh 2>&1) || { echo "$$output"; exit 1; }
+
 test-junit:
 	@echo "Running tests with JUnit XML output..."
 	@if [ ! -x tests/run_tests.sh ]; then \
@@ -223,7 +226,7 @@ pre-commit:
 	@echo "Running pre-commit hooks on all files..."
 	@pre-commit run --all-files
 
-check: lint test
+check: lint-shell lint-markdown test-quiet
 	@echo ""
 	@echo "✓ All checks passed!"
 
