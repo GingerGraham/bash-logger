@@ -96,8 +96,6 @@ test_ansi_codes_stripped_in_output() {
 
     local log_file="$TEST_TMP_DIR/test_ansi_output.log"
 
-
-    source "$PROJECT_ROOT/logging.sh"
     init_logger -l "$log_file" --no-color > /dev/null 2>&1
 
     local malicious_message="\e[31mRED\e[0m Text"
