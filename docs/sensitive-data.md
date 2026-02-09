@@ -16,6 +16,7 @@ persistent storage.
 * [Security Considerations](#security-considerations)
   * [Console Output Security](#console-output-security)
   * [Production Environments](#production-environments)
+  * [ANSI Code Injection Prevention](#ansi-code-injection-prevention)
   * [Alternative Approaches](#alternative-approaches)
     * [1. Redact Sensitive Values](#1-redact-sensitive-values)
     * [2. Hash for Verification](#2-hash-for-verification)
@@ -158,6 +159,110 @@ else
     log_info "Token loaded (not displayed in non-interactive mode)"
 fi
 ```
+
+### ANSI Code Injection Prevention
+
+bash-logger provides secure-by-default protection against ANSI escape sequence injection attacks. This is important
+because malicious ANSI codes can:
+
+* **Manipulate terminal display** - Clear screen, reposition cursor
+* **Hide information** - Make previous output invisible
+* **Spoof messages** - Create fake error or success messages
+* **Enable social engineering** - Change window titles, fake prompts
+* **Exploit terminal bugs** - Some terminal emulators have CVEs triggered by specific sequences
+
+**Default Behavior:**
+
+```bash
+# By default, ANSI codes in user input are stripped
+malicious_input=$'\e[2J\e[HFAKE ERROR\e[0m'
+log_error "Processing: $malicious_input"
+# Output: "Processing: FAKE ERROR" (without escape sequences)
+```
+
+**ANSI Code Protection:**
+
+* All user input is automatically scrubbed of ANSI escape sequences
+* Library-generated colors (for log levels) are preserved
+* This protection is transparent - no code changes needed
+
+**If You Need ANSI Codes in Log Messages:**
+
+Only enable unsafe mode if you have complete control over all logged content:
+
+```bash
+init_logger --unsafe-allow-ansi-codes  # Not recommended
+
+# Or at runtime:
+set_unsafe_allow_ansi_codes true
+```
+
+**See Also:**
+
+* [ANSI Code Injection Protection](../examples.md#ansi-code-injection-protection) in Examples
+* [api-reference.md](api-reference.md#set_unsafe_allow_ansi_codes) - set_unsafe_allow_ansi_codes function
+* [runtime-configuration.md](runtime-configuration.md#set_unsafe_allow_ansi_codes) - Runtime control
+
+### Log File Security (TOCTOU Protection)
+
+bash-logger includes protection against Time-of-Check Time-of-Use (TOCTOU) race condition attacks during log file creation. This prevents attackers from redirecting log output to unintended locations.
+
+**Attack Scenario Prevented:**
+
+Without protection, an attacker with local access could exploit a race condition:
+
+```bash
+# Terminal 1 - Your script
+init_logger --log /tmp/app.log
+
+# Terminal 2 - Attacker (timing attack between file checks)
+rm -f /tmp/app.log
+ln -s /etc/passwd /tmp/app.log
+
+# Without protection: logs would be written to /etc/passwd
+```
+
+**Security Measures Implemented:**
+
+1. **Atomic File Creation** - Uses noclobber mode to create files without race windows
+2. **Symlink Detection** - Immediately rejects symbolic links
+3. **File Type Validation** - Ensures only regular files are used for logging
+4. **Write Permission Check** - Validates write access before use
+
+**What This Protects Against:**
+
+* **Log Redirection** - Prevents logs from being written to sensitive files
+* **Symlink Attacks** - Blocks attackers from linking log files to system files
+* **Privilege Escalation** - Stops local users from hijacking log file paths
+* **File Substitution** - Detects if a device file or other special file is substituted
+
+**Error Messages:**
+
+If a security issue is detected during initialization, you'll see:
+
+```bash
+Error: Log file path is a symbolic link
+Error: Log file exists but is not a regular file (may be a directory or device)
+Error: Log file '/path/to/log' is not writable
+```
+
+**Best Practices:**
+
+```bash
+# Use absolute paths in trusted locations
+init_logger --log "/var/log/myapp/app.log"  # Good
+
+# Avoid world-writable directories like /tmp in production
+init_logger --log "/tmp/app.log"  # Vulnerable to local attacks
+
+# Use application-specific directories with proper permissions
+sudo mkdir -p /var/log/myapp
+sudo chown myuser:mygroup /var/log/myapp
+chmod 750 /var/log/myapp
+init_logger --log "/var/log/myapp/app.log"  # Secure
+```
+
+**Note:** While this protection significantly reduces the attack window, users with write access to log directories can still interfere with logging. Always use directories with appropriate permissions.
 
 ### Alternative Approaches
 

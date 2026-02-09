@@ -23,6 +23,8 @@ declare -A DEMOS=(
     ["quiet"]="demo_quiet.sh|Quiet Mode|Suppress console output"
     ["config"]="demo_config.sh|Configuration Files|Load settings from INI files"
     ["script-name"]="demo_script_name.sh|Script Name|Custom script names and phase identification"
+    ["unsafe-newlines"]="demo_unsafe_newlines.sh|Log Injection Prevention|Demonstrates newline sanitization and unsafe mode"
+    ["ansi-protection"]="demo_ansi_protection.sh|ANSI Code Injection Protection|Secure-by-default ANSI escape sequence stripping"
 )
 
 # Color codes for output

@@ -32,6 +32,8 @@
 #     - set_journal_logging <true|false>: Toggle system journal logging
 #     - set_journal_tag <tag>           : Change journal tag
 #     - set_color_mode <auto|always|never> : Change color output
+#     - set_unsafe_allow_newlines <true|false> : Allow newlines in log messages (NOT RECOMMENDED)
+#     - set_unsafe_allow_ansi_codes <true|false> : Allow ANSI codes in log messages (NOT RECOMMENDED)
 #
 # Internal Functions (prefixed with _):
 #   Functions prefixed with underscore (_) are internal implementation details
@@ -106,6 +108,22 @@ LOG_STDERR_LEVEL=$LOG_LEVEL_ERROR
 #   "[%l] %d [%s] %m" => "[INFO] 2025-03-03 12:34:56 [myscript.sh] Hello world"
 #  "%d %z [%l] [%s] %m" => "2025-03-03 12:34:56 UTC [INFO] [myscript.sh] Hello world"
 LOG_FORMAT="%d [%l] [%s] %m"
+
+# Security: Allow newlines in log messages (NOT RECOMMENDED)
+# When false (default), newlines and carriage returns are sanitized to prevent log injection
+# Set to true ONLY if you have explicit control over all logged messages and log parsing is tolerant
+LOG_UNSAFE_ALLOW_NEWLINES="false"
+
+# Security: Allow ANSI escape codes in log messages (NOT RECOMMENDED)
+# When false (default), ANSI escape sequences are stripped from incoming messages to prevent
+# terminal manipulation attacks. ANSI codes in library-generated output (colors) are preserved.
+# Set to true ONLY if you have explicit control over all logged messages and trust their source.
+LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+
+# Log line length limits (defense-in-depth against excessively large messages)
+# Set to 0 to disable limits.
+LOG_MAX_LINE_LENGTH=4096
+LOG_MAX_JOURNAL_LENGTH=4096
 
 # Function to detect terminal color support (internal)
 _detect_color_support() {
@@ -323,7 +341,8 @@ _parse_config_file() {
                     esac
                     ;;
                 script_name|scriptname|name)
-                    SCRIPT_NAME="$value"
+                    # Sanitize to prevent shell metacharacter injection
+                    SCRIPT_NAME=$(_sanitize_script_name "$value")
                     ;;
                 verbose)
                     case "${value,,}" in
@@ -338,6 +357,46 @@ _parse_config_file() {
                             echo "Warning: Invalid verbose value '$value' at line $line_num, expected true/false" >&2
                             ;;
                     esac
+                    ;;
+                unsafe_allow_newlines|unsafe-allow-newlines)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            LOG_UNSAFE_ALLOW_NEWLINES="true"
+                            ;;
+                        false|no|0|off)
+                            LOG_UNSAFE_ALLOW_NEWLINES="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
+                unsafe_allow_ansi_codes|unsafe-allow-ansi-codes)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            LOG_UNSAFE_ALLOW_ANSI_CODES="true"
+                            ;;
+                        false|no|0|off)
+                            LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
+                max_line_length|max-line-length|log_max_line_length|log-max-line-length)
+                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                        LOG_MAX_LINE_LENGTH="$value"
+                    else
+                        echo "Warning: Invalid max_line_length value '$value' at line $line_num, expected non-negative integer" >&2
+                    fi
+                    ;;
+                max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
+                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                        LOG_MAX_JOURNAL_LENGTH="$value"
+                    else
+                        echo "Warning: Invalid max_journal_length value '$value' at line $line_num, expected non-negative integer" >&2
+                    fi
                     ;;
                 *)
                     echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
@@ -501,6 +560,126 @@ _get_syslog_priority() {
     esac
 }
 
+# Function to sanitize log messages to prevent log injection (internal)
+# Removes control characters that could break log formats or inject fake entries
+_strip_ansi_codes() {
+    local input="$1"
+
+    # If unsafe mode is enabled, skip ANSI stripping and return input as-is
+    if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
+        echo "$input"
+        return
+    fi
+
+    # Remove various ANSI escape sequences using multiple patterns
+    # This approach removes ANSI codes that would otherwise manipulate terminal display
+
+    # Remove CSI (Control Sequence Introducer) sequences: ESC [ ... letter
+    # Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
+    # Also handles DEC private modes (e.g., \e[?25l, \e[?1049h) and other parameter bytes
+    # Pattern: \e[ followed by zero or more parameter bytes ([<=>?!] plus digits/semicolons),
+    # followed by a letter or @
+    local esc bel
+    esc=$'\033'
+    bel=$'\a'
+    local step1
+    step1=$(printf '%s' "$input" | sed "s/${esc}\[[0-9;<?>=!]*[a-zA-Z@]//g")
+
+    # Remove OSC (Operating System Command) sequences: ESC ] ... BEL/ST
+    # Pattern: \e] followed by anything up to \a (BEL) or \e\\ (ST)
+    # First, remove BEL-terminated OSC sequences
+    local step2
+    # Remove BEL-terminated OSC sequences (match any char until BEL)
+    step2=$(printf '%s' "$step1" | sed "s/${esc}][^${bel}]*${bel}//g")
+    # Remove ST-terminated OSC sequences - loop to handle multiple sequences and embedded escapes
+    # Pattern: \([^ESC]\|ESC[^\\]\)* matches any char except ESC, OR ESC if not followed by \
+    # This allows embedded ESC codes like \e[31m while still stopping at \e\\ terminator
+    # The loop ensures multiple consecutive OSC sequences are all removed
+    step2=$(printf '%s' "$step2" | sed ":loop; s/${esc}]\(\([^${esc}]\|${esc}[^\\\\]\)*\)${esc}\\\\//g; t loop")
+
+    # Remove ST-terminated OSC sequences (ESC ] ... ESC \)
+    # Using | as delimiter to avoid escaping issues with backslash in pattern
+    local step2b
+    step2b=$(printf '%s' "$step2" | sed "s|${esc}][^${esc}]*${esc}\\\\||g")
+
+    # Remove remaining escape sequences (simplified fallback)
+    local step3
+    # shellcheck disable=SC1117
+    step3=$(printf '%s' "$step2b" | sed 's/\x1b[^[]//g')
+
+    echo "$step3"
+}
+
+# Function to sanitize log messages to prevent log injection (internal)
+# Removes control characters that could break log formats or inject fake entries
+_sanitize_log_message() {
+    local message="$1"
+
+    # Sanitize newlines if not in unsafe mode
+    # This is independent from ANSI code stripping to prevent security bypass
+    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]]; then
+        # Replace control characters with spaces to prevent log injection
+        # These characters can break log formats and enable log injection attacks
+        message="${message//$'\n'/ }"   # newline (LF)
+        message="${message//$'\r'/ }"   # carriage return (CR)
+        message="${message//$'\t'/ }"   # tab (HT)
+        # Uncomment the line below if form feed characters should also be sanitized
+        # message="${message//$'\f'/ }"   # form feed (FF)
+    fi
+
+    # Strip ANSI codes from user input to prevent terminal manipulation
+    # This is independent from newline sanitization
+    message=$(_strip_ansi_codes "$message")
+
+    echo "$message"
+}
+
+# Truncate log messages to a maximum length (internal)
+_truncate_log_message() {
+    local message="$1"
+    local limit="$2"
+    local suffix="...[truncated]"
+
+    if [[ -z "$limit" ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ ! "$limit" =~ ^[0-9]+$ ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ "$limit" -le 0 ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ ${#message} -le $limit ]]; then
+        echo "$message"
+        return
+    fi
+
+    if [[ $limit -le ${#suffix} ]]; then
+        echo "${message:0:$limit}"
+        return
+    fi
+
+    local keep_length=$((limit - ${#suffix}))
+    echo "${message:0:$keep_length}${suffix}"
+}
+
+# Function to sanitize script names to prevent shell metacharacter injection (internal)
+# Replaces any character that is not alphanumeric, period, underscore, or hyphen with underscore
+# This is a defense-in-depth measure to prevent potential injection attacks via crafted filenames
+_sanitize_script_name() {
+    local name="$1"
+    # Replace any character that's not alphanumeric, period, underscore, or hyphen
+    # with an underscore to prevent shell metacharacter injection
+    name="${name//[^a-zA-Z0-9._-]/_}"
+    echo "$name"
+}
+
 # Function to format log message (internal)
 _format_log_message() {
     local level_name="$1"
@@ -545,6 +724,8 @@ init_logger() {
     local caller_script
     if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
         caller_script=$(basename "${BASH_SOURCE[1]}")
+        # Sanitize to prevent shell metacharacter injection
+        caller_script=$(_sanitize_script_name "$caller_script")
     else
         caller_script="unknown"
     fi
@@ -612,7 +793,8 @@ init_logger() {
                 shift 2
                 ;;
             -n|--name|--script-name)
-                custom_script_name="$2"
+                # Sanitize to prevent shell metacharacter injection
+                custom_script_name=$(_sanitize_script_name "$2")
                 shift 2
                 ;;
             -q|--quiet)
@@ -636,6 +818,38 @@ init_logger() {
                 local stderr_level_value
                 stderr_level_value=$(_get_log_level_value "$2")
                 LOG_STDERR_LEVEL=$stderr_level_value
+                shift 2
+                ;;
+            -U|--unsafe-allow-newlines)
+                LOG_UNSAFE_ALLOW_NEWLINES="true"
+                shift
+                ;;
+            -A|--unsafe-allow-ansi-codes)
+                LOG_UNSAFE_ALLOW_ANSI_CODES="true"
+                shift
+                ;;
+            --max-line-length)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --max-line-length requires a value" >&2
+                    return 1
+                fi
+                if [[ "$2" =~ ^[0-9]+$ ]]; then
+                    LOG_MAX_LINE_LENGTH="$2"
+                else
+                    echo "Warning: Invalid max-line-length value '$2', expected non-negative integer" >&2
+                fi
+                shift 2
+                ;;
+            --max-journal-length)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --max-journal-length requires a value" >&2
+                    return 1
+                fi
+                if [[ "$2" =~ ^[0-9]+$ ]]; then
+                    LOG_MAX_JOURNAL_LENGTH="$2"
+                else
+                    echo "Warning: Invalid max-journal-length value '$2', expected non-negative integer" >&2
+                fi
                 shift 2
                 ;;
             *)
@@ -674,13 +888,33 @@ init_logger() {
             }
         fi
 
-        # Try to touch the file to ensure we can write to it
-        touch "$LOG_FILE" 2>/dev/null || {
-            echo "Error: Cannot write to log file '$LOG_FILE'" >&2
-            return 1
-        }
+        # Secure file creation to mitigate TOCTOU race condition (Issue #38, #52)
+        # Always attempt atomic file creation with noclobber (safe on existing files)
+        # Removing existence check eliminates TOCTOU window where attacker could
+        # create symlink between check and creation attempt
+        (set -C; : > "$LOG_FILE") 2>/dev/null || true
 
-        # Verify one more time that file exists and is writable
+        # Immediately validate file security to minimize TOCTOU window
+        # Reject symbolic links to prevent log redirection attacks
+        if [[ -L "$LOG_FILE" ]]; then
+            echo "Error: Log file path is a symbolic link" >&2
+            return 1
+        fi
+
+        # Check if file exists (may not have been created due to permissions)
+        # This provides clearer error messaging than the regular file check alone
+        if [[ ! -e "$LOG_FILE" ]]; then
+            echo "Error: Cannot create log file '$LOG_FILE' (check directory permissions)" >&2
+            return 1
+        fi
+
+        # Verify it's a regular file, not a device or other special file
+        if [[ ! -f "$LOG_FILE" ]]; then
+            echo "Error: Log file exists but is not a regular file (may be a directory or device)" >&2
+            return 1
+        fi
+
+        # Verify file is writable
         if [[ ! -w "$LOG_FILE" ]]; then
             echo "Error: Log file '$LOG_FILE' is not writable" >&2
             return 1
@@ -908,7 +1142,8 @@ set_color_mode() {
 # Function to set script name dynamically
 set_script_name() {
     local old_name="$SCRIPT_NAME"
-    SCRIPT_NAME="$1"
+    # Sanitize to prevent shell metacharacter injection
+    SCRIPT_NAME=$(_sanitize_script_name "$1")
 
     local message="Script name changed from \"$old_name\" to \"$SCRIPT_NAME\""
     local log_entry
@@ -920,6 +1155,96 @@ set_script_name() {
             echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
+        fi
+    fi
+
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+
+    # Always log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
+# Function to enable/disable unsafe mode for newlines in log messages
+# WARNING: Disabling sanitization can allow log injection attacks. Only use if you have
+#          explicit control over all logged messages and your log parsing handles newlines safely.
+set_unsafe_allow_newlines() {
+    local old_setting="$LOG_UNSAFE_ALLOW_NEWLINES"
+    LOG_UNSAFE_ALLOW_NEWLINES="$1"
+
+    local safety_notice=""
+    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+        safety_notice=" (WARNING: Log injection protection is disabled)"
+    fi
+
+    local message="Unsafe newline mode changed from $old_setting to $LOG_UNSAFE_ALLOW_NEWLINES$safety_notice"
+    local log_entry
+    log_entry=$(_format_log_message "CONFIG" "$message")
+
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        # Use warning color if enabling unsafe mode
+        if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+            if _should_use_colors; then
+                echo -e "${COLOR_RED}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
+        else
+            if _should_use_colors; then
+                echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
+        fi
+    fi
+
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+
+    # Always log to journal if enabled
+    if [[ "$USE_JOURNAL" == "true" ]]; then
+        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    fi
+}
+
+# Function to enable/disable unsafe mode for ANSI codes in log messages
+# WARNING: Disabling sanitization can allow terminal manipulation attacks. Only use if you have
+#          explicit control over all logged messages and trust their source.
+set_unsafe_allow_ansi_codes() {
+    local old_setting="$LOG_UNSAFE_ALLOW_ANSI_CODES"
+    LOG_UNSAFE_ALLOW_ANSI_CODES="$1"
+
+    local safety_notice=""
+    if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
+        safety_notice=" (WARNING: ANSI code injection protection is disabled)"
+    fi
+
+    local message="Unsafe ANSI codes mode changed from $old_setting to $LOG_UNSAFE_ALLOW_ANSI_CODES$safety_notice"
+    local log_entry
+    log_entry=$(_format_log_message "CONFIG" "$message")
+
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        # Use warning color if enabling unsafe mode
+        if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
+            if _should_use_colors; then
+                echo -e "${COLOR_RED}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
+        else
+            if _should_use_colors; then
+                echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            else
+                echo "${log_entry}"
+            fi
         fi
     fi
 
@@ -974,9 +1299,16 @@ _log_message() {
         return
     fi
 
+    # Sanitize message to prevent log injection via control characters
+    local sanitized_message
+    sanitized_message=$(_sanitize_log_message "$message")
+
+    local console_message
+    console_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_LINE_LENGTH")
+
     # Format the log entry
     local log_entry
-    log_entry=$(_format_log_message "$level_name" "$message")
+    log_entry=$(_format_log_message "$level_name" "$console_message")
 
     # If CONSOLE_LOG is true, print to console
     if [[ "$CONSOLE_LOG" == "true" ]]; then
@@ -1008,7 +1340,10 @@ _log_message() {
 
             # Use the logger command to send to syslog/journal
             # Strip any ANSI color codes from the message
-            local plain_message="${message//\e\[[0-9;]*m/}"
+            local journal_message
+            journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
+            local plain_message
+            plain_message=$(_strip_ansi_codes "$journal_message")
             logger -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
         fi
     fi

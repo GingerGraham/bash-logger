@@ -135,6 +135,29 @@ Demonstrates loading settings from INI files:
 
 **Run:** `./demo_config.sh` or `./run_demos.sh config`
 
+### 10. Log Injection Prevention (`demo_unsafe_newlines.sh`)
+
+Demonstrates newline sanitization and the unsafe mode override:
+
+* Default secure behavior that removes newlines
+* Unsafe mode that preserves newlines (with warnings)
+* CLI, config file, and runtime toggles
+* Security guidance and best practices
+
+**Run:** `./demo_unsafe_newlines.sh` or `./run_demos.sh unsafe-newlines`
+
+### 11. ANSI Code Injection Protection (`demo_ansi_protection.sh`)
+
+Demonstrates secure-by-default protection against ANSI escape sequence injection:
+
+* Default secure behavior that strips ANSI codes from user input
+* Protection against terminal manipulation attacks
+* Terminal display preservation with library-generated colors
+* Unsafe mode override for backward compatibility
+* Real attack scenarios and how they're neutralized
+
+**Run:** `./demo_ansi_protection.sh` or `./run_demos.sh ansi-protection`
+
 ## Log Files
 
 All demos create log files in the `../logs/` directory:
@@ -148,6 +171,9 @@ All demos create log files in the `../logs/` directory:
 * `demo_combined.log`
 * `demo_quiet.log`
 * `demo_config.log`
+
+**Note:** The log injection prevention demo (newlines and ANSI codes) uses a temporary directory so it can show
+side-by-side secure vs unsafe output without overwriting other demo logs.
 
 ## Original Comprehensive Demo
 

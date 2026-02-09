@@ -32,6 +32,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
   * [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
 * [Format Issues](#format-issues)
   * [Format Not Applied](#format-not-applied)
+  * [Newlines Replaced With Spaces](#newlines-replaced-with-spaces)
   * [Weird Characters in Output](#weird-characters-in-output)
 * [Debugging Tips](#debugging-tips)
   * [Enable Verbose Mode](#enable-verbose-mode)
@@ -146,6 +147,37 @@ df -h
 # Clean up or use different location
 init_logger --log "/tmp/app.log"
 ```
+
+1. **Symbolic link or irregular file type**
+
+```bash
+# Error: "Log file path is a symbolic link"
+# This is a security protection against TOCTOU attacks
+
+# Check what the file actually is
+ls -l /path/to/logfile.log
+
+# If it's a symlink:
+file /path/to/logfile.log
+
+# Solution: Remove the symlink and use a direct path
+rm /path/to/logfile.log
+init_logger --log "/path/to/logfile.log"
+
+# Error: "Log file exists but is not a regular file (may be a directory or device)"
+# This prevents logging to devices or directories
+
+# Check the file type
+ls -ld /path/to/logfile.log
+
+# If it's a directory, use a file path instead:
+init_logger --log "/path/to/logfile.log/app.log"  # Add filename
+
+# If it's a device or special file, use a regular file path
+init_logger --log "$HOME/logs/app.log"
+```
+
+**Note:** bash-logger rejects symbolic links for security reasons. This prevents attackers from redirecting your logs to sensitive system files. Always use direct file paths for log files.
 
 ## Configuration File Issues
 
@@ -484,6 +516,31 @@ init_logger --format [%l] %m        # Might be interpreted as separate args
 set_log_format "[%l] %m"
 log_info "Test message"
 ```
+
+### Newlines Replaced With Spaces
+
+**Problem:** Multi-line messages are flattened into a single line
+
+**Cause:** bash-logger sanitizes newline, carriage return, and tab characters by default
+to prevent log injection attacks.
+
+**Solutions:**
+
+```bash
+# Preferred: Keep the secure default and sanitize input yourself if needed
+safe_input=${user_input//$'\n'/ }
+safe_input=${safe_input//$'\r'/ }
+safe_input=${safe_input//$'\t'/ }
+log_info "User input: $safe_input"
+
+# If you fully control inputs and accept the risk (NOT RECOMMENDED):
+init_logger --unsafe-allow-newlines
+
+# Or enable it at runtime (NOT RECOMMENDED):
+set_unsafe_allow_newlines true
+```
+
+**Warning:** Allowing newlines can enable log injection and audit log forgery.
 
 ### Weird Characters in Output
 

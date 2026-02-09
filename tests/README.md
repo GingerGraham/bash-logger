@@ -22,7 +22,7 @@ cd tests
 
 ## Test Suites
 
-The test suite includes 103 tests across 6 test suites:
+The test suite includes 201 tests across 7 test suites:
 
 * **test_log_levels.sh** (12 tests) - Log level functionality
 * **test_initialization.sh** (21 tests) - Logger initialization
@@ -30,6 +30,7 @@ The test suite includes 103 tests across 6 test suites:
 * **test_format.sh** (16 tests) - Message format templates
 * **test_config.sh** (21 tests) - Configuration file parsing
 * **test_runtime_config.sh** (16 tests) - Runtime configuration changes
+* **test_unsafe_newlines.sh** (17 tests) - Log injection prevention and unsafe mode
 
 ## Test Output
 
@@ -48,8 +49,8 @@ Running test_log_levels...
   Test Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Total Tests:   103
-Passed:        103
+Total Tests:   201
+Passed:        201
 Failed:        0
 
 All tests passed!

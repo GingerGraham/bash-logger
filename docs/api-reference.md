@@ -6,27 +6,29 @@ Complete reference for all public functions in the bash-logger module.
 
 * [Overview](#overview)
 * [Initialization Functions](#initialization-functions)
-  * [init\_logger](#init_logger)
-  * [check\_logger\_available](#check_logger_available)
+  * [init_logger](#init_logger)
+  * [check_logger_available](#check_logger_available)
 * [Logging Functions](#logging-functions)
-  * [log\_debug](#log_debug)
-  * [log\_info](#log_info)
-  * [log\_notice](#log_notice)
-  * [log\_warn](#log_warn)
-  * [log\_error](#log_error)
-  * [log\_critical](#log_critical)
-  * [log\_alert](#log_alert)
-  * [log\_emergency](#log_emergency)
-  * [log\_fatal](#log_fatal)
-  * [log\_init](#log_init)
-  * [log\_sensitive](#log_sensitive)
+  * [log_debug](#log_debug)
+  * [log_info](#log_info)
+  * [log_notice](#log_notice)
+  * [log_warn](#log_warn)
+  * [log_error](#log_error)
+  * [log_critical](#log_critical)
+  * [log_alert](#log_alert)
+  * [log_emergency](#log_emergency)
+  * [log_fatal](#log_fatal)
+  * [log_init](#log_init)
+  * [log_sensitive](#log_sensitive)
 * [Runtime Configuration Functions](#runtime-configuration-functions)
-  * [set\_log\_level](#set_log_level)
-  * [set\_log\_format](#set_log_format)
-  * [set\_timezone\_utc](#set_timezone_utc)
-  * [set\_journal\_logging](#set_journal_logging)
-  * [set\_journal\_tag](#set_journal_tag)
-  * [set\_color\_mode](#set_color_mode)
+  * [set_log_level](#set_log_level)
+  * [set_log_format](#set_log_format)
+  * [set_timezone_utc](#set_timezone_utc)
+  * [set_journal_logging](#set_journal_logging)
+  * [set_journal_tag](#set_journal_tag)
+  * [set_color_mode](#set_color_mode)
+  * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
+  * [set_unsafe_allow_ansi_codes](#set_unsafe_allow_ansi_codes)
 * [Public Constants](#public-constants)
   * [Log Level Constants](#log-level-constants)
   * [Current Settings](#current-settings)
@@ -60,20 +62,24 @@ init_logger [options]
 
 **Options:**
 
-| Option                 | Short | Description                                    | Default     |
-| ---------------------- | ----- | ---------------------------------------------- | ----------- |
-| `--level LEVEL`        | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.) | INFO        |
-| `--log FILE`           | `-l`  | Write logs to file                             | (none)      |
-| `--quiet`              | `-q`  | Disable console output                         | false       |
-| `--verbose`            | `-v`  | Enable DEBUG level logging                     | false       |
-| `--journal`            | `-j`  | Enable system journal logging                  | false       |
-| `--tag TAG`            | `-t`  | Set journal tag                                | (script)    |
-| `--utc`                | `-u`  | Use UTC timestamps instead of local time       | false       |
-| `--format FORMAT`      | `-f`  | Set log message format                         | (see below) |
-| `--color`              |       | Force color output                             | auto        |
-| `--no-color`           |       | Disable color output                           | auto        |
-| `--config FILE`        | `-c`  | Load configuration from INI file               | (none)      |
-| `--stderr-level LEVEL` | `-e`  | Messages at/above this level go to stderr      | ERROR       |
+| Option                        | Short | Description                                      | Default     |
+| ----------------------------- | ----- | ------------------------------------------------ | ----------- |
+| `--level LEVEL`               | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.)   | INFO        |
+| `--log FILE`                  | `-l`  | Write logs to file                               | (none)      |
+| `--quiet`                     | `-q`  | Disable console output                           | false       |
+| `--verbose`                   | `-v`  | Enable DEBUG level logging                       | false       |
+| `--journal`                   | `-j`  | Enable system journal logging                    | false       |
+| `--tag TAG`                   | `-t`  | Set journal tag                                  | (script)    |
+| `--utc`                       | `-u`  | Use UTC timestamps instead of local time         | false       |
+| `--format FORMAT`             | `-f`  | Set log message format                           | (see below) |
+| `--color`                     |       | Force color output                               | auto        |
+| `--no-color`                  |       | Disable color output                             | auto        |
+| `--config FILE`               | `-c`  | Load configuration from INI file                 | (none)      |
+| `--stderr-level LEVEL`        | `-e`  | Messages at/above this level go to stderr        | ERROR       |
+| `--unsafe-allow-newlines`     | `-U`  | Allow newlines in log messages (unsafe)          | false       |
+| `--unsafe-allow-ansi-codes`   | `-A`  | Allow ANSI escape codes in log messages (unsafe) | false       |
+| `--max-line-length LENGTH`    |       | Max log line length for console/file output      | 4096        |
+| `--max-journal-length LENGTH` |       | Max log line length for journal output           | 4096        |
 
 **Default Format:**
 
@@ -835,6 +841,98 @@ fi
 
 * [Runtime Configuration Guide](runtime-configuration.md)
 * [Output Streams](output-streams.md)
+
+---
+
+### set_unsafe_allow_newlines
+
+Enable or disable unsafe mode for newlines in log messages.
+
+**Warning:** When enabled, newline sanitization is disabled and log injection becomes possible.
+Only use this when you control all log inputs and your log processing can handle embedded
+newlines safely.
+
+**Syntax:**
+
+```bash
+set_unsafe_allow_newlines BOOLEAN
+```
+
+**Parameters:**
+
+* `BOOLEAN` - `true` to allow newlines, `false` to sanitize them (default)
+
+**Examples:**
+
+```bash
+# Enable unsafe mode (not recommended)
+set_unsafe_allow_newlines true
+
+# Restore secure default
+set_unsafe_allow_newlines false
+```
+
+**Effects:**
+
+* Logs a CONFIG message documenting the change
+* Takes effect immediately for all subsequent log messages
+
+**See Also:**
+
+* [Runtime Configuration Guide](runtime-configuration.md#set_unsafe_allow_newlines)
+* [Configuration Files](configuration.md)
+
+---
+
+### set_unsafe_allow_ansi_codes
+
+Enable or disable unsafe mode for ANSI escape codes in log messages.
+
+**Warning:** When enabled, ANSI code stripping is disabled and terminal manipulation attacks become possible.
+Only use this when you control all log inputs and trust their source completely.
+
+**Syntax:**
+
+```bash
+set_unsafe_allow_ansi_codes BOOLEAN
+```
+
+**Parameters:**
+
+* `BOOLEAN` - `true` to allow ANSI codes, `false` to strip them (default)
+
+**Examples:**
+
+```bash
+# Enable unsafe mode (not recommended)
+set_unsafe_allow_ansi_codes true
+
+# Restore secure default
+set_unsafe_allow_ansi_codes false
+```
+
+**Effects:**
+
+* Logs a CONFIG message documenting the change (in red when enabling unsafe mode as a warning)
+* Takes effect immediately for all subsequent log messages
+* Affects `_strip_ansi_codes()` behavior in `_sanitize_log_message()`
+
+**Security Considerations:**
+
+By default, bash-logger strips ANSI escape sequences from user input to prevent:
+
+* Terminal display manipulation (clearing screen, cursor positioning)
+* Window title changes for social engineering
+* Visual spoofing attacks (fake error messages)
+* Terminal emulator exploitation via crafted sequences
+
+Library-generated ANSI codes for colors and formatting are preserved.
+
+**See Also:**
+
+* [Runtime Configuration Guide](runtime-configuration.md#set_unsafe_allow_ansi_codes)
+* [Configuration Files](configuration.md)
+* [Sensitive Data](sensitive-data.md)
 
 ---
 
