@@ -579,30 +579,28 @@ _strip_ansi_codes() {
     # Also handles DEC private modes (e.g., \e[?25l, \e[?1049h) and other parameter bytes
     # Pattern: \e[ followed by zero or more parameter bytes ([<=>?!] plus digits/semicolons),
     # followed by a letter or @
+    local esc bel
+    esc=$'\033'
+    bel=$'\a'
     local step1
-    # Use direct escapes to avoid quoting issues in patterns
-    # shellcheck disable=SC1117
-    step1=$(printf '%s' "$input" | sed 's/\x1b\[[0-9;<?>=!]*[a-zA-Z@]//g')
+    step1=$(printf '%s' "$input" | sed "s/${esc}\[[0-9;<?>=!]*[a-zA-Z@]//g")
 
     # Remove OSC (Operating System Command) sequences: ESC ] ... BEL/ST
     # Pattern: \e] followed by anything up to \a (BEL) or \e\\ (ST)
     # First, remove BEL-terminated OSC sequences
     local step2
-    # shellcheck disable=SC1117
     # Remove BEL-terminated OSC sequences (match any char until BEL)
-    step2=$(printf '%s' "$step1" | sed 's/\x1b\][^\x07]*\x07//g')
+    step2=$(printf '%s' "$step1" | sed "s/${esc}][^${bel}]*${bel}//g")
     # Remove ST-terminated OSC sequences - loop to handle multiple sequences and embedded escapes
-    # Pattern: \([^\x1b]\|\x1b[^\\]\)* matches any char except ESC, OR ESC if not followed by \
+    # Pattern: \([^ESC]\|ESC[^\\]\)* matches any char except ESC, OR ESC if not followed by \
     # This allows embedded ESC codes like \e[31m while still stopping at \e\\ terminator
     # The loop ensures multiple consecutive OSC sequences are all removed
-    # shellcheck disable=SC1117
-    step2=$(printf '%s' "$step2" | sed ':loop; s/\x1b\]\(\([^\x1b]\|\x1b[^\\]\)*\)\x1b\\//g; t loop')
+    step2=$(printf '%s' "$step2" | sed ":loop; s/${esc}]\(\([^${esc}]\|${esc}[^\\\\]\)*\)${esc}\\\\//g; t loop")
 
     # Remove ST-terminated OSC sequences (ESC ] ... ESC \)
     # Using | as delimiter to avoid escaping issues with backslash in pattern
     local step2b
-    # shellcheck disable=SC1117
-    step2b=$(printf '%s' "$step2" | sed 's|\x1b\][^\x1b]*\x1b\\||g')
+    step2b=$(printf '%s' "$step2" | sed "s|${esc}][^${esc}]*${esc}\\\\||g")
 
     # Remove remaining escape sequences (simplified fallback)
     local step3
