@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/GingerGraham/bash-logger/compare/1.3.0...2.0.0) (2026-02-09)
+
+### ⚠ BREAKING CHANGES
+
+* changes behaviour for messages passed to the logger and so revving to v2.x
+
+* feat: enhance logging sanitization
+
+- Introduced a comprehensive security review document for the bash-logger library, detailing vulnerabilities and recommendations.
+- Implemented input sanitization to prevent log injection via newline, carriage return, and tab characters.
+- Added a configuration option to allow unsafe logging of newlines, with appropriate warnings and documentation.
+- Enhanced tests to cover new functionality related to unsafe logging and input sanitization.
+- Updated troubleshooting documentation to reflect changes in newline handling and logging behavior.
+- Included security research findings from 2026-02-04 for evidence
+
+### Features
+
+* adding defensive programming and bug fixes ([#56](https://github.com/GingerGraham/bash-logger/issues/56)) ([62b717a](https://github.com/GingerGraham/bash-logger/commit/62b717aac4d5f23f8ae92e278756f05752637a79)), closes [#35](https://github.com/GingerGraham/bash-logger/issues/35) [#36](https://github.com/GingerGraham/bash-logger/issues/36) [#39](https://github.com/GingerGraham/bash-logger/issues/39) [#41](https://github.com/GingerGraham/bash-logger/issues/41) [#49](https://github.com/GingerGraham/bash-logger/issues/49) [#52](https://github.com/GingerGraham/bash-logger/issues/52) [#52](https://github.com/GingerGraham/bash-logger/issues/52) [#54](https://github.com/GingerGraham/bash-logger/issues/54)
+* **ref:** primary git message ([a0a7a09](https://github.com/GingerGraham/bash-logger/commit/a0a7a094ab9a22be454bd3e7ebf3aff514ce3c00))
+
+### Documentation
+
+* adding download tracking ([001f03b](https://github.com/GingerGraham/bash-logger/commit/001f03be0ad67d4bf86011261c5e9bdaccb1fb57))
+
 ## [1.3.0](https://github.com/GingerGraham/bash-logger/compare/1.2.2...1.3.0) (2026-01-31)
 
 ### Features
