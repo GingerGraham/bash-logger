@@ -87,6 +87,10 @@ unsafe_allow_newlines = false
 # Allow ANSI color codes in log messages: true/false
 # Warning: true disables ANSI sanitization and can allow escape-sequence injection
 unsafe_allow_ansi_codes = false
+
+# Allow ANSI color codes in log messages: true/false
+# Warning: true disables ANSI sanitization and can allow escape-sequence injection
+unsafe_allow_ansi_codes = false
 # Maximum log line length for console/file output (0 = unlimited)
 max_line_length = 4096
 
