@@ -9,6 +9,7 @@
 # 4. Why the default secure-first approach is recommended
 
 # Source the logging module
+# shellcheck disable=SC1090 -- dynamic relative path to logging.sh is intentional in this demo
 source "$(dirname "$0")/../logging.sh"
 
 # Colors for demo output
