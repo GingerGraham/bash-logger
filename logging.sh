@@ -585,8 +585,8 @@ _strip_ansi_codes() {
     step1=$(printf '%s' "$input" | sed 's/\x1b\[[0-9;<?>=!]*[a-zA-Z@]//g')
 
     # Remove OSC (Operating System Command) sequences: ESC ] ... BEL/ST
-    # Handles both BEL-terminated (\e]...\a) and ST-terminated (\e]...\e\\) OSC sequences
-    # OSC sequences can contain any character including embedded escape sequences
+    # Pattern: \e] followed by anything up to \a (BEL) or \e\\ (ST)
+    # First, remove BEL-terminated OSC sequences
     local step2
     # shellcheck disable=SC1117
     # Remove BEL-terminated OSC sequences (match any char until BEL)
@@ -598,14 +598,16 @@ _strip_ansi_codes() {
     # shellcheck disable=SC1117
     step2=$(printf '%s' "$step2" | sed ':loop; s/\x1b\]\(\([^\x1b]\|\x1b[^\\]\)*\)\x1b\\//g; t loop')
 
-    # Remove remaining escape sequences with specific patterns
-    # This intentionally targets known dangerous escape sequences:
-    # - \x1b followed by a single non-'['/']' character (e.g., \x1bM, \x1b7, \x1b8)
-    # - \x1b followed by other non-CSI/non-OSC patterns
-    # Pattern matches ESC + single char that's not '[' or ']' (already handled above)
+    # Remove ST-terminated OSC sequences (ESC ] ... ESC \)
+    # Using | as delimiter to avoid escaping issues with backslash in pattern
+    local step2b
+    # shellcheck disable=SC1117
+    step2b=$(printf '%s' "$step2" | sed 's|\x1b\][^\x1b]*\x1b\\||g')
+
+    # Remove remaining escape sequences (simplified fallback)
     local step3
     # shellcheck disable=SC1117
-    step3=$(printf '%s' "$step2" | sed 's/\x1b[^\[\]]//g')
+    step3=$(printf '%s' "$step2b" | sed 's/\x1b[^[]//g')
 
     echo "$step3"
 }
@@ -615,8 +617,8 @@ _strip_ansi_codes() {
 _sanitize_log_message() {
     local message="$1"
 
-    # Sanitize newlines unless unsafe newline mode is enabled
-    # Control each unsafe mode independently to prevent unintended security bypasses
+    # Sanitize newlines if not in unsafe mode
+    # This is independent from ANSI code stripping to prevent security bypass
     if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]]; then
         # Replace control characters with spaces to prevent log injection
         # These characters can break log formats and enable log injection attacks
@@ -627,8 +629,8 @@ _sanitize_log_message() {
         # message="${message//$'\f'/ }"   # form feed (FF)
     fi
 
-    # Strip ANSI codes unless unsafe ANSI mode is enabled
-    # This is independent of newline sanitization
+    # Strip ANSI codes from user input to prevent terminal manipulation
+    # This is independent from newline sanitization
     message=$(_strip_ansi_codes "$message")
 
     echo "$message"
