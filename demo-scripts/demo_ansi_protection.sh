@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source the logging module
+# shellcheck source=../logging.sh
 source "$PROJECT_ROOT/logging.sh"
 
 echo "╔════════════════════════════════════════════════════════════════╗"
