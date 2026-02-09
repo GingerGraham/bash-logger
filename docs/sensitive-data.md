@@ -242,7 +242,7 @@ If a security issue is detected during initialization, you'll see:
 
 ```bash
 Error: Log file path is a symbolic link
-Error: Log file is not a regular file
+Error: Log file exists but is not a regular file (may be a directory or device)
 Error: Log file '/path/to/log' is not writable
 ```
 
