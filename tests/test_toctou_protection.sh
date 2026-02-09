@@ -14,16 +14,12 @@
 # - Directory creation works correctly
 # - Atomic file creation using noclobber
 
-# Setup before running any tests
-setup_test_suite
-
 # Test: Normal log file creation succeeds
 test_normal_file_creation() {
     start_test "Normal log file creation succeeds"
 
     local log_file="$TEST_TMP_DIR/normal.log"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         if [[ -f "$log_file" && -w "$log_file" ]]; then
             pass_test
@@ -42,7 +38,6 @@ test_existing_file_reuse() {
     local log_file="$TEST_TMP_DIR/existing.log"
     echo "Pre-existing content" > "$log_file"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         if [[ -f "$log_file" ]]; then
             pass_test
@@ -64,7 +59,6 @@ test_symlink_rejection() {
     touch "$target_file"
     ln -s "$target_file" "$log_file"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         fail_test "init_logger accepted symbolic link"
     else
@@ -86,7 +80,6 @@ test_directory_rejection() {
     local log_file="$TEST_TMP_DIR/dir_as_log"
     mkdir -p "$log_file"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         fail_test "init_logger accepted directory as log file"
     else
@@ -108,7 +101,6 @@ test_nonwritable_rejection() {
     touch "$log_file"
     chmod 444 "$log_file"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         fail_test "init_logger accepted non-writable file"
     else
@@ -132,7 +124,6 @@ test_directory_creation() {
     local log_dir="$TEST_TMP_DIR/new/nested/dirs"
     local log_file="$log_dir/test.log"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         if [[ -d "$log_dir" && -f "$log_file" ]]; then
             pass_test
@@ -155,7 +146,6 @@ test_noncreatable_dir_rejection() {
 
     local log_file="$readonly_dir/subdir/test.log"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         fail_test "init_logger should have failed to create directory"
     else
@@ -181,7 +171,6 @@ test_atomic_noclobber_creation() {
     # Ensure file doesn't exist
     rm -f "$log_file"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         # File should be created and be a regular file
         if [[ -f "$log_file" && ! -L "$log_file" ]]; then
@@ -200,7 +189,6 @@ test_validation_after_creation() {
 
     local log_file="$TEST_TMP_DIR/validated.log"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         # After successful init, file should be regular and writable
         if [[ -f "$log_file" && ! -L "$log_file" && -w "$log_file" ]]; then
@@ -224,7 +212,6 @@ test_preexisting_symlink() {
     touch "$target"
     ln -s "$target" "$log_file"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         fail_test "init_logger should reject pre-existing symlink"
     else
@@ -239,7 +226,6 @@ test_device_file_rejection() {
     # Try using /dev/null as log file
     local log_file="/dev/null"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         # /dev/null might pass -f test on some systems, but that's OK
         # The key is we're testing the validation logic
@@ -263,7 +249,6 @@ test_reinit_safety() {
 
     local log_file="$TEST_TMP_DIR/reinit.log"
 
-    source "$PROJECT_ROOT/logging.sh"
     if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
         # Reinitialize with same file
         if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
@@ -293,6 +278,3 @@ test_validation_after_creation
 test_preexisting_symlink
 test_device_file_rejection
 test_reinit_safety
-
-# Cleanup after running all tests
-cleanup_test_suite

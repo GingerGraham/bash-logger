@@ -164,7 +164,7 @@ file /path/to/logfile.log
 rm /path/to/logfile.log
 init_logger --log "/path/to/logfile.log"
 
-# Error: "Log file is not a regular file"
+# Error: "Log file exists but is not a regular file (may be a directory or device)"
 # This prevents logging to devices or directories
 
 # Check the file type

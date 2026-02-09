@@ -10,9 +10,6 @@
 # - Unsafe flag can be toggled at runtime
 # - Unsafe mode preserves newlines (not recommended)
 
-# Setup before running any tests
-setup_test_suite
-
 # Test: Default mode sanitizes newlines
 test_default_sanitizes_newlines() {
     start_test "Default mode sanitizes newlines"
@@ -427,6 +424,3 @@ test_runtime_function_color_branches
 test_runtime_function_journal_logging
 test_log_injection_scenario_sanitized
 test_multiple_control_characters
-
-# Cleanup
-cleanup_test_suite

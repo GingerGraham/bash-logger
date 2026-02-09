@@ -347,7 +347,8 @@ test_mixed_mode_newlines_allowed_ansi_stripped() {
     start_test "Mixed mode: newlines preserved, ANSI codes stripped"
 
     local message_with_both=$'Line1\e[31mRED\e[0m\nLine2'
-    
+
+    # shellcheck disable=SC2034
     LOG_UNSAFE_ALLOW_NEWLINES="true"
     LOG_UNSAFE_ALLOW_ANSI_CODES="false"
     local sanitized
