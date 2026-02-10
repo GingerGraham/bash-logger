@@ -88,9 +88,6 @@ unsafe_allow_newlines = false
 # Warning: true disables ANSI sanitization and can allow escape-sequence injection
 unsafe_allow_ansi_codes = false
 
-# Allow ANSI color codes in log messages: true/false
-# Warning: true disables ANSI sanitization and can allow escape-sequence injection
-unsafe_allow_ansi_codes = false
 # Maximum message length before formatting for console/file output (0 = unlimited)
 # Note: Final output line may exceed this due to timestamp, level, and script name
 max_line_length = 4096
