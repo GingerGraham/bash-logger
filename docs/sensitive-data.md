@@ -17,6 +17,7 @@ persistent storage.
   * [Console Output Security](#console-output-security)
   * [Production Environments](#production-environments)
   * [ANSI Code Injection Prevention](#ansi-code-injection-prevention)
+  * [Log File Security (TOCTOU Protection)](#log-file-security-toctou-protection)
   * [Alternative Approaches](#alternative-approaches)
     * [1. Redact Sensitive Values](#1-redact-sensitive-values)
     * [2. Hash for Verification](#2-hash-for-verification)
@@ -28,6 +29,7 @@ persistent storage.
   * [User Authentication](#user-authentication)
 * [What log_sensitive Does NOT Do](#what-log_sensitive-does-not-do)
   * [Not a Security Solution](#not-a-security-solution)
+  * [Output Redirection Limitation](#output-redirection-limitation)
   * [Still Need Proper Security Practices](#still-need-proper-security-practices)
 * [Best Practices](#best-practices)
   * [1. Minimize Sensitive Logging](#1-minimize-sensitive-logging)
@@ -47,6 +49,10 @@ The `log_sensitive` function allows you to log sensitive information that will:
 * **Never write to log files** - Not persisted to disk
 * **Never send to journal** - Not stored in systemd journal
 * **Not send to syslog** - Excluded from system logs
+
+> **Note:** Be aware that `log_sensitive` only controls what bash-logger writes to files and journal. If your
+> script's stdout is redirected to a file (e.g., `./script.sh > output.log`), the sensitive output will be captured
+> by the shell. See [Output Redirection Limitation](#output-redirection-limitation) for details.
 
 ## The log_sensitive Function
 
@@ -410,6 +416,33 @@ authenticate_user "admin" "$USER_PASSWORD"
 * ✗ Does **not** prevent memory dumps
 * ✗ Does **not** prevent process monitoring
 * ✗ Does **not** clear variables from memory
+
+### Output Redirection Limitation
+
+`log_sensitive` output goes to console (stdout) by default. If stdout is redirected to a file **outside of
+bash-logger's control**, the sensitive data **will be captured**:
+
+```bash
+# ⚠️ Sensitive data IS captured when stdout is redirected
+./script.sh > output.log 2>&1          # Captures log_sensitive output
+./script.sh | tee output.log           # Captures log_sensitive output
+./script.sh 1> file.log                # Captures log_sensitive output
+
+# ✓ Sensitive data is NOT captured in normal interactive use
+./script.sh                            # Direct console output only
+```
+
+This is a fundamental behavior of shell redirection and **outside the control of bash-logger**. The
+`log_sensitive` function only controls what bash-logger writes to log **files** and **journal** — it cannot prevent
+redirection of stdout by the calling script or shell.
+
+**How to Mitigate:**
+
+* Run scripts with sensitive logging in trusted environments only
+* Be aware of shell redirections when executing scripts with sensitive operations
+* For production, use bash-logger's `--quiet` flag with `--log` to disable console output entirely
+* Disable debug/sensitive logging in production using environment flags or log levels
+* Consider redirecting stderr only: `./script.sh 2> error.log` (stdout stays on console)
 
 ### Still Need Proper Security Practices
 
