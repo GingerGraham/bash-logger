@@ -120,8 +120,9 @@ LOG_UNSAFE_ALLOW_NEWLINES="false"
 # Set to true ONLY if you have explicit control over all logged messages and trust their source.
 LOG_UNSAFE_ALLOW_ANSI_CODES="false"
 
-# Log line length limits (defense-in-depth against excessively large messages)
-# Set to 0 to disable limits.
+# Maximum message length before formatting (defense-in-depth against excessively large messages)
+# Truncation is applied to the message portion before adding timestamp, level, and script name.
+# Final formatted output may exceed these limits. Set to 0 to disable limits.
 LOG_MAX_LINE_LENGTH=4096
 LOG_MAX_JOURNAL_LENGTH=4096
 

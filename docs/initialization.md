@@ -71,8 +71,8 @@ The `init_logger` function accepts the following options:
 | `--no-color, --no-colour`                       | Disable color output                                                                |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
 | `-A, --unsafe-allow-ansi-codes`                 | Allow ANSI escape codes in log messages (not recommended; disables sanitization)    |
-| `--max-line-length LENGTH`                      | Max log line length for console/file output (0 = unlimited)                         |
-| `--max-journal-length LENGTH`                   | Max log line length for journal output (0 = unlimited)                              |
+| `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
+| `--max-journal-length LENGTH`                   | Max message length before formatting for journal output (0 = unlimited)             |
 
 ## Common Initialization Patterns
 
