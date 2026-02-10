@@ -388,18 +388,24 @@ esac
 
 ### 6. Be Aware of Environment Variable Overrides
 
-bash-logger uses global variables that can be pre-set in the shell environment before sourcing the module. This is
-expected behavior for Bash sourced libraries, but it's important to understand the implications:
+bash-logger uses global variables that are initialized with default values when the module is sourced.
+These variables can be modified after sourcing but before calling `init_logger()`.
+Understanding this behavior is important to avoid unexpected configuration:
 
 **How it works:**
 
 ```bash
-# Environment variables set before sourcing CAN be used by bash-logger
-export LOG_FILE="/tmp/my.log"
-export USE_COLORS="never"
+# Variables are reset to defaults when sourcing
+source /path/to/logging.sh  # LOG_FILE="", USE_COLORS="auto", etc.
 
+# You can override defaults BEFORE calling init_logger
+LOG_FILE="/tmp/my.log"
+USE_COLORS="never"
+init_logger  # Uses the modified values
+
+# Or pass them as arguments (cleaner approach)
 source /path/to/logging.sh
-init_logger  # Uses the pre-set LOG_FILE and USE_COLORS
+init_logger --log "/tmp/my.log" --colors never
 ```
 
 **Potential Issues:**
@@ -431,8 +437,8 @@ For **secure or critical applications**, avoid relying on inherited environment 
 ```bash
 #!/bin/bash
 
-# Explicitly unset any pre-existing bash-logger variables
-unset LOG_FILE LOG_LEVEL USE_COLORS LOG_FORMAT CURRENT_LOG_LEVEL
+# Explicitly unset any pre-existing bash-logger variables to ensure clean state
+unset LOG_FILE USE_COLORS LOG_FORMAT CURRENT_LOG_LEVEL LOG_STDERR_LEVEL SCRIPT_NAME USE_JOURNAL
 
 source /path/to/logging.sh
 

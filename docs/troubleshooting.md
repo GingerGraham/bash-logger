@@ -567,7 +567,7 @@ log_info "This is a very long message that exceeds fifty characters"
 
 ```bash
 # Option 1: Account for prefix length when setting limit
-# If format adds ~40 chars, use max_line_length of 60 for ~100 char final lines
+# If format adds ~40 chars, use --max-line-length of 60 for ~100 char final lines
 init_logger --max-line-length 60
 
 # Option 2: Use simpler format to reduce prefix overhead
