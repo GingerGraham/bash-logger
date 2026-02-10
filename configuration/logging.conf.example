@@ -86,3 +86,18 @@ max_journal_length = 4096
 # When false (RECOMMENDED), newlines (\n), carriage returns (\r), and tabs (\t)
 # are replaced with spaces to prevent log injection attacks.
 # unsafe_allow_newlines = false
+
+# Allow ANSI escape codes in log messages (default: false)
+# SECURITY WARNING: When set to true, disables sanitization of ANSI escape sequences
+# in log messages. This can enable terminal manipulation attacks where malicious input
+# containing escape codes can manipulate terminal behavior or hide content.
+#
+# ONLY enable this if:
+#  1. You have explicit control over ALL logged messages (no user input)
+#  2. Your log viewing/parsing systems safely handle ANSI codes
+#  3. You understand the security implications and accept the risk
+#
+# When false (RECOMMENDED), ANSI escape sequences are stripped from incoming messages
+# to prevent terminal manipulation attacks. Note: Colors added by bash-logger itself
+# are preserved and not affected by this setting.
+# unsafe_allow_ansi_codes = false
