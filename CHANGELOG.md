@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1](https://github.com/GingerGraham/bash-logger/compare/2.0.0...2.0.1) (2026-02-10)
+
+### Bug Fixes
+
+* **#37:** removing file path disclosure risk ([#66](https://github.com/GingerGraham/bash-logger/issues/66)) ([833e132](https://github.com/GingerGraham/bash-logger/commit/833e132832946e2f472e1023174ebb92717b59e2)), closes [#37](https://github.com/GingerGraham/bash-logger/issues/37) [#37](https://github.com/GingerGraham/bash-logger/issues/37) [#37](https://github.com/GingerGraham/bash-logger/issues/37) [#37](https://github.com/GingerGraham/bash-logger/issues/37) [#37](https://github.com/GingerGraham/bash-logger/issues/37)
+
+### Documentation
+
+* improvements to documentation after v2.0.0 release ([#65](https://github.com/GingerGraham/bash-logger/issues/65)) ([0e1abb0](https://github.com/GingerGraham/bash-logger/commit/0e1abb0cee6b3c7af6f7bd839b847ad5aaffacd1)), closes [#57](https://github.com/GingerGraham/bash-logger/issues/57) [#57](https://github.com/GingerGraham/bash-logger/issues/57) [#61](https://github.com/GingerGraham/bash-logger/issues/61) [#62](https://github.com/GingerGraham/bash-logger/issues/62) [#59](https://github.com/GingerGraham/bash-logger/issues/59) [#40](https://github.com/GingerGraham/bash-logger/issues/40) [#63](https://github.com/GingerGraham/bash-logger/issues/63) [#40](https://github.com/GingerGraham/bash-logger/issues/40) [#43](https://github.com/GingerGraham/bash-logger/issues/43) [#64](https://github.com/GingerGraham/bash-logger/issues/64) [#43](https://github.com/GingerGraham/bash-logger/issues/43)
+* updated changelog ([2b92067](https://github.com/GingerGraham/bash-logger/commit/2b9206776e40dfae69f954af39bb631c2fbd6653))
+
 ## [2.0.0](https://github.com/GingerGraham/bash-logger/compare/1.3.0...2.0.0) (2026-02-09)
 
 ### ⚠ BREAKING CHANGES
