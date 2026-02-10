@@ -25,6 +25,7 @@ All code changes **MUST** pass the linting requirements defined in `.pre-commit-
   * All Markdown files must follow MarkdownLint rules
   * Auto-fix formatting issues when possible
   * Maintain consistent formatting across documentation
+  * **CRITICAL: Use asterisks (*) for all unordered lists, never dashes (-)**
 
 ### Test Suite
 
@@ -146,6 +147,13 @@ When possible, write code compatible with multiple shells:
 3. Zsh
 4. Fish
 5. Other POSIX-compatible shells
+
+## Markdown Formatting Standards
+
+* **Unordered lists**: Always use `*` (asterisk), never `-` (dash)
+* **List indentation**: 2 spaces per level
+* **Line length**: Maximum 200 characters (configured in .markdownlint.yaml)
+* **Consistency**: Match existing documentation patterns
 
 ### Guidance for Shell-Agnostic Code
 

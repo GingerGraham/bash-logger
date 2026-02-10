@@ -40,6 +40,13 @@
             { "type": "build", "section": "Build System", "hidden": true },
             { "type": "ci", "section": "Continuous Integration", "hidden": true }
           ]
+        },
+        "writerOpts": {
+          "commitGroupsSort": "title",
+          "commitsSort": ["scope", "subject"],
+          "noteGroupsSort": "title",
+          "mainTemplate": "{{#each commitGroups}}\n\n### {{title}}\n\n{{#each commits}}* {{#if scope}}**{{scope}}:** {{/if}}{{subject}}\n{{/each}}{{/each}}",
+          "commitPartial": "* {{subject}}\n"
         }
       }
     ],
