@@ -17,6 +17,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 * [File Logging Issues](#file-logging-issues)
   * [No Output to Log File](#no-output-to-log-file)
   * [Log File Permission Denied](#log-file-permission-denied)
+  * [Understanding Error Messages Without Path Disclosure](#understanding-error-messages-without-path-disclosure)
 * [Journal Logging Issues](#journal-logging-issues)
   * [Journal Logs Not Appearing](#journal-logs-not-appearing)
   * [Wrong Tag in Journal](#wrong-tag-in-journal)
@@ -28,7 +29,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
   * [Logs Going to Wrong Stream](#logs-going-to-wrong-stream)
   * [Cannot Separate Stdout and Stderr](#cannot-separate-stdout-and-stderr)
 * [Runtime Configuration Issues](#runtime-configuration-issues)
-  * [set_log_level Not Working](#set_log_level-not-working)
+  * [set\_log\_level Not Working](#set_log_level-not-working)
   * [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
 * [Format Issues](#format-issues)
   * [Format Not Applied](#format-not-applied)
@@ -44,9 +45,13 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 * [Performance Issues](#performance-issues)
   * [Slow Logging](#slow-logging)
 * [Common Error Messages](#common-error-messages)
-  * ["command not found: init_logger"](#command-not-found-init_logger)
+  * ["command not found: init\_logger"](#command-not-found-init_logger)
   * ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
   * ["invalid log level"](#invalid-log-level)
+  * ["Configuration file not found" / "Configuration file not readable"](#configuration-file-not-found--configuration-file-not-readable)
+  * ["Cannot create log directory" / "Cannot create log file"](#cannot-create-log-directory--cannot-create-log-file)
+  * ["Log file path is a symbolic link"](#log-file-path-is-a-symbolic-link)
+  * ["Log file is not writable" / "Failed to write to log file"](#log-file-is-not-writable--failed-to-write-to-log-file)
 * [Getting Help](#getting-help)
 * [Related Documentation](#related-documentation)
 
@@ -296,6 +301,141 @@ chmod 644 /var/log/myapp.log
 init_logger --log "$HOME/logs/app.log"
 mkdir -p "$HOME/logs"
 ```
+
+### Understanding Error Messages Without Path Disclosure
+
+**Background:** For security reasons (defense-in-depth against information disclosure, CWE-209), error messages
+from bash-logger do not disclose file paths. This prevents potential attackers from learning about your system's
+directory structure through error messages.
+
+**Problem:** Error messages don't show the specific path that failed, making debugging harder
+
+**Solutions:**
+
+When you see errors like:
+
+* `Error: Configuration file not found`
+* `Error: Cannot create log directory`
+* `Error: Log file is not writable`
+* `Error: Log file path is a symbolic link`
+
+Here's how to debug them:
+
+**1. Verify Your Configuration Sources**
+
+Check where your paths are defined:
+
+```bash
+# For configuration files, check the --config argument
+init_logger --config /path/to/config.conf --verbose
+
+# For log files, check the --log argument
+init_logger --log /path/to/logfile.log --verbose
+
+# Or check environment variables
+echo "LOG_FILE: $LOG_FILE"
+echo "LOG_CONFIG_FILE: $LOG_CONFIG_FILE"
+```
+
+**2. Test Path Components Individually**
+
+```bash
+# Test if directory exists
+test -d "$HOME/logs" && echo "Directory exists" || echo "Directory missing"
+
+# Test if file is writable
+test -w "$HOME/logs/app.log" && echo "Writable" || echo "Not writable"
+
+# Test if path is a symlink
+test -L "$HOME/logs/app.log" && echo "Is symlink!" || echo "Not a symlink"
+
+# Test file type
+test -f "$HOME/logs/app.log" && echo "Regular file" || echo "Not a regular file"
+
+# Test directory permissions
+ls -ld "$HOME/logs"
+```
+
+**3. Enable Verbose/Debug Mode**
+
+Debug messages include initialization details:
+
+```bash
+init_logger --log /path/to/app.log --verbose
+
+# Output will show:
+# Logger initialized with script_name='yourscript.sh': console=true,
+# file=/path/to/app.log, journal=false, colors=auto, log level=DEBUG, ...
+```
+
+**4. Check Configuration File Contents**
+
+```bash
+# Verify config file path and contents
+cat /path/to/config.conf
+
+# Check for typos in paths
+grep -E 'log_file|logfile|file' /path/to/config.conf
+```
+
+**5. Look at the Hints**
+
+Error messages include actionable hints:
+
+| Error Message                    | Hint Provided                                | What to Check                            |
+| -------------------------------- | -------------------------------------------- | ---------------------------------------- |
+| Configuration file not found     | Check the --config argument                  | Verify path passed to init_logger        |
+| Configuration file not readable  | Check file permissions                       | Run `ls -l` on config file               |
+| Cannot create log directory      | Check --log argument and parent permissions  | Verify parent directory is writable      |
+| Log file path is a symbolic link | Verify --log doesn't point to symlink        | Security check, use regular file         |
+| Cannot create log file           | Check directory permissions                  | Verify directory exists and is writable  |
+| Log file is not a regular file   | Check --log argument                         | Might be pointing to directory or device |
+| Log file is not writable         | Check file permissions                       | Run `chmod` or use different location    |
+| Failed to write to log file      | Check permissions, disk space, or if deleted | Check `df -h` for disk space             |
+
+**6. Common Path Issues**
+
+```bash
+# Issue: Relative path that doesn't exist
+init_logger --log logs/app.log  # ❌ May fail if 'logs' doesn't exist
+
+# Solution: Create directory first or use absolute path
+mkdir -p logs
+init_logger --log logs/app.log  # ✓ Works
+
+# Or use absolute path
+init_logger --log "$PWD/logs/app.log"  # ✓ Works
+
+# Issue: No permission to create parent directories
+init_logger --log /var/log/myapp/app.log  # ❌ May fail if /var/log/myapp doesn't exist
+
+# Solution: Create directory with proper permissions first
+sudo mkdir -p /var/log/myapp
+sudo chown $USER:$USER /var/log/myapp
+init_logger --log /var/log/myapp/app.log  # ✓ Works
+
+# Issue: Accidentally pointing to a directory
+init_logger --log /tmp/myapp  # ❌ If /tmp/myapp is a directory
+
+# Solution: Add filename
+init_logger --log /tmp/myapp/app.log  # ✓ Works
+```
+
+**Why This Approach?**
+
+Not displaying paths in error messages is a security best practice:
+
+* Prevents information disclosure (CWE-209)
+* Reduces reconnaissance data for attackers
+* Protects usernames in $HOME paths
+* Provides defense-in-depth
+
+The paths are still available through:
+
+* Command-line arguments you passed
+* Configuration files you created
+* Environment variables you set
+* Debug output when using `--verbose`
 
 ## Journal Logging Issues
 
@@ -713,6 +853,81 @@ init_logger --level DEBUG   # Correct
 init_logger --level WARN    # Correct
 init_logger --level ERROR   # Correct
 # Not: init_logger --level TRACE
+```
+
+### "Configuration file not found" / "Configuration file not readable"
+
+**Cause:** Config file path is incorrect or file has wrong permissions
+
+**Solution:**
+
+See [Understanding Error Messages Without Path Disclosure](#understanding-error-messages-without-path-disclosure) for detailed debugging steps.
+
+```bash
+# Verify config file exists
+ls -l /path/to/config.conf
+
+# Check it's readable
+cat /path/to/config.conf
+
+# Use absolute path
+init_logger --config "$(pwd)/config.conf"
+```
+
+### "Cannot create log directory" / "Cannot create log file"
+
+**Cause:** No permissions to create directory or file
+
+**Solution:**
+
+See [Understanding Error Messages Without Path Disclosure](#understanding-error-messages-without-path-disclosure) for detailed debugging steps.
+
+```bash
+# Check parent directory exists and is writable
+ls -ld /var/log/
+
+# Create directory manually with proper permissions
+mkdir -p "$HOME/logs"
+init_logger --log "$HOME/logs/app.log"
+```
+
+### "Log file path is a symbolic link"
+
+**Cause:** Log file path points to a symbolic link (security check)
+
+**Solution:**
+
+See [Understanding Error Messages Without Path Disclosure](#understanding-error-messages-without-path-disclosure) for detailed debugging steps.
+
+```bash
+# Remove symlink and use direct path
+rm /path/to/symlink.log
+init_logger --log /path/to/actual.log
+
+# Or find where symlink points and use target
+ls -l /path/to/symlink.log  # shows -> /actual/path.log
+init_logger --log /actual/path.log
+```
+
+**Note:** bash-logger rejects symbolic links for security reasons to prevent log redirection attacks.
+
+### "Log file is not writable" / "Failed to write to log file"
+
+**Cause:** File exists but lacks write permissions, or disk is full
+
+**Solution:**
+
+See [Understanding Error Messages Without Path Disclosure](#understanding-error-messages-without-path-disclosure) for detailed debugging steps.
+
+```bash
+# Check file permissions
+ls -l "$LOG_FILE_PATH"
+
+# Fix permissions
+chmod 644 "$LOG_FILE_PATH"
+
+# Check disk space
+df -h /path/to/log/directory/
 ```
 
 ## Getting Help

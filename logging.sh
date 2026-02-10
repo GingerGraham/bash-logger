@@ -203,12 +203,14 @@ _parse_config_file() {
 
     # Validate file exists and is readable
     if [[ ! -f "$config_file" ]]; then
-        echo "Error: Configuration file not found: $config_file" >&2
+        echo "Error: Configuration file not found" >&2
+        echo "  Hint: Check the --config argument and verify the file path is correct" >&2
         return 1
     fi
 
     if [[ ! -r "$config_file" ]]; then
-        echo "Error: Configuration file not readable: $config_file" >&2
+        echo "Error: Configuration file not readable" >&2
+        echo "  Hint: Check file permissions and ensure the process has read access" >&2
         return 1
     fi
 
@@ -884,7 +886,8 @@ init_logger() {
         # Try to create directory if it doesn't exist
         if [[ ! -d "$LOG_DIR" ]]; then
             mkdir -p "$LOG_DIR" 2>/dev/null || {
-                echo "Error: Cannot create log directory '$LOG_DIR'" >&2
+                echo "Error: Cannot create log directory" >&2
+                echo "  Hint: Check the --log argument (or LOG_FILE environment variable) and parent directory permissions" >&2
                 return 1
             }
         fi
@@ -899,25 +902,29 @@ init_logger() {
         # Reject symbolic links to prevent log redirection attacks
         if [[ -L "$LOG_FILE" ]]; then
             echo "Error: Log file path is a symbolic link" >&2
+            echo "  Hint: Verify the --log argument doesn't point to a symbolic link for security" >&2
             return 1
         fi
 
         # Check if file exists (may not have been created due to permissions)
         # This provides clearer error messaging than the regular file check alone
         if [[ ! -e "$LOG_FILE" ]]; then
-            echo "Error: Cannot create log file '$LOG_FILE' (check directory permissions)" >&2
+            echo "Error: Cannot create log file (check directory permissions)" >&2
+            echo "  Hint: Verify the log directory exists and the process has write permissions" >&2
             return 1
         fi
 
         # Verify it's a regular file, not a device or other special file
         if [[ ! -f "$LOG_FILE" ]]; then
             echo "Error: Log file exists but is not a regular file (may be a directory or device)" >&2
+            echo "  Hint: Check the --log argument (or LOG_FILE environment variable) and verify it points to a regular file" >&2
             return 1
         fi
 
         # Verify file is writable
         if [[ ! -w "$LOG_FILE" ]]; then
-            echo "Error: Log file '$LOG_FILE' is not writable" >&2
+            echo "Error: Log file is not writable" >&2
+            echo "  Hint: Check file permissions and ensure the process has write access" >&2
             return 1
         fi
 
@@ -926,10 +933,11 @@ init_logger() {
         init_message=$(_format_log_message "INIT" "Logger initialized by $caller_script")
         echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
             echo "Error: Failed to write test message to log file" >&2
+            echo "  Hint: Verify the file is writable and disk space is available" >&2
             return 1
         }
 
-        echo "Logger: Successfully initialized with log file at '$LOG_FILE'" >&2
+        echo "Logger: Successfully initialized with log file enabled" >&2
     fi
 
     # Log initialization success
@@ -1322,7 +1330,8 @@ _log_message() {
         echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null || {
             # Only print the error once to avoid spam
             if [[ -z "$LOGGER_FILE_ERROR_REPORTED" ]]; then
-                echo "ERROR: Failed to write to log file: $LOG_FILE" >&2
+                echo "ERROR: Failed to write to log file" >&2
+                echo "  Hint: Check file permissions, disk space, or if the log file was deleted" >&2
                 LOGGER_FILE_ERROR_REPORTED="yes"
             fi
 
