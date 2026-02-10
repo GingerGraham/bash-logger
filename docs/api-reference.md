@@ -78,8 +78,8 @@ init_logger [options]
 | `--stderr-level LEVEL`        | `-e`  | Messages at/above this level go to stderr        | ERROR       |
 | `--unsafe-allow-newlines`     | `-U`  | Allow newlines in log messages (unsafe)          | false       |
 | `--unsafe-allow-ansi-codes`   | `-A`  | Allow ANSI escape codes in log messages (unsafe) | false       |
-| `--max-line-length LENGTH`    |       | Max log line length for console/file output      | 4096        |
-| `--max-journal-length LENGTH` |       | Max log line length for journal output           | 4096        |
+| `--max-line-length LENGTH`    |       | Max message length before formatting             | 4096        |
+| `--max-journal-length LENGTH` |       | Max message length for journal                   | 4096        |
 
 **Default Format:**
 

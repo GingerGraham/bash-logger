@@ -33,6 +33,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 * [Format Issues](#format-issues)
   * [Format Not Applied](#format-not-applied)
   * [Newlines Replaced With Spaces](#newlines-replaced-with-spaces)
+  * [Log Lines Exceed Max Length](#log-lines-exceed-max-length)
   * [Weird Characters in Output](#weird-characters-in-output)
 * [Debugging Tips](#debugging-tips)
   * [Enable Verbose Mode](#enable-verbose-mode)
@@ -541,6 +542,42 @@ set_unsafe_allow_newlines true
 ```
 
 **Warning:** Allowing newlines can enable log injection and audit log forgery.
+
+### Log Lines Exceed Max Length
+
+**Problem:** Final log output exceeds the `--max-line-length` setting
+
+**Explanation:** The `--max-line-length` option truncates the **message portion** before
+formatting. The final output includes timestamp, level, and script name added after
+truncation, which can push the total line length beyond the specified limit.
+
+**Example:**
+
+```bash
+# With --max-line-length 50
+init_logger --max-line-length 50 --format "%d [%l] [%s] %m"
+
+log_info "This is a very long message that exceeds fifty characters"
+# Output (approx 90 chars total):
+# 2025-02-10 15:30:45 [INFO] [script.sh] This is a very lo...[truncated]
+# The message is truncated to 50 chars, but prefix adds ~40 more
+```
+
+**Solutions:**
+
+```bash
+# Option 1: Account for prefix length when setting limit
+# If format adds ~40 chars, use max_line_length of 60 for ~100 char final lines
+init_logger --max-line-length 60
+
+# Option 2: Use simpler format to reduce prefix overhead
+init_logger --format "[%l] %m" --max-line-length 100
+
+# Option 3: Disable truncation if precise line length not critical
+init_logger --max-line-length 0  # Unlimited
+```
+
+**References:** See [Configuration](configuration.md) for details on `max_line_length` setting.
 
 ### Weird Characters in Output
 
