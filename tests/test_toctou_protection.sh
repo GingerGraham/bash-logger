@@ -265,6 +265,109 @@ test_reinit_safety() {
     fi
 }
 
+# Test: Non-creatable directory error does not disclose path (Issue #37)
+test_noncreatable_dir_no_path_disclosure() {
+    start_test "Non-creatable directory error does not disclose path (Issue #37)"
+
+    # Create a read-only parent directory
+    local readonly_dir="$TEST_TMP_DIR/readonly_parent"
+    mkdir -p "$readonly_dir"
+    chmod 555 "$readonly_dir"
+
+    local log_file="$readonly_dir/subdir/test.log"
+
+    if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
+        # If it somehow succeeds, cleanup and pass (different filesystem permissions)
+        chmod 755 "$readonly_dir" 2>/dev/null || true
+        pass_test
+    else
+        # Verify error doesn't disclose the log file path or directory
+        local error_output
+        error_output=$(init_logger -l "$log_file" --no-color 2>&1)
+
+        assert_not_contains "$error_output" "$log_file" "Error should not disclose log file path" || {
+            chmod 755 "$readonly_dir" 2>/dev/null || true
+            return
+        }
+        assert_not_contains "$error_output" "$readonly_dir" "Error should not disclose directory path" || {
+            chmod 755 "$readonly_dir" 2>/dev/null || true
+            return
+        }
+
+        chmod 755 "$readonly_dir" 2>/dev/null || true
+        pass_test
+    fi
+}
+
+# Test: Non-writable file error does not disclose path (Issue #37)
+test_nonwritable_file_no_path_disclosure() {
+    start_test "Non-writable file error does not disclose path (Issue #37)"
+
+    local log_file="$TEST_TMP_DIR/readonly.log"
+    touch "$log_file"
+    chmod 444 "$log_file"
+
+    local error_output
+    error_output=$(init_logger -l "$log_file" --no-color 2>&1)
+
+    # Verify error is present
+    assert_contains "$error_output" "not writable" || {
+        chmod 644 "$log_file"
+        return
+    }
+
+    # Verify path is NOT disclosed (defense-in-depth against information disclosure)
+    assert_not_contains "$error_output" "$log_file" "Error message should not contain the log file path" || {
+        chmod 644 "$log_file"
+        return
+    }
+
+    chmod 644 "$log_file"
+    pass_test
+}
+
+# Test: Directory-as-log-file error does not disclose path (Issue #37)
+test_directory_as_logfile_no_path_disclosure() {
+    start_test "Directory-as-log-file error does not disclose path (Issue #37)"
+
+    local log_file="$TEST_TMP_DIR/dir_as_log"
+    mkdir -p "$log_file"
+
+    local error_output
+    error_output=$(init_logger -l "$log_file" --no-color 2>&1)
+
+    # Verify error is present
+    assert_contains "$error_output" "not a regular file" || return
+
+    # Verify path is NOT disclosed (defense-in-depth against information disclosure)
+    assert_not_contains "$error_output" "$log_file" "Error message should not contain the log file path" || return
+
+    pass_test
+}
+
+# Test: Symlink file error does not disclose path (Issue #37)
+test_symlink_file_no_path_disclosure() {
+    start_test "Symlink file error does not disclose path (Issue #37)"
+
+    local log_file="$TEST_TMP_DIR/symlink.log"
+    local target_file="$TEST_TMP_DIR/target.log"
+
+    touch "$target_file"
+    ln -s "$target_file" "$log_file"
+
+    local error_output
+    error_output=$(init_logger -l "$log_file" --no-color 2>&1)
+
+    # Verify error is present
+    assert_contains "$error_output" "symbolic link" || return
+
+    # Verify path is NOT disclosed (defense-in-depth against information disclosure)
+    assert_not_contains "$error_output" "$log_file" "Error message should not contain the log file path" || return
+    assert_not_contains "$error_output" "$target_file" "Error message should not contain the target path" || return
+
+    pass_test
+}
+
 # Run all tests
 test_normal_file_creation
 test_existing_file_reuse
@@ -278,3 +381,7 @@ test_validation_after_creation
 test_preexisting_symlink
 test_device_file_rejection
 test_reinit_safety
+test_noncreatable_dir_no_path_disclosure
+test_nonwritable_file_no_path_disclosure
+test_directory_as_logfile_no_path_disclosure
+test_symlink_file_no_path_disclosure

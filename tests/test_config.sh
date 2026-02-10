@@ -369,6 +369,54 @@ test_config_missing_file() {
     pass_test
 }
 
+# Test: Missing config file does not disclose path (Issue #37)
+test_config_missing_file_no_path_disclosure() {
+    start_test "Missing config file error does not disclose path (Issue #37)"
+
+    local config_path="/nonexistent/deeply/nested/config.conf"
+    local stderr
+    stderr=$(init_logger --config "$config_path" 2>&1 >/dev/null)
+
+    # Verify error is present
+    assert_contains "$stderr" "Configuration file not found" || return
+
+    # Verify path is NOT disclosed (defense-in-depth against information disclosure)
+    assert_not_contains "$stderr" "$config_path" "Error message should not contain the provided config path" || return
+    assert_not_contains "$stderr" "/nonexistent" "Error message should not contain path components" || return
+
+    pass_test
+}
+
+# Test: Unreadable config file does not disclose path (Issue #37)
+test_config_unreadable_file_no_path_disclosure() {
+    start_test "Unreadable config file error does not disclose path (Issue #37)"
+
+    local config_file="$TEST_DIR/unreadable.conf"
+    cat > "$config_file" << 'EOF'
+[logging]
+level = INFO
+EOF
+    chmod 000 "$config_file"
+
+    local stderr
+    stderr=$(init_logger --config "$config_file" 2>&1 >/dev/null)
+
+    # Verify error is present
+    assert_contains "$stderr" "Configuration file not readable" || {
+        chmod 644 "$config_file"  # Cleanup
+        return
+    }
+
+    # Verify path is NOT disclosed (defense-in-depth against information disclosure)
+    assert_not_contains "$stderr" "$config_file" "Error message should not contain the config file path" || {
+        chmod 644 "$config_file"  # Cleanup
+        return
+    }
+
+    chmod 644 "$config_file"  # Cleanup
+    pass_test
+}
+
 # Test: CLI overrides config
 test_cli_overrides_config() {
     start_test "CLI arguments override config file"
@@ -450,6 +498,8 @@ test_config_boolean_variations
 test_config_empty
 test_config_only_comments
 test_config_missing_file
+test_config_missing_file_no_path_disclosure
+test_config_unreadable_file_no_path_disclosure
 test_cli_overrides_config
 test_config_unknown_key
 test_config_alternative_keys
