@@ -32,6 +32,7 @@ any logging functions.
   * [3. Use Configuration Files for Complex Setups](#3-use-configuration-files-for-complex-setups)
   * [4. Allow Runtime Overrides](#4-allow-runtime-overrides)
   * [5. Environment-Specific Configuration](#5-environment-specific-configuration)
+  * [6. Be Aware of Environment Variable Overrides](#6-be-aware-of-environment-variable-overrides)
 * [Examples by Use Case](#examples-by-use-case)
   * [Simple Script](#simple-script)
   * [Script with File Logging](#script-with-file-logging)
@@ -383,6 +384,60 @@ case "$ENV" in
         init_logger --config /etc/myapp/logging.conf
         ;;
 esac
+```
+
+### 6. Be Aware of Environment Variable Overrides
+
+bash-logger uses global variables that can be pre-set in the shell environment before sourcing the module. This is
+expected behavior for Bash sourced libraries, but it's important to understand the implications:
+
+**How it works:**
+
+```bash
+# Environment variables set before sourcing CAN be used by bash-logger
+export LOG_FILE="/tmp/my.log"
+export USE_COLORS="never"
+
+source /path/to/logging.sh
+init_logger  # Uses the pre-set LOG_FILE and USE_COLORS
+```
+
+**Potential Issues:**
+
+* Unintended configuration if parent shell/environment sets these variables
+* In multi-user systems, one user could affect another's logging by exporting variables
+* Automation/CI systems might unexpectedly override logging configuration
+
+**Best Practices:**
+
+Make your initialization explicit and intentional:
+
+```bash
+#!/bin/bash
+# GOOD: Explicit configuration via init_logger arguments
+source /path/to/logging.sh
+init_logger --log "/var/log/myapp.log" --level INFO
+
+# GOOD: Use configuration files for complex setups
+init_logger --config /etc/myapp/logging.conf
+
+# CAUTION: This can be affected by parent environment
+source /path/to/logging.sh
+init_logger  # May use LOG_FILE from environment
+```
+
+For **secure or critical applications**, avoid relying on inherited environment variables:
+
+```bash
+#!/bin/bash
+
+# Explicitly unset any pre-existing bash-logger variables
+unset LOG_FILE LOG_LEVEL USE_COLORS LOG_FORMAT CURRENT_LOG_LEVEL
+
+source /path/to/logging.sh
+
+# Now initialize with only explicit configuration
+init_logger --log "/secure/location/app.log" --level WARN
 ```
 
 ## Examples by Use Case
