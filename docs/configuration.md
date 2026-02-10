@@ -88,13 +88,12 @@ unsafe_allow_newlines = false
 # Warning: true disables ANSI sanitization and can allow escape-sequence injection
 unsafe_allow_ansi_codes = false
 
-# Allow ANSI color codes in log messages: true/false
-# Warning: true disables ANSI sanitization and can allow escape-sequence injection
-unsafe_allow_ansi_codes = false
-# Maximum log line length for console/file output (0 = unlimited)
+# Maximum message length before formatting for console/file output (0 = unlimited)
+# Note: Final output line may exceed this due to timestamp, level, and script name
 max_line_length = 4096
 
-# Maximum log line length for journal output (0 = unlimited)
+# Maximum message length before formatting for journal output (0 = unlimited)
+# Note: Final journal entry may exceed this due to metadata
 max_journal_length = 4096
 ```
 
@@ -116,8 +115,8 @@ max_journal_length = 4096
 | `verbose`                 | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Enable DEBUG level                        |
 | `unsafe_allow_newlines`   | `unsafe-allow-newlines`                     | true/false, yes/no, on/off, 1/0                                   | `false`           | Allow newlines in log messages (unsafe)   |
 | `unsafe_allow_ansi_codes` | `unsafe-allow-ansi-codes`                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Allow ANSI codes in log messages (unsafe) |
-| `max_line_length`         | `max-line-length`, `log_max_line_length`    | Non-negative integer (0 = unlimited)                              | `4096`            | Max line length for console/file output   |
-| `max_journal_length`      | `max-journal-length`, `journal_max_length`  | Non-negative integer (0 = unlimited)                              | `4096`            | Max line length for journal output        |
+| `max_line_length`         | `max-line-length`, `log_max_line_length`    | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length before formatting      |
+| `max_journal_length`      | `max-journal-length`, `journal_max_length`  | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length for journal            |
 
 ### Boolean Values
 

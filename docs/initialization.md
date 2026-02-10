@@ -32,6 +32,7 @@ any logging functions.
   * [3. Use Configuration Files for Complex Setups](#3-use-configuration-files-for-complex-setups)
   * [4. Allow Runtime Overrides](#4-allow-runtime-overrides)
   * [5. Environment-Specific Configuration](#5-environment-specific-configuration)
+  * [6. Be Aware of Environment Variable Overrides](#6-be-aware-of-environment-variable-overrides)
 * [Examples by Use Case](#examples-by-use-case)
   * [Simple Script](#simple-script)
   * [Script with File Logging](#script-with-file-logging)
@@ -71,8 +72,8 @@ The `init_logger` function accepts the following options:
 | `--no-color, --no-colour`                       | Disable color output                                                                |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
 | `-A, --unsafe-allow-ansi-codes`                 | Allow ANSI escape codes in log messages (not recommended; disables sanitization)    |
-| `--max-line-length LENGTH`                      | Max log line length for console/file output (0 = unlimited)                         |
-| `--max-journal-length LENGTH`                   | Max log line length for journal output (0 = unlimited)                              |
+| `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
+| `--max-journal-length LENGTH`                   | Max message length before formatting for journal output (0 = unlimited)             |
 
 ## Common Initialization Patterns
 
@@ -383,6 +384,66 @@ case "$ENV" in
         init_logger --config /etc/myapp/logging.conf
         ;;
 esac
+```
+
+### 6. Be Aware of Environment Variable Overrides
+
+bash-logger uses global variables that are initialized with default values when the module is sourced.
+These variables can be modified after sourcing but before calling `init_logger()`.
+Understanding this behavior is important to avoid unexpected configuration:
+
+**How it works:**
+
+```bash
+# Variables are reset to defaults when sourcing
+source /path/to/logging.sh  # LOG_FILE="", USE_COLORS="auto", etc.
+
+# You can override defaults BEFORE calling init_logger
+LOG_FILE="/tmp/my.log"
+USE_COLORS="never"
+init_logger  # Uses the modified values
+
+# Or pass them as arguments (cleaner approach)
+source /path/to/logging.sh
+init_logger --log "/tmp/my.log" --colors never
+```
+
+**Potential Issues:**
+
+* Unintended configuration if parent shell/environment sets these variables
+* In multi-user systems, one user could affect another's logging by exporting variables
+* Automation/CI systems might unexpectedly override logging configuration
+
+**Best Practices:**
+
+Make your initialization explicit and intentional:
+
+```bash
+#!/bin/bash
+# GOOD: Explicit configuration via init_logger arguments
+source /path/to/logging.sh
+init_logger --log "/var/log/myapp.log" --level INFO
+
+# GOOD: Use configuration files for complex setups
+init_logger --config /etc/myapp/logging.conf
+
+# CAUTION: This can be affected by parent environment
+source /path/to/logging.sh
+init_logger  # May use LOG_FILE from environment
+```
+
+For **secure or critical applications**, avoid relying on inherited environment variables:
+
+```bash
+#!/bin/bash
+
+# Explicitly unset any pre-existing bash-logger variables to ensure clean state
+unset LOG_FILE USE_COLORS LOG_FORMAT CURRENT_LOG_LEVEL LOG_STDERR_LEVEL SCRIPT_NAME USE_JOURNAL
+
+source /path/to/logging.sh
+
+# Now initialize with only explicit configuration
+init_logger --log "/secure/location/app.log" --level WARN
 ```
 
 ## Examples by Use Case
