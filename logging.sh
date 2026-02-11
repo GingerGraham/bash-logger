@@ -1134,7 +1134,8 @@ set_journal_logging() {
     fi
 
     # Log to journal if it was previously enabled or just being enabled
-    if [[ "$old_setting" == "true" || "$USE_JOURNAL" == "true" ]]; then
+    # Only attempt journal write when logger path is set
+    if [[ -n "$LOGGER_PATH" && ( "$old_setting" == "true" || "$USE_JOURNAL" == "true" ) ]]; then
         "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
