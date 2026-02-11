@@ -27,16 +27,31 @@ JUNIT_OUTPUT=false
 OUTPUT_DIR="$PROJECT_ROOT/test-reports"
 
 # Parallel execution options
-# Check environment variable first, then auto-detect with cap, default to 1
+# Auto-detect available cores as a baseline
+system_cores=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "1")
+# Use reasonable caps to avoid excessive resource contention
+max_jobs=8
+
+# Check environment variable first, then fall back to auto-detect
 if [[ -n "${TEST_PARALLEL_JOBS:-}" ]]; then
-    PARALLEL_JOBS="$TEST_PARALLEL_JOBS"
-else
-    # Auto-detect available cores, with sensible default and cap
-    PARALLEL_JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "1")
-    # Cap at 8 to avoid excessive resource contention
-    if [[ $PARALLEL_JOBS -gt 8 ]]; then
-        PARALLEL_JOBS=8
+    # Validate TEST_PARALLEL_JOBS is a positive integer
+    if [[ "$TEST_PARALLEL_JOBS" =~ ^[0-9]+$ ]] && [[ $TEST_PARALLEL_JOBS -gt 0 ]]; then
+        PARALLEL_JOBS="$TEST_PARALLEL_JOBS"
+        # Warn if user value exceeds system capabilities
+        if [[ $PARALLEL_JOBS -gt $system_cores ]]; then
+            echo "Warning: TEST_PARALLEL_JOBS=$PARALLEL_JOBS exceeds system cores ($system_cores), capping to $max_jobs" >&2
+        fi
+    else
+        echo "Warning: Invalid TEST_PARALLEL_JOBS='$TEST_PARALLEL_JOBS', falling back to auto-detect" >&2
+        PARALLEL_JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "1")
     fi
+else
+    PARALLEL_JOBS="$system_cores"
+fi
+
+# Cap at 8 to avoid excessive resource contention
+if [[ $PARALLEL_JOBS -gt $max_jobs ]]; then
+    PARALLEL_JOBS=$max_jobs
 fi
 RESULTS_DIR=""   # Temporary directory for parallel results
 

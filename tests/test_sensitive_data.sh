@@ -88,15 +88,14 @@ test_sensitive_to_console_interactive() {
 
     init_logger -l "$log_file" --no-color
 
-    # Capture stdout
-    local output
-    output=$(log_sensitive "Interactive secret" 2>&1)
+    # Log sensitive data
+    log_sensitive "Interactive secret" > /dev/null 2>&1
 
-    # Should have console output (if stdout is terminal)
-    # In test environment, may not be a terminal, so we verify function behavior
-    if [[ -n "$output" ]] || [[ -z "$output" ]]; then
-        # Either case is valid depending on environment
+    # Verify sensitive message is NOT written to log file (console-only)
+    if ! grep -q "Interactive secret" "$log_file" 2>/dev/null; then
         pass_test
+    else
+        fail_test "Sensitive data was written to log file"
     fi
 }
 
@@ -380,6 +379,7 @@ test_console_only_sensitive() {
 
     # Should be safe since nothing persists
     local output
+    # shellcheck disable=SC2034
     output=$(log_sensitive "Console only secret" 2>&1 || echo "")
 
     # As long as no error occurred

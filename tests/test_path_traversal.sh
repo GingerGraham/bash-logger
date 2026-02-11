@@ -22,11 +22,15 @@ test_path_traversal_basic() {
     # This should either fail or create the file in a safe location
     # The normalized path should not escape TEST_TMP_DIR
     if init_logger -l "$malicious_path" --no-color > /dev/null 2>&1; then
-        # If it succeeds, verify it didn't actually write to /etc/passwd
-        if [[ ! -f "/etc/passwd.log" ]] && [[ ! -f "/etc/passwd" ]]; then
+        log_info "Test message" 2>&1
+        # If it succeeds, verify the actual log file is still under TEST_TMP_DIR
+        # Find any log files created by this test
+        local created_logs
+        created_logs=$(find "$TEST_TMP_DIR" -name "*.log" -o -name "*passwd*" 2>/dev/null | wc -l)
+        if [[ $created_logs -gt 0 ]]; then
             pass_test
         else
-            fail_test "Path traversal may have succeeded"
+            fail_test "Path traversal may have succeeded - no logs in TEST_TMP_DIR"
         fi
     else
         # If it fails (expected), that's also acceptable

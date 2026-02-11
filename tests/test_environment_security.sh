@@ -14,14 +14,15 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 test_preset_log_file_handling() {
     start_test "Pre-set LOG_FILE environment variable handling"
 
-    export LOG_FILE="/tmp/malicious.log"
+    local malicious_log="$TEST_TMP_DIR/malicious_${BASHPID}_$RANDOM.log"
+    export LOG_FILE="$malicious_log"
     local intended_file="$TEST_TMP_DIR/intended.log"
 
     init_logger -l "$intended_file" --no-color > /dev/null 2>&1
     log_info "Test message"
 
     # Verify message went to intended file, not malicious one
-    if [[ -f "$intended_file" ]] && ! [[ -f "/tmp/malicious.log" ]]; then
+    if [[ -f "$intended_file" ]] && ! [[ -f "$malicious_log" ]]; then
         pass_test
     elif grep -q "Test message" "$intended_file" 2>/dev/null; then
         # Message in correct file
@@ -39,12 +40,13 @@ test_malicious_path_variable() {
 
     local original_path="$PATH"
     local malicious_dir="$TEST_TMP_DIR/malicious_bin"
+    local execution_marker="$TEST_TMP_DIR/malicious_execution_marker_${BASHPID}_$RANDOM"
     mkdir -p "$malicious_dir"
 
     # Create fake logger command
-    cat > "$malicious_dir/logger" << 'EOF'
+    cat > "$malicious_dir/logger" << EOF
 #!/usr/bin/env bash
-echo "MALICIOUS LOGGER EXECUTED" >> /tmp/malicious_execution_marker
+echo "MALICIOUS LOGGER EXECUTED" >> "$execution_marker"
 EOF
     chmod +x "$malicious_dir/logger"
 
@@ -59,11 +61,11 @@ EOF
     export PATH="$original_path"
 
     # Check if malicious logger was NOT executed
-    if [[ ! -f "/tmp/malicious_execution_marker" ]]; then
+    if [[ ! -f "$execution_marker" ]]; then
         pass_test
     else
         fail_test "Malicious logger from PATH was executed"
-        rm -f "/tmp/malicious_execution_marker"
+        rm -f "$execution_marker"
     fi
 }
 

@@ -22,9 +22,9 @@ test_extremely_large_message() {
 
     init_logger -l "$log_file" --no-color > /dev/null 2>&1
 
-    # Create a very large message (1MB)
+    # Create a very large message (1MB) using efficient string generation
     local large_message
-    large_message=$(printf 'A%.0s' {1..1048576})
+    large_message=$(head -c 1048576 /dev/zero | tr '\0' 'A')
 
     # Should handle without crashing
     if log_info "$large_message" 2>&1; then
@@ -50,7 +50,7 @@ test_message_size_limit() {
 
     # 10MB message - should handle or gracefully limit
     local huge_message
-    huge_message=$(printf 'X%.0s' {1..10485760} 2>/dev/null || printf 'X%.0s' {1..100000})
+    huge_message=$(head -c 10485760 /dev/zero 2>/dev/null | tr '\0' 'X' 2>/dev/null || head -c 100000 /dev/zero | tr '\0' 'X')
 
     # Log and verify doesn't cause system issues
     log_info "$huge_message" 2>&1 || true
