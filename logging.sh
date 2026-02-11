@@ -49,22 +49,34 @@
 #   - Troubleshooting: docs/troubleshooting.md
 
 # Version (updated by release workflow)
+# Guard against re-initialization when sourced multiple times
 if [[ -z "${BASH_LOGGER_VERSION:-}" ]]; then
     readonly BASH_LOGGER_VERSION="2.0.1"
+
+    # Unset potentially malicious environment variables before setting internal constants
+    # Only unset if not already readonly (which would indicate re-sourcing)
+    # This protects against environment variable override attacks
+    for var in LOG_LEVEL_EMERGENCY LOG_LEVEL_ALERT LOG_LEVEL_CRITICAL LOG_LEVEL_ERROR \
+               LOG_LEVEL_WARN LOG_LEVEL_NOTICE LOG_LEVEL_INFO LOG_LEVEL_DEBUG LOG_LEVEL_FATAL; do
+        if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* $var="; then
+            unset "$var" 2>/dev/null || true
+        fi
+    done
+
+    # Log levels (following complete syslog standard - higher number = less severe)
+    # These are readonly to prevent malicious override after initialization
+    readonly LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
+    readonly LOG_LEVEL_ALERT=1      # Action must be taken immediately
+    readonly LOG_LEVEL_CRITICAL=2   # Critical conditions
+    readonly LOG_LEVEL_ERROR=3      # Error conditions
+    readonly LOG_LEVEL_WARN=4       # Warning conditions
+    readonly LOG_LEVEL_NOTICE=5     # Normal but significant conditions
+    readonly LOG_LEVEL_INFO=6       # Informational messages
+    readonly LOG_LEVEL_DEBUG=7      # Debug information (least severe)
+
+    # Aliases for backward compatibility
+    readonly LOG_LEVEL_FATAL=$LOG_LEVEL_EMERGENCY  # Alias for EMERGENCY
 fi
-
-# Log levels (following complete syslog standard - higher number = less severe)
-LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
-LOG_LEVEL_ALERT=1      # Action must be taken immediately
-LOG_LEVEL_CRITICAL=2   # Critical conditions
-LOG_LEVEL_ERROR=3      # Error conditions
-LOG_LEVEL_WARN=4       # Warning conditions
-LOG_LEVEL_NOTICE=5     # Normal but significant conditions
-LOG_LEVEL_INFO=6       # Informational messages
-LOG_LEVEL_DEBUG=7      # Debug information (least severe)
-
-# Aliases for backward compatibility
-LOG_LEVEL_FATAL=$LOG_LEVEL_EMERGENCY  # Alias for EMERGENCY
 
 # Default settings (these can be overridden by init_logger)
 CONSOLE_LOG="true"
@@ -80,17 +92,31 @@ JOURNAL_TAG=""  # Tag for syslog/journal entries
 # Color settings
 USE_COLORS="auto"  # Can be "auto", "always", or "never"
 
-# ANSI color codes (using $'...' syntax for literal escape characters)
-COLOR_RESET=$'\e[0m'
-COLOR_BLUE=$'\e[34m'
-COLOR_GREEN=$'\e[32m'
-COLOR_YELLOW=$'\e[33m'
-COLOR_RED=$'\e[31m'
-COLOR_RED_BOLD=$'\e[31;1m'
-COLOR_WHITE_ON_RED=$'\e[37;41m'
-COLOR_BOLD_WHITE_ON_RED=$'\e[1;37;41m'
-COLOR_PURPLE=$'\e[35m'
-COLOR_CYAN=$'\e[36m'
+# Initialize color constants only once (guard against re-sourcing)
+if [[ -z "${COLOR_RESET:-}" ]] || ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* COLOR_RESET="; then
+    # Unset potentially malicious color variables before setting them
+    # Only unset if not already readonly (which would indicate re-sourcing)
+    for var in COLOR_RESET COLOR_BLUE COLOR_GREEN COLOR_YELLOW COLOR_RED \
+               COLOR_RED_BOLD COLOR_WHITE_ON_RED COLOR_BOLD_WHITE_ON_RED \
+               COLOR_PURPLE COLOR_CYAN; do
+        if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* $var="; then
+            unset "$var" 2>/dev/null || true
+        fi
+    done
+
+    # ANSI color codes (using $'...' syntax for literal escape characters)
+    # These are readonly to prevent malicious override after initialization
+    readonly COLOR_RESET=$'\e[0m'
+    readonly COLOR_BLUE=$'\e[34m'
+    readonly COLOR_GREEN=$'\e[32m'
+    readonly COLOR_YELLOW=$'\e[33m'
+    readonly COLOR_RED=$'\e[31m'
+    readonly COLOR_RED_BOLD=$'\e[31;1m'
+    readonly COLOR_WHITE_ON_RED=$'\e[37;41m'
+    readonly COLOR_BOLD_WHITE_ON_RED=$'\e[1;37;41m'
+    readonly COLOR_PURPLE=$'\e[35m'
+    readonly COLOR_CYAN=$'\e[36m'
+fi
 
 # Stream output settings
 # Messages at this level and above (more severe) go to stderr, below go to stdout
@@ -186,9 +212,46 @@ _should_use_stderr() {
     [[ "$level_value" -le "$LOG_STDERR_LEVEL" ]]
 }
 
-# Check if logger command is available
+# Path to validated logger command (set by _find_and_validate_logger)
+LOGGER_PATH=""
+
+# Find and validate the logger command to prevent PATH manipulation attacks
+# This function finds the logger executable and validates it's in a safe system location
+# Returns 0 if logger is found and valid, 1 otherwise
+_find_and_validate_logger() {
+    # Try to find logger command
+    local logger_candidate
+    logger_candidate=$(command -v logger 2>/dev/null)
+
+    if [[ -z "$logger_candidate" ]]; then
+        return 1
+    fi
+
+    # Resolve any symlinks to get the real path
+    if command -v readlink &>/dev/null; then
+        logger_candidate=$(readlink -f "$logger_candidate" 2>/dev/null || echo "$logger_candidate")
+    fi
+
+    # Validate logger is in a safe system location
+    # Accept: /bin, /usr/bin, /usr/local/bin, /sbin, /usr/sbin
+    case "$logger_candidate" in
+        /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger)
+            LOGGER_PATH="$logger_candidate"
+            return 0
+            ;;
+        *)
+            # Logger found but in unexpected location - could be malicious
+            echo "Warning: logger found at unexpected location: $logger_candidate" >&2
+            echo "  Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin" >&2
+            echo "  Journal logging disabled for security" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Check if logger command is available (legacy compatibility wrapper)
 check_logger_available() {
-    command -v logger &>/dev/null
+    _find_and_validate_logger
 }
 
 # Configuration file path (set by init_logger when using -c option)
@@ -784,10 +847,10 @@ init_logger() {
                 shift 2
                 ;;
             -j|--journal)
-                if check_logger_available; then
+                if _find_and_validate_logger; then
                     USE_JOURNAL="true"
                 else
-                    echo "Warning: logger command not found, journal logging disabled" >&2
+                    echo "Warning: logger command not available or not in safe location, journal logging disabled" >&2
                 fi
                 shift
                 ;;
@@ -974,8 +1037,8 @@ set_log_level() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1003,8 +1066,8 @@ set_timezone_utc() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1032,8 +1095,8 @@ set_log_format() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1043,7 +1106,7 @@ set_journal_logging() {
     USE_JOURNAL="$1"
 
     # Check if logger is available when enabling
-    if [[ "$USE_JOURNAL" == "true" ]]; then
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
         if ! check_logger_available; then
             echo "Error: logger command not found, cannot enable journal logging" >&2
             USE_JOURNAL="$old_setting"
@@ -1071,7 +1134,7 @@ set_journal_logging() {
 
     # Log to journal if it was previously enabled or just being enabled
     if [[ "$old_setting" == "true" || "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1099,8 +1162,8 @@ set_journal_tag() {
     fi
 
     # Log to journal if enabled, using the old tag
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
     fi
 }
 
@@ -1143,8 +1206,8 @@ set_color_mode() {
     fi
 
     # Log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1173,8 +1236,8 @@ set_script_name() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1218,8 +1281,8 @@ set_unsafe_allow_newlines() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1263,8 +1326,8 @@ set_unsafe_allow_ansi_codes() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" ]]; then
-        logger -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
     fi
 }
 
@@ -1354,7 +1417,7 @@ _log_message() {
             journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
             local plain_message
             plain_message=$(_strip_ansi_codes "$journal_message")
-            logger -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
+            "$LOGGER_PATH" -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
         fi
     fi
 }

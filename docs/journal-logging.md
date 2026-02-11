@@ -39,6 +39,7 @@ applications running on modern Linux distributions.
   * [Configure Journal Retention](#configure-journal-retention)
 * [Troubleshooting](#troubleshooting)
   * [Logger Command Not Found](#logger-command-not-found)
+  * [Logger Security Warning](#logger-security-warning)
   * [Journal Not Receiving Logs](#journal-not-receiving-logs)
   * [Permission Issues](#permission-issues)
   * [Verifying Logs Are Received](#verifying-logs-are-received)
@@ -448,6 +449,50 @@ which logger
 # Install if missing (Debian/Ubuntu)
 sudo apt-get install util-linux
 ```
+
+### Logger Security Warning
+
+**Warning: logger found at unexpected location**
+
+This security warning appears when `logger` is not in one of the trusted system directories:
+
+```
+Warning: logger found at unexpected location: /home/user/bin/logger
+Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin
+Journal logging disabled for security
+```
+
+**Resolution:**
+
+1. **Check your PATH**: Ensure system directories appear before custom paths
+
+   ```bash
+   echo $PATH
+   # Should show /usr/bin before custom directories
+   ```
+
+2. **Verify logger location**:
+
+   ```bash
+   command -v logger
+   readlink -f $(command -v logger)
+   ```
+
+3. **Use system logger**: Ensure `/usr/bin/logger` or `/bin/logger` exists
+
+   ```bash
+   /usr/bin/logger -t test "Direct test"
+   ```
+
+4. **Temporary fix**: Adjust PATH to prioritize system directories
+
+   ```bash
+   export PATH="/usr/bin:/bin:/usr/local/bin:$PATH"
+   ```
+
+**Why this check exists**: This security feature prevents PATH manipulation attacks where a malicious `logger`
+executable could intercept your journal logs. See [Security Policy](../SECURITY.md#path-manipulation-protection)
+for details.
 
 ### Journal Not Receiving Logs
 
