@@ -50,7 +50,8 @@
 
 # Version (updated by release workflow)
 # Guard against re-initialization when sourced multiple times
-if [[ -z "${BASH_LOGGER_VERSION:-}" ]]; then
+# Use readonly status instead of emptiness to avoid environment bypass
+if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* BASH_LOGGER_VERSION="; then
     readonly BASH_LOGGER_VERSION="2.0.1"
 
     # Unset potentially malicious environment variables before setting internal constants
