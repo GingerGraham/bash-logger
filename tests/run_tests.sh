@@ -358,7 +358,7 @@ main() {
                 echo "Options:"
                 echo "  --junit          Generate JUnit XML report for CI/SonarQube"
                 echo "  --output-dir DIR Directory for reports (default: ../test-reports)"
-                echo "  -j, --parallel N Run N test suites in parallel (default: 1)"
+                echo "  -j, --parallel N Run N test suites in parallel (auto-detect cores by default, max 8)"
                 echo "  --help, -h       Show this help message"
                 echo ""
                 echo "Examples:"

@@ -7,6 +7,7 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 * [Overview](#overview)
 * [Running Tests](#running-tests)
   * [Run All Tests](#run-all-tests)
+    * [Parallel Execution](#parallel-execution)
   * [Run Specific Test Suites](#run-specific-test-suites)
   * [Understanding Test Output](#understanding-test-output)
 * [Code Coverage and Static Analysis](#code-coverage-and-static-analysis)
@@ -109,7 +110,7 @@ TEST_PARALLEL_JOBS=4 ./run_tests.sh
 * **Pre-commit hooks**: Configured to use `-j 8` explicitly for faster commits
 * Systems with many cores (16+) benefit from the 8-job cap to avoid I/O contention
 
-The `make test` target and pre-commit hooks explicitly use `-j 8` for optimal local performance.
+The `make test` target and pre-commit hooks take advantage of the auto-detected parallelism for optimal local performance.
 
 ### Run Specific Test Suites
 
