@@ -43,7 +43,7 @@ repos:
       - id: bash-logger-tests
         name: Bash Logger Tests
         description: Run the bash logger test suite
-        entry: tests/run_tests.sh
+        entry: tests/run_tests.sh -j 8
         language: script
         always_run: true
         pass_filenames: false

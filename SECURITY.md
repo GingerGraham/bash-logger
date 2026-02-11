@@ -142,6 +142,57 @@ fi
 init_logger --log "$log_file"
 ```
 
+## Built-in Security Protections
+
+bash-logger includes several hardening measures to protect against common shell script security issues:
+
+### PATH Manipulation Protection
+
+The logger command used for journal integration is validated at initialization:
+
+* Full path to `logger` is determined using `command -v`
+* Path is validated to be in trusted system locations:
+  * `/bin/logger`
+  * `/usr/bin/logger`
+  * `/usr/local/bin/logger`
+  * `/sbin/logger`
+  * `/usr/sbin/logger`
+* Logger executables in unexpected locations are rejected
+* This prevents PATH manipulation attacks where a malicious `logger` executable could intercept journal logs
+
+If journal logging fails validation, an informative warning is displayed, and journal logging is disabled for safety.
+
+### Environment Variable Override Protection
+
+Internal constants are protected from malicious environment variable override:
+
+* **Log level constants** (`LOG_LEVEL_*`) are declared as `readonly`
+* **Color constants** (`COLOR_*`) are declared as `readonly`
+* Variables are unset (if not already readonly) before initialization
+* This prevents attackers who control the environment from:
+  * Changing log level numeric values to disrupt logging logic
+  * Injecting malicious ANSI codes via color constants
+  * Bypassing log level checks
+
+**Example attack prevented**:
+
+```bash
+# Attacker attempts to override constants
+export LOG_LEVEL_INFO=999
+export COLOR_RED="MALICIOUS_ESCAPE_SEQUENCE"
+
+# bash-logger will detect and reset these values
+source logging.sh  # Values are forced to correct constants
+```
+
+### Re-sourcing Protection
+
+bash-logger uses version guards to prevent issues when sourced multiple times:
+
+* Constants are only initialized once
+* Re-sourcing does not attempt to redeclare readonly variables
+* This prevents errors in environments where the library may be sourced multiple times
+
 ## Known Security Considerations
 
 ### Not Applicable to bash-logger

@@ -134,7 +134,9 @@ init_logger --log "/var/log/app.log" --journal --tag "app" --level DEBUG
 
 ### check_logger_available
 
-Check if the system `logger` command is available for journal logging.
+Check if the system `logger` command is available and validated for journal logging.
+
+**Security**: This function validates that the `logger` executable is located in a trusted system directory to prevent PATH manipulation attacks.
 
 **Syntax:**
 
@@ -144,8 +146,16 @@ check_logger_available
 
 **Returns:**
 
-* `0` - logger command is available
-* `1` - logger command is not available
+* `0` - logger command is available and in a safe location
+* `1` - logger command is not available or not in a trusted location
+
+**Trusted Locations:**
+
+* `/bin/logger`
+* `/usr/bin/logger`
+* `/usr/local/bin/logger`
+* `/sbin/logger`
+* `/usr/sbin/logger`
 
 **Examples:**
 
@@ -165,9 +175,12 @@ else
 fi
 ```
 
+**Note**: If `logger` is found in an unexpected location, a warning is displayed and the function returns `1`. This is a security feature to prevent malicious logger substitution via PATH manipulation.
+
 **See Also:**
 
 * [Journal Logging Guide](journal-logging.md)
+* [Security Policy](../SECURITY.md#path-manipulation-protection)
 
 ---
 

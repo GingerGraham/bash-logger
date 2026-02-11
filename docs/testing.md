@@ -7,6 +7,7 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 * [Overview](#overview)
 * [Running Tests](#running-tests)
   * [Run All Tests](#run-all-tests)
+    * [Parallel Execution](#parallel-execution)
   * [Run Specific Test Suites](#run-specific-test-suites)
   * [Understanding Test Output](#understanding-test-output)
 * [Code Coverage and Static Analysis](#code-coverage-and-static-analysis)
@@ -64,6 +65,52 @@ Or from anywhere in the project:
 ```bash
 ./tests/run_tests.sh
 ```
+
+#### Parallel Execution
+
+The test runner automatically detects available CPU cores and runs tests in parallel (capped at 8 jobs). You can override this with the `-j` or `--parallel` option:
+
+```bash
+# Auto-detected parallelism (default behavior)
+./run_tests.sh
+
+# Run with 4 parallel jobs (explicit)
+./run_tests.sh -j 4
+
+# Run with 8 parallel jobs (explicit)
+./run_tests.sh -j 8
+
+# Combine with other options
+./run_tests.sh -j 8 --junit
+```
+
+**Environment Variable Override:**
+
+Set `TEST_PARALLEL_JOBS` to control parallelism without command-line flags:
+
+```bash
+# Useful for CI/CD pipelines
+export TEST_PARALLEL_JOBS=4
+./run_tests.sh
+
+# Or inline
+TEST_PARALLEL_JOBS=4 ./run_tests.sh
+```
+
+**Performance Impact:**
+
+* **Sequential** (`-j 1`): ~5+ minutes for full suite
+* **4 parallel jobs**: ~2-3 minutes
+* **8 parallel jobs**: ~1-2 minutes
+
+**Recommendations:**
+
+* **Local development**: Auto-detection works well (runs up to 8 parallel jobs)
+* **CI/CD**: Set `TEST_PARALLEL_JOBS=4` for GitHub Actions or similar (2-4 core runners)
+* **Pre-commit hooks**: Configured to use `-j 8` explicitly for faster commits
+* Systems with many cores (16+) benefit from the 8-job cap to avoid I/O contention
+
+The `make test` target and pre-commit hooks take advantage of the auto-detected parallelism for optimal local performance.
 
 ### Run Specific Test Suites
 

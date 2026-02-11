@@ -336,10 +336,19 @@ test_runtime_function_color_branches() {
 test_runtime_function_journal_logging() {
     start_test "set_unsafe_allow_newlines journal logging branch"
 
-    LOG_TEST_LOGGER_CALLED=0
-    logger() {
-        LOG_TEST_LOGGER_CALLED=$((LOG_TEST_LOGGER_CALLED + 1))
-    }
+    # Create a fake logger script to track invocations
+    local fake_logger="$TEST_DIR/fake_logger"
+    local counter_file="$TEST_DIR/logger_called_count"
+
+    cat > "$fake_logger" << EOF
+#!/usr/bin/env bash
+echo "1" >> "$counter_file"
+EOF
+    chmod +x "$fake_logger"
+
+    # Set LOGGER_PATH to our fake logger
+    # shellcheck disable=SC2034
+    LOGGER_PATH="$fake_logger"
 
     # shellcheck disable=SC2034
     USE_JOURNAL="true"
@@ -350,13 +359,17 @@ test_runtime_function_journal_logging() {
 
     set_unsafe_allow_newlines "true"
 
-    if [[ "$LOG_TEST_LOGGER_CALLED" -ge 1 ]]; then
+    # Count how many times logger was called
+    local call_count=0
+    if [[ -f "$counter_file" ]]; then
+        call_count=$(wc -l < "$counter_file")
+    fi
+
+    if [[ "$call_count" -ge 1 ]]; then
         pass_test
     else
         fail_test "Logger command was not invoked"
     fi
-
-    unset -f logger
 }
 
 # Test: Log injection scenario - sanitized
