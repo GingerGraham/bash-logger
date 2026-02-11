@@ -13,11 +13,31 @@ cd tests
 ./run_tests.sh
 ```
 
+Tests automatically run in parallel using detected CPU cores (capped at 8 jobs, due to diminishing returns above this).
+
+### Run Tests with Custom Parallelism
+
+Override the auto-detected parallelism if needed:
+
+```bash
+# Explicitly use 8 parallel jobs
+./run_tests.sh -j 8
+
+# Use 4 parallel jobs (good for CI environments)
+./run_tests.sh -j 4
+
+# Or use environment variable
+TEST_PARALLEL_JOBS=4 ./run_tests.sh
+```
+
 ### Run Specific Test Suite
 
 ```bash
 ./run_tests.sh test_log_levels
 ./run_tests.sh test_initialization test_format
+
+# Specific tests with parallel execution
+./run_tests.sh -j 4 test_log_levels test_format
 ```
 
 ## Test Suites
