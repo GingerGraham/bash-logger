@@ -39,7 +39,7 @@ if [[ -n "${TEST_PARALLEL_JOBS:-}" ]]; then
         PARALLEL_JOBS="$TEST_PARALLEL_JOBS"
         # Warn if user value exceeds system capabilities
         if [[ $PARALLEL_JOBS -gt $system_cores ]]; then
-            echo "Warning: TEST_PARALLEL_JOBS=$PARALLEL_JOBS exceeds system cores ($system_cores), capping to $max_jobs" >&2
+            echo "Warning: TEST_PARALLEL_JOBS=$PARALLEL_JOBS exceeds system cores ($system_cores); note: parallel jobs will be limited to max_jobs=$max_jobs to avoid contention" >&2
         fi
     else
         echo "Warning: Invalid TEST_PARALLEL_JOBS='$TEST_PARALLEL_JOBS', falling back to auto-detect" >&2
