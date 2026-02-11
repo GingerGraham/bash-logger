@@ -101,7 +101,7 @@ test_sensitive_to_console_interactive() {
 
 # Test: log_sensitive with stdout redirected
 test_sensitive_redirect_detection() {
-    start_test "log_sensitive() detects stdout redirection"
+    start_test "log_sensitive() with stdout redirection (INFO-01 limitation)"
 
     local log_file="$TEST_TMP_DIR/redirect_test.log"
     local redirect_file="$TEST_TMP_DIR/redirect_output.txt"
@@ -112,24 +112,12 @@ test_sensitive_redirect_detection() {
     log_sensitive "RedirectedSecret" > "$redirect_file" 2>&1
     log_info "Normal message"
 
-    # Sensitive data should either not appear or be suppressed
-    # Check the redirect file
-    if [[ -f "$redirect_file" ]]; then
-        local redirect_content
-        redirect_content=$(cat "$redirect_file")
-
-        # Function might suppress or warn about redirection
-        if [[ "$redirect_content" =~ "RedirectedSecret" ]]; then
-            # This is the limitation documented in INFO-01
-            # Not ideal but expected behavior
-            pass_test
-        else
-            # Properly suppressed
-            pass_test
-        fi
-    else
-        pass_test
-    fi
+    # INFO-01: Known limitation - log_sensitive() cannot reliably detect
+    # stdout redirection in all contexts. When stdout is redirected,
+    # sensitive data may leak to the redirected output. This test documents
+    # the limitation rather than asserting false security guarantees.
+    # See docs/security-reviews/2026-02-04-claude-security-findings.md
+    skip_test "INFO-01: Sensitive data leakage when stdout is redirected (documented limitation)"
 }
 
 # Test: Sensitive data in error conditions
