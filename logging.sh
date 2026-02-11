@@ -1028,13 +1028,13 @@ set_log_level() {
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
-            echo "${log_entry}"
+            printf '%s\n' "${log_entry}"
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1057,13 +1057,13 @@ set_timezone_utc() {
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
-            echo "${log_entry}"
+            printf '%s\n' "${log_entry}"
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1086,13 +1086,13 @@ set_log_format() {
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
-            echo "${log_entry}"
+            printf '%s\n' "${log_entry}"
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1124,13 +1124,13 @@ set_journal_logging() {
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
-            echo "${log_entry}"
+            printf '%s\n' "${log_entry}"
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Log to journal if it was previously enabled or just being enabled
@@ -1154,13 +1154,13 @@ set_journal_tag() {
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
-            echo "${log_entry}"
+            printf '%s\n' "${log_entry}"
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Log to journal if enabled, using the old tag
@@ -1198,13 +1198,13 @@ set_color_mode() {
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
-            echo "${log_entry}"
+            printf '%s\n' "${log_entry}"
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Log to journal if enabled
@@ -1228,13 +1228,13 @@ set_script_name() {
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
-            echo "${log_entry}"
+            printf '%s\n' "${log_entry}"
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1266,20 +1266,20 @@ set_unsafe_allow_newlines() {
             if _should_use_colors; then
                 printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
             else
-                echo "${log_entry}"
+                printf '%s\n' "${log_entry}"
             fi
         else
             if _should_use_colors; then
                 printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
             else
-                echo "${log_entry}"
+                printf '%s\n' "${log_entry}"
             fi
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1311,20 +1311,20 @@ set_unsafe_allow_ansi_codes() {
             if _should_use_colors; then
                 printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
             else
-                echo "${log_entry}"
+                printf '%s\n' "${log_entry}"
             fi
         else
             if _should_use_colors; then
                 printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
             else
-                echo "${log_entry}"
+                printf '%s\n' "${log_entry}"
             fi
         fi
     fi
 
     # Always write to log file if set
     if [[ -n "$LOG_FILE" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1392,7 +1392,7 @@ _log_message() {
     # If LOG_FILE is set and not empty, append to the log file (without colors)
     # Skip writing to the file if skip_file is true
     if [[ -n "$LOG_FILE" && "$skip_file" != "true" ]]; then
-        echo "${log_entry}" >> "$LOG_FILE" 2>/dev/null || {
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null || {
             # Only print the error once to avoid spam
             if [[ -z "$LOGGER_FILE_ERROR_REPORTED" ]]; then
                 echo "ERROR: Failed to write to log file" >&2
@@ -1401,7 +1401,7 @@ _log_message() {
             fi
 
             # Print the original message to stderr to not lose it
-            echo "${log_entry}" >&2
+            printf '%s\n' "${log_entry}" >&2
         }
     fi
 
