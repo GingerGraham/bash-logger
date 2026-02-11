@@ -1026,7 +1026,7 @@ set_log_level() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if _should_use_colors; then
-            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -1055,7 +1055,7 @@ set_timezone_utc() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if _should_use_colors; then
-            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -1084,7 +1084,7 @@ set_log_format() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if _should_use_colors; then
-            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -1122,7 +1122,7 @@ set_journal_logging() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if _should_use_colors; then
-            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -1152,7 +1152,7 @@ set_journal_tag() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if _should_use_colors; then
-            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -1196,7 +1196,7 @@ set_color_mode() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if _should_use_colors; then
-            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -1226,7 +1226,7 @@ set_script_name() {
     # Always print to console if enabled
     if [[ "$CONSOLE_LOG" == "true" ]]; then
         if _should_use_colors; then
-            echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
             echo "${log_entry}"
         fi
@@ -1264,13 +1264,13 @@ set_unsafe_allow_newlines() {
         # Use warning color if enabling unsafe mode
         if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
             if _should_use_colors; then
-                echo -e "${COLOR_RED}${log_entry}${COLOR_RESET}"
+                printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
             else
                 echo "${log_entry}"
             fi
         else
             if _should_use_colors; then
-                echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+                printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
             else
                 echo "${log_entry}"
             fi
@@ -1309,13 +1309,13 @@ set_unsafe_allow_ansi_codes() {
         # Use warning color if enabling unsafe mode
         if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
             if _should_use_colors; then
-                echo -e "${COLOR_RED}${log_entry}${COLOR_RESET}"
+                printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
             else
                 echo "${log_entry}"
             fi
         else
             if _should_use_colors; then
-                echo -e "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+                printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
             else
                 echo "${log_entry}"
             fi
@@ -1353,9 +1353,9 @@ _log_to_console() {
     fi
 
     if [[ "$use_stderr" == true ]]; then
-        echo -e "${output}" >&2 # Log to stderr
+        printf '%s\n' "${output}" >&2 # Log to stderr
     else
-        echo -e "${output}"
+        printf '%s\n' "${output}"
     fi
 }
 
