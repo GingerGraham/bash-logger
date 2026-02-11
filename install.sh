@@ -729,9 +729,11 @@ configure_rc_file() {
             info "RC file $rc_file does not exist and will be created"
         fi
         info "Adding source line to $rc_file"
-        echo "" >> "$rc_file"
-        echo "# bash-logger" >> "$rc_file"
-        echo "$source_line" >> "$rc_file"
+        {
+            echo ""
+            echo "# bash-logger"
+            echo "$source_line"
+        } >> "$rc_file"
         success "Added source line to $rc_file"
     else
         info "To use bash-logger in your shell, add this line to $rc_file:"
