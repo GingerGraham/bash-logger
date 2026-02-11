@@ -86,7 +86,7 @@ test_parallel_file_creation() {
     for i in {1..10}; do
         (
             source "$PROJECT_ROOT/logging.sh"
-            local log_file="$TEST_TMP_DIR/parallel_$i.log"
+            log_file="$TEST_TMP_DIR/parallel_$i.log"
             init_logger -l "$log_file" --no-color > /dev/null 2>&1
             log_info "Parallel creation test $i"
         ) &
@@ -164,7 +164,7 @@ test_directory_creation_race() {
     for i in {1..5}; do
         (
             source "$PROJECT_ROOT/logging.sh"
-            local log_file="$base_dir/subdir/test_$i.log"
+            log_file="$base_dir/subdir/test_$i.log"
             init_logger -l "$log_file" --no-color > /dev/null 2>&1
             log_info "Race test $i"
         ) &
@@ -364,7 +364,7 @@ test_concurrent_different_files() {
     for i in {1..10}; do
         (
             source "$PROJECT_ROOT/logging.sh"
-            local log_file="$TEST_TMP_DIR/different_$i.log"
+            log_file="$TEST_TMP_DIR/different_$i.log"
             init_logger -l "$log_file" --no-color > /dev/null 2>&1
             for j in {1..10}; do
                 log_info "File $i message $j"

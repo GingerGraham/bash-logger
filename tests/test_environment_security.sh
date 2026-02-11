@@ -109,10 +109,11 @@ test_env_vars_in_messages() {
     log_content=$(cat "$log_file")
 
     # Variable should appear literally, not expanded
-    if [[ "$log_content" =~ "MALICIOUS_VAR" ]] || [[ ! "$log_content" =~ "rm -rf" ]]; then
+    # Assert both: literal MALICIOUS_VAR must be present AND dangerous payload must not be
+    if [[ "$log_content" =~ "MALICIOUS_VAR" ]] && [[ ! "$log_content" =~ "rm -rf" ]]; then
         pass_test
     else
-        fail_test "Environment variable may have been expanded"
+        fail_test "Environment variable was expanded or not properly escaped"
     fi
 
     unset MALICIOUS_VAR

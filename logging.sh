@@ -1106,8 +1106,8 @@ set_journal_logging() {
     local old_setting="$USE_JOURNAL"
     USE_JOURNAL="$1"
 
-    # Check if logger is available when enabling
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
+    # Check if logger is available when enabling journal logging
+    if [[ "$USE_JOURNAL" == "true" ]]; then
         if ! check_logger_available; then
             echo "Error: logger command not found, cannot enable journal logging" >&2
             USE_JOURNAL="$old_setting"
