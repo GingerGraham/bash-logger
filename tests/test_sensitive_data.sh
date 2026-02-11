@@ -399,7 +399,7 @@ test_quiet_mode_sensitive() {
 test_sensitive_not_in_file
 test_sensitive_not_in_journal
 test_sensitive_to_console_interactive
-test_sensitive_redirect_detection
+test_sensitive_redirect_detection # Known limitation, see test function for details
 test_sensitive_in_error_conditions
 test_sensitive_flag_respected
 test_sensitive_with_ansi_codes
