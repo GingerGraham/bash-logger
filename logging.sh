@@ -292,6 +292,12 @@ _validate_config_file_path() {
         return 0  # Empty is valid (means disabled)
     fi
 
+    # Validate path length
+    if [[ ${#path} -gt $CONFIG_MAX_PATH_LENGTH ]]; then
+        echo "Error: Configuration value for '$key' at line $line_num exceeds maximum path length of $CONFIG_MAX_PATH_LENGTH (actual: ${#path})" >&2
+        return 1
+    fi
+
     # Must be absolute path (starts with /)
     if [[ "$path" != /* ]]; then
         echo "Error: Configuration value for '$key' at line $line_num must be an absolute path (got: '$path')" >&2
@@ -371,7 +377,8 @@ _validate_config_journal_tag() {
     fi
 
     # Check for shell metacharacters that could cause issues
-    if [[ "$tag" =~ [\$\`\;\|\&\<\>\(\)\{\}\[\]\\] ]]; then
+    # Character class includes: $ ` ; | & < > ( ) { } [ ] \
+    if [[ "$tag" =~ []$\`\;\|\&\<\>\(\)\{\}\[\\] ]]; then
         echo "Warning: Journal tag at line $line_num contains shell metacharacters (will be sanitized)" >&2
     fi
 
@@ -600,7 +607,7 @@ _parse_config_file() {
                     esac
                     ;;
                 max_line_length|max-line-length|log_max_line_length|log-max-line-length)
-                    if [[ "$value" =~ ^[0-9]+$ ]] && [ "$value" -ge 0 ] && [ "$value" -le 1048576 ]; then
+                    if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
                         LOG_MAX_LINE_LENGTH="$value"
                     else
                         echo "Warning: Invalid max_line_length value '$value' at line $line_num, expected integer 0-1048576" >&2
@@ -608,7 +615,7 @@ _parse_config_file() {
                     fi
                     ;;
                 max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
-                    if [[ "$value" =~ ^[0-9]+$ ]] && [ "$value" -ge 0 ] && [ "$value" -le 1048576 ]; then
+                    if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
                         LOG_MAX_JOURNAL_LENGTH="$value"
                     else
                         echo "Warning: Invalid max_journal_length value '$value' at line $line_num, expected integer 0-1048576" >&2
