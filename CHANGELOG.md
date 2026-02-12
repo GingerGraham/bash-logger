@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### Bug Fixes
+
+* **config:** adding enhanced config validation ([#73](https://github.com/GingerGraham/bash-logger/issues/73))
+* **install:** consolidate echo redirects for RC file updates ([#69](https://github.com/GingerGraham/bash-logger/issues/69))
+
 ## [2.1.1](https://github.com/GingerGraham/bash-logger/compare/2.1.0...2.1.1) (2026-02-11)
 
 ### Bug Fixes

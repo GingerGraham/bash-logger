@@ -1,6 +1,6 @@
 {
   "name": "bash-logger",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Production-grade logging for bash scripts with syslog compliance, journal integration, and customizable formatting",
   "author": "Graham Watts (GingerGraham)",
   "homepage": "https://github.com/GingerGraham/bash-logger",
