@@ -118,6 +118,19 @@ max_journal_length = 4096
 | `max_line_length`         | `max-line-length`, `log_max_line_length`    | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length before formatting      |
 | `max_journal_length`      | `max-journal-length`, `journal_max_length`  | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length for journal            |
 
+### Configuration Value Limits
+
+Configuration values are validated to ensure security and prevent issues:
+
+* **All values**: Maximum length of 4,096 characters
+* **Log file paths**: Must be absolute paths (start with `/`); no control characters or shell metacharacters
+* **Journal tag**: Maximum 64 characters; shell metacharacters will be sanitized
+* **Log levels**: Must be valid level names (DEBUG-EMERGENCY) or numbers (0-7)
+* **Numeric values** (`max_line_length`, `max_journal_length`): Must be 0-1,048,576 (1MB limit)
+* **Boolean values**: Must be true/false, yes/no, on/off, or 1/0
+
+Invalid values will generate warnings and either use defaults or sanitize the input. See [Troubleshooting](troubleshooting.md#invalid-configuration-values) for details.
+
 ### Boolean Values
 
 Boolean settings accept multiple formats:
