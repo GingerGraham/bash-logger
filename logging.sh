@@ -153,6 +153,12 @@ LOG_UNSAFE_ALLOW_ANSI_CODES="false"
 LOG_MAX_LINE_LENGTH=4096
 LOG_MAX_JOURNAL_LENGTH=4096
 
+# Configuration value validation limits
+# Maximum length for configuration file values (defense against malicious/malformed configs)
+readonly CONFIG_MAX_VALUE_LENGTH=4096
+# Maximum length for file paths in configuration
+readonly CONFIG_MAX_PATH_LENGTH=4096
+
 # Function to detect terminal color support (internal)
 _detect_color_support() {
     # Default to no colors if explicitly disabled
@@ -258,6 +264,127 @@ check_logger_available() {
 # Configuration file path (set by init_logger when using -c option)
 LOG_CONFIG_FILE=""
 
+# Validate configuration value length (internal)
+# Returns 0 if valid, 1 if too long
+_validate_config_value_length() {
+    local value="$1"
+    local max_length="$2"
+    local key="$3"
+    local line_num="$4"
+
+    if [[ ${#value} -gt $max_length ]]; then
+        echo "Error: Configuration value for '$key' at line $line_num exceeds maximum length of $max_length characters (actual: ${#value})" >&2
+        return 1
+    fi
+    return 0
+}
+
+# Validate file path from configuration (internal)
+# Checks that path is absolute, doesn't contain control characters or dangerous patterns
+# Returns 0 if valid, 1 otherwise
+_validate_config_file_path() {
+    local path="$1"
+    local key="$2"
+    local line_num="$3"
+
+    # Check for empty path
+    if [[ -z "$path" ]]; then
+        return 0  # Empty is valid (means disabled)
+    fi
+
+    # Validate path length
+    if [[ ${#path} -gt $CONFIG_MAX_PATH_LENGTH ]]; then
+        echo "Error: Configuration value for '$key' at line $line_num exceeds maximum path length of $CONFIG_MAX_PATH_LENGTH (actual: ${#path})" >&2
+        return 1
+    fi
+
+    # Must be absolute path (starts with /)
+    if [[ "$path" != /* ]]; then
+        echo "Error: Configuration value for '$key' at line $line_num must be an absolute path (got: '$path')" >&2
+        return 1
+    fi
+
+    # Check for control characters that could cause issues
+    # This includes newlines, carriage returns, tabs, null bytes, and terminal escape sequences
+    if [[ "$path" =~ [[:cntrl:]] ]]; then
+        echo "Error: Configuration value for '$key' at line $line_num contains control characters" >&2
+        return 1
+    fi
+
+    # Check for suspicious shell metacharacter patterns that could indicate injection attempts
+    # Allow normal path characters but reject dangerous patterns
+    # Note: We check for common command injection patterns
+    local suspicious_patterns='(\$\(|`|; *rm|; *dd|\| *sh|&& *(rm|dd))'
+    if [[ "$path" =~ $suspicious_patterns ]]; then
+        echo "Error: Configuration value for '$key' at line $line_num contains suspicious patterns" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# Validate format string from configuration (internal)
+# Checks for excessively long format strings and dangerous patterns
+# Returns 0 if valid, 1 otherwise
+_validate_config_format() {
+    local format="$1"
+    local line_num="$2"
+
+    # Check for control characters (except standard format specifiers)
+    # Allow normal format variables like %d, %l, %s, %m, %z
+    local clean_format="$format"
+    # Remove valid format specifiers
+    clean_format="${clean_format//\%d/}"
+    clean_format="${clean_format//\%l/}"
+    clean_format="${clean_format//\%s/}"
+    clean_format="${clean_format//\%m/}"
+    clean_format="${clean_format//\%z/}"
+
+    # Check remaining string for control characters (excluding space, tab, newline which are stripped)
+    if [[ "$clean_format" =~ [[:cntrl:]] ]]; then
+        echo "Warning: Configuration format at line $line_num contains control characters (may be stripped)" >&2
+    fi
+
+    return 0
+}
+
+# Validate journal tag from configuration (internal)
+# Checks for reasonable length and dangerous characters
+# Returns 0 if valid, 1 otherwise
+_validate_config_journal_tag() {
+    local tag="$1"
+    local key="$2"
+    local line_num="$3"
+    local max_tag_length=64
+
+    # Check for empty tag
+    if [[ -z "$tag" ]]; then
+        echo "Warning: Empty journal tag at line $line_num" >&2
+        return 1
+    fi
+
+    # Check length
+    if [[ ${#tag} -gt $max_tag_length ]]; then
+        echo "Error: Journal tag at line $line_num exceeds maximum length of $max_tag_length (actual: ${#tag})" >&2
+        echo "  Hint: Truncating to maximum length" >&2
+        return 1
+    fi
+
+    # Check for control characters
+    if [[ "$tag" =~ [[:cntrl:]] ]]; then
+        echo "Error: Journal tag at line $line_num contains control characters" >&2
+        return 1
+    fi
+
+    # Check for shell metacharacters that could cause issues
+    # Character class includes: $ ` ; | & < > ( ) { } [ ] \
+    if [[ "$tag" =~ []$\`\;\|\&\<\>\(\)\{\}\[\\] ]]; then
+        echo "Warning: Journal tag at line $line_num contains shell metacharacters (will be sanitized)" >&2
+    fi
+
+    return 0
+}
+
 # Parse an INI-style configuration file (internal)
 # Usage: _parse_config_file "/path/to/config.ini"
 # Returns 0 on success, 1 on error
@@ -313,16 +440,32 @@ _parse_config_file() {
                 value="${BASH_REMATCH[1]}"
             fi
 
+            # Validate value length for all config values (defense-in-depth)
+            if ! _validate_config_value_length "$value" "$CONFIG_MAX_VALUE_LENGTH" "$key" "$line_num"; then
+                echo "  Hint: Truncating value to maximum allowed length" >&2
+                value="${value:0:$CONFIG_MAX_VALUE_LENGTH}"
+            fi
+
             # Apply configuration based on key (case-insensitive)
             case "${key,,}" in
                 level|log_level)
-                    CURRENT_LOG_LEVEL=$(_get_log_level_value "$value")
+                    CURRENT_LOG_LEVEL=$(_get_log_level_value "$value" "$line_num")
                     ;;
                 format|log_format)
-                    LOG_FORMAT="$value"
+                    # Validate format string
+                    if _validate_config_format "$value" "$line_num"; then
+                        LOG_FORMAT="$value"
+                    else
+                        echo "  Hint: Skipping invalid format string, using default" >&2
+                    fi
                     ;;
                 log_file|logfile|file)
-                    LOG_FILE="$value"
+                    # Validate file path
+                    if _validate_config_file_path "$value" "$key" "$line_num"; then
+                        LOG_FILE="$value"
+                    else
+                        echo "  Hint: Skipping invalid log file path" >&2
+                    fi
                     ;;
                 journal|use_journal)
                     case "${value,,}" in
@@ -342,7 +485,19 @@ _parse_config_file() {
                     esac
                     ;;
                 tag|journal_tag)
-                    JOURNAL_TAG="$value"
+                    if _validate_config_journal_tag "$value" "$key" "$line_num"; then
+                        JOURNAL_TAG="$value"
+                    else
+                        # Truncate or sanitize if validation failed
+                        if [[ ${#value} -gt 64 ]]; then
+                            JOURNAL_TAG="${value:0:64}"
+                            echo "  Hint: Truncated journal tag to 64 characters" >&2
+                        else
+                            # Strip problematic characters
+                            JOURNAL_TAG="${value//[^a-zA-Z0-9._-]/_}"
+                            echo "  Hint: Sanitized journal tag to remove shell metacharacters" >&2
+                        fi
+                    fi
                     ;;
                 utc|use_utc)
                     case "${value,,}" in
@@ -374,7 +529,7 @@ _parse_config_file() {
                     esac
                     ;;
                 stderr_level|stderr-level)
-                    LOG_STDERR_LEVEL=$(_get_log_level_value "$value")
+                    LOG_STDERR_LEVEL=$(_get_log_level_value "$value" "$line_num")
                     ;;
                 quiet|console_log)
                     case "${key,,}" in
@@ -452,21 +607,26 @@ _parse_config_file() {
                     esac
                     ;;
                 max_line_length|max-line-length|log_max_line_length|log-max-line-length)
-                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                    if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
                         LOG_MAX_LINE_LENGTH="$value"
                     else
-                        echo "Warning: Invalid max_line_length value '$value' at line $line_num, expected non-negative integer" >&2
+                        echo "Warning: Invalid max_line_length value '$value' at line $line_num, expected integer 0-1048576" >&2
+                        echo "  Hint: Using default value of 4096" >&2
                     fi
                     ;;
                 max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
-                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                    if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
                         LOG_MAX_JOURNAL_LENGTH="$value"
                     else
-                        echo "Warning: Invalid max_journal_length value '$value' at line $line_num, expected non-negative integer" >&2
+                        echo "Warning: Invalid max_journal_length value '$value' at line $line_num, expected integer 0-1048576" >&2
+                        echo "  Hint: Using default value of 4096" >&2
                     fi
                     ;;
                 *)
                     echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
+                    echo "  Hint: Valid keys are: level, format, log_file, journal, tag, utc, color," >&2
+                    echo "        stderr_level, quiet, console_log, script_name, verbose," >&2
+                    echo "        unsafe_allow_newlines, unsafe_allow_ansi_codes, max_line_length, max_journal_length" >&2
                     ;;
             esac
         else
@@ -482,6 +642,7 @@ _parse_config_file() {
 # Convert log level name to numeric value (internal)
 _get_log_level_value() {
     local level_name="$1"
+    local line_num="${2:-}"
     case "${level_name^^}" in
         "DEBUG")
             echo $LOG_LEVEL_DEBUG
@@ -512,6 +673,11 @@ _get_log_level_value() {
             if [[ "$level_name" =~ ^[0-7]$ ]]; then
                 echo "$level_name"
             else
+                # Warn if line number provided (config file context)
+                if [[ -n "$line_num" ]]; then
+                    echo "Warning: Invalid log level '$level_name' at line $line_num, using INFO" >&2
+                    echo "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
+                fi
                 # Default to INFO if invalid
                 echo $LOG_LEVEL_INFO
             fi

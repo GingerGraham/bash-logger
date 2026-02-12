@@ -29,7 +29,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
   * [Logs Going to Wrong Stream](#logs-going-to-wrong-stream)
   * [Cannot Separate Stdout and Stderr](#cannot-separate-stdout-and-stderr)
 * [Runtime Configuration Issues](#runtime-configuration-issues)
-  * [set\_log\_level Not Working](#set_log_level-not-working)
+  * [set_log_level Not Working](#set_log_level-not-working)
   * [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
 * [Format Issues](#format-issues)
   * [Format Not Applied](#format-not-applied)
@@ -45,7 +45,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 * [Performance Issues](#performance-issues)
   * [Slow Logging](#slow-logging)
 * [Common Error Messages](#common-error-messages)
-  * ["command not found: init\_logger"](#command-not-found-init_logger)
+  * ["command not found: init_logger"](#command-not-found-init_logger)
   * ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
   * ["invalid log level"](#invalid-log-level)
   * ["Configuration file not found" / "Configuration file not readable"](#configuration-file-not-found--configuration-file-not-readable)
@@ -209,32 +209,170 @@ init_logger --config "$(pwd)/logging.conf"
 
 ### Invalid Configuration Values
 
-**Problem:** Config file has invalid values, uses defaults
+**Problem:** Config file has invalid values, logger sanitizes input or uses defaults
 
-**Solution:**
+**Common Validation Errors:**
 
-Check configuration file format:
+1. **Invalid Log Level**
 
 ```ini
 [logging]
-# Correct
-level = INFO
+# Incorrect - will use default (INFO) and display warning
+level = INVALID_LEVEL
+level = TRACE  # Not a valid level name
 
-# Also correct
-level = DEBUG
-level = 7
-
-# Incorrect - will use default
-level = invalid_value
-
-# Boolean values - correct
-journal = true
-journal = yes
-journal = 1
-
-# Boolean values - incorrect
-journal = True  # Case-sensitive, should be lowercase
+# Correct values
+level = DEBUG     # or INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY
+level = 7         # Numeric values 0-7 are also valid
 ```
+
+Error message:
+
+```
+Warning: Invalid log level 'INVALID_LEVEL' at line 2, using INFO
+  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)
+```
+
+1. **Invalid File Path**
+
+```ini
+[logging]
+# Incorrect - must be absolute path
+log_file = relative/path/file.log
+
+# Incorrect - contains suspicious patterns
+log_file = /tmp/$(whoami).log
+log_file = /var/log/app.log; rm -rf /
+
+# Correct - absolute path, no shell metacharacters
+log_file = /var/log/myapp.log
+log_file = /home/user/.local/share/myapp/logs/app.log
+```
+
+Error messages:
+
+```
+Error: Configuration value for 'log_file' at line 3 must be an absolute path (got: 'relative/path/file.log')
+  Hint: Skipping invalid log file path
+
+Error: Configuration value for 'log_file' at line 4 contains suspicious patterns
+  Hint: Skipping invalid log file path
+```
+
+1. **Invalid Numeric Range**
+
+```ini
+[logging]
+# Incorrect - exceeds maximum (1MB = 1,048,576)
+max_line_length = 999999999
+
+# Incorrect - not a number
+max_line_length = unlimited
+
+# Correct
+max_line_length = 8192
+max_line_length = 0  # 0 means unlimited
+```
+
+Error message:
+
+```
+Warning: Invalid max_line_length value '999999999' at line 2, expected integer 0-1048576
+  Hint: Using default value of 4096
+```
+
+1. **Invalid Journal Tag**
+
+```ini
+[logging]
+# Contains shell metacharacters - will be sanitized
+tag = myapp-$(hostname)
+
+# Too long - will be truncated
+tag = this_is_a_very_long_tag_that_exceeds_the_sixty_four_character_maximum_length
+
+# Correct
+tag = myapp
+tag = my_app-service
+```
+
+Warning messages:
+
+```
+Warning: Journal tag at line 2 contains shell metacharacters (will be sanitized)
+  Hint: Sanitized journal tag to remove shell metacharacters
+
+Error: Journal tag at line 3 exceeds maximum length of 64 (actual: 79)
+  Hint: Truncated journal tag to 64 characters
+```
+
+1. **Invalid Boolean Value**
+
+```ini
+[logging]
+# Incorrect - case-sensitive, must be lowercase
+journal = True
+verbose = YES
+
+# Correct boolean values
+journal = true   # or false, yes, no, on, off, 1, 0
+verbose = yes
+```
+
+Error message:
+
+```
+Warning: Invalid journal value 'True' at line 2, expected true/false
+```
+
+1. **Unknown Configuration Key**
+
+```ini
+[logging]
+# Typo or unsupported key
+levl = INFO         # Should be 'level'
+debug_mode = true   # Not a valid key
+```
+
+Warning message:
+
+```
+Warning: Unknown configuration key 'levl' at line 2
+  Hint: Valid keys are: level, format, log_file, journal, tag, utc, color,
+        stderr_level, quiet, console_log, script_name, verbose,
+        unsafe_allow_newlines, unsafe_allow_ansi_codes, max_line_length, max_journal_length
+```
+
+**Resolution:**
+
+The logger will:
+
+* Use default values for invalid settings
+* Sanitize values that can be fixed (e.g., remove shell metacharacters from tags)
+* Display warnings with hints about the correct format
+* Continue initialization with corrected values
+
+**Validation Summary:**
+
+| Configuration Item   | Validation                                         | On Error                                    |
+| -------------------- | -------------------------------------------------- | ------------------------------------------- |
+| `level`              | Valid level name or 0-7                            | Use INFO, display warning with valid values |
+| `log_file`           | Absolute path, no control chars, no shell patterns | Skip file logging, display error            |
+| `tag`                | Max 64 chars, no control chars                     | Truncate or sanitize, display warning       |
+| `max_line_length`    | Integer 0-1,048,576                                | Use default (4096), display warning         |
+| `max_journal_length` | Integer 0-1,048,576                                | Use default (4096), display warning         |
+| Boolean values       | true/false, yes/no, on/off, 1/0 (case-insensitive) | Display warning, keep previous value        |
+| All values           | Max 4,096 characters                               | Truncate, display warning                   |
+| Unknown keys         | N/A                                                | Display warning with list of valid keys     |
+
+**Solution:**
+
+Check configuration file format and ensure all values meet the requirements listed above. Pay attention to:
+
+* Log levels must be uppercase or numeric
+* File paths must be absolute and start with `/`
+* Numeric values must be within valid ranges
+* Boolean values must be lowercase
 
 ### CLI Arguments Not Overriding Config
 
