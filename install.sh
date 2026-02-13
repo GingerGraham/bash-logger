@@ -726,10 +726,10 @@ configure_rc_file() {
     if [ "$AUTO_RC" = true ]; then
         info "Adding source line to $rc_file"
         if {
-            echo ""
-            echo "# bash-logger"
-            echo "$source_line"
-        } >> "$rc_file" 2>/dev/null; then
+            printf '\n'
+            printf '%s\n' "# bash-logger"
+            printf '%s\n' "$source_line"
+        } >> "$rc_file"; then
             success "Added source line to $rc_file"
         else
             warn "Failed to update $rc_file. Please add the following line manually:"
