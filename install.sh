@@ -724,17 +724,18 @@ configure_rc_file() {
     fi
 
     if [ "$AUTO_RC" = true ]; then
-        # Check if RC file exists before appending
-        if [ ! -f "$rc_file" ]; then
-            info "RC file $rc_file does not exist and will be created"
-        fi
         info "Adding source line to $rc_file"
-        {
+        if {
             echo ""
             echo "# bash-logger"
             echo "$source_line"
-        } >> "$rc_file"
-        success "Added source line to $rc_file"
+        } >> "$rc_file" 2>/dev/null; then
+            success "Added source line to $rc_file"
+        else
+            warn "Failed to update $rc_file. Please add the following line manually:"
+            echo "    $source_line"
+            return 1
+        fi
     else
         info "To use bash-logger in your shell, add this line to $rc_file:"
         echo ""
