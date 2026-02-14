@@ -45,7 +45,7 @@
           "commitGroupsSort": "title",
           "commitsSort": ["scope", "subject"],
           "noteGroupsSort": "title",
-          "mainTemplate": "## [{{version}}]({{compareUrl}}) ({{date}})\n\n{{#each commitGroups}}\n\n### {{title}}\n\n{{#each commits}}* {{#if scope}}**{{scope}}:** {{/if}}{{subject}}\n{{/each}}{{/each}}",
+          "mainTemplate": "## {{#if linkCompare}}[{{version}}]({{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}){{else}}{{version}}{{/if}} ({{date}})\n\n{{#each commitGroups}}### {{title}}\n\n{{#each commits}}* {{#if scope}}**{{scope}}:** {{/if}}{{subject}}\n{{/each}}{{#unless @last}}\n{{/unless}}{{/each}}",
           "commitPartial": "* {{subject}}\n"
         }
       }
