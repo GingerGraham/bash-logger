@@ -443,6 +443,80 @@ test_set_script_name_logs_change() {
     pass_test
 }
 
+# Test: set_journal_logging fails when logger unavailable
+test_set_journal_logging_no_logger() {
+    start_test "set_journal_logging fails gracefully when logger unavailable"
+
+    # Skip if logger is available
+    if check_logger_available; then
+        skip_test "logger command is available"
+        return
+    fi
+
+    init_logger --quiet 2>/dev/null
+
+    set_journal_logging true 2>"$TEST_STDERR"
+    local exit_code=$?
+
+    # Should fail or warn
+    assert_not_equals 0 "$exit_code" "Should return non-zero when logger unavailable" || return
+    assert_file_contains "$TEST_STDERR" "logger command not found" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag with journal logging
+test_set_journal_tag_runtime() {
+    start_test "set_journal_tag changes tag during runtime"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/tag_change.log"
+    LOG_FILE="$log_file"
+
+    set_journal_tag "initial-tag"
+
+    log_info "First message"
+
+    set_journal_tag "updated-tag"
+
+    log_info "Second message"
+
+    # Config changes should be logged
+    assert_file_contains "$log_file" "Journal tag" || return
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_newlines function
+test_set_unsafe_allow_newlines() {
+    start_test "set_unsafe_allow_newlines changes setting"
+
+    init_logger --quiet
+
+    set_unsafe_allow_newlines true
+    assert_equals "true" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+
+    set_unsafe_allow_newlines false
+    assert_equals "false" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_ansi_codes function
+test_set_unsafe_allow_ansi_codes() {
+    start_test "set_unsafe_allow_ansi_codes changes setting"
+
+    init_logger --quiet
+
+    set_unsafe_allow_ansi_codes true
+    assert_equals "true" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+
+    set_unsafe_allow_ansi_codes false
+    assert_equals "false" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -465,3 +539,7 @@ test_set_script_name_in_output
 test_set_script_name_multiple
 test_set_script_name_empty
 test_set_script_name_logs_change
+test_set_journal_logging_no_logger
+test_set_journal_tag_runtime
+test_set_unsafe_allow_newlines
+test_set_unsafe_allow_ansi_codes

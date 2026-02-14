@@ -230,6 +230,22 @@ test_get_syslog_priority() {
     pass_test
 }
 
+# Test: log_init function works
+test_log_init_function() {
+    start_test "log_init function logs with INIT level"
+
+    init_logger --level DEBUG --quiet
+    local log_file="$TEST_DIR/test.log"
+    LOG_FILE="$log_file"
+
+    log_init "Initialization message"
+
+    assert_file_contains "$log_file" "Initialization message" || return
+    assert_file_contains "$log_file" "INIT" || return
+
+    pass_test
+}
+
 # Run all tests
 test_log_level_constants
 test_fatal_alias
@@ -243,3 +259,4 @@ test_all_log_functions
 test_log_level_in_output
 test_verbose_enables_debug
 test_get_syslog_priority
+test_log_init_function
