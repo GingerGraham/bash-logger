@@ -363,6 +363,45 @@ test_log_line_truncation() {
     pass_test
 }
 
+# Test: Set color mode to always at runtime
+test_set_color_mode_always() {
+    start_test "set_color_mode changes to always"
+
+    init_logger --quiet
+
+    set_color_mode always
+
+    assert_equals "always" "$USE_COLORS" || return
+
+    pass_test
+}
+
+# Test: Set color mode to never at runtime
+test_set_color_mode_never() {
+    start_test "set_color_mode changes to never"
+
+    init_logger --quiet
+
+    set_color_mode never
+
+    assert_equals "never" "$USE_COLORS" || return
+
+    pass_test
+}
+
+# Test: Set color mode to auto at runtime
+test_set_color_mode_auto() {
+    start_test "set_color_mode changes to auto"
+
+    init_logger --color never --quiet
+
+    set_color_mode auto
+
+    assert_equals "auto" "$USE_COLORS" || return
+
+    pass_test
+}
+
 # Run all tests
 test_console_output_default
 test_console_output_quiet
@@ -382,3 +421,6 @@ test_empty_message
 test_multiline_message
 test_special_characters
 test_log_line_truncation
+test_set_color_mode_always
+test_set_color_mode_never
+test_set_color_mode_auto

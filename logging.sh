@@ -155,9 +155,11 @@ LOG_MAX_JOURNAL_LENGTH=4096
 
 # Configuration value validation limits
 # Maximum length for configuration file values (defense against malicious/malformed configs)
-readonly CONFIG_MAX_VALUE_LENGTH=4096
-# Maximum length for file paths in configuration
-readonly CONFIG_MAX_PATH_LENGTH=4096
+if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* CONFIG_MAX_VALUE_LENGTH="; then
+    readonly CONFIG_MAX_VALUE_LENGTH=4096
+    # Maximum length for file paths in configuration
+    readonly CONFIG_MAX_PATH_LENGTH=4096
+fi
 
 # Function to detect terminal color support (internal)
 _detect_color_support() {
@@ -380,6 +382,7 @@ _validate_config_journal_tag() {
     # Character class includes: $ ` ; | & < > ( ) { } [ ] \
     if [[ "$tag" =~ []$\`\;\|\&\<\>\(\)\{\}\[\\] ]]; then
         echo "Warning: Journal tag at line $line_num contains shell metacharacters (will be sanitized)" >&2
+        return 1
     fi
 
     return 0
@@ -973,11 +976,11 @@ init_logger() {
     while [[ $i -lt ${#args[@]} ]]; do
         case "${args[$i]}" in
             -c|--config)
-                local config_file="${args[$((i+1))]}"
-                if [[ -z "$config_file" ]]; then
+                if [[ $((i+1)) -ge ${#args[@]} ]] || [[ -z "${args[$((i+1))]}" ]]; then
                     echo "Error: --config requires a file path argument" >&2
                     return 1
                 fi
+                local config_file="${args[$((i+1))]}"
                 if ! _parse_config_file "$config_file"; then
                     return 1
                 fi
@@ -1560,7 +1563,7 @@ _log_message() {
     if [[ -n "$LOG_FILE" && "$skip_file" != "true" ]]; then
         printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null || {
             # Only print the error once to avoid spam
-            if [[ -z "$LOGGER_FILE_ERROR_REPORTED" ]]; then
+            if [[ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]]; then
                 echo "ERROR: Failed to write to log file" >&2
                 echo "  Hint: Check file permissions, disk space, or if the log file was deleted" >&2
                 LOGGER_FILE_ERROR_REPORTED="yes"
