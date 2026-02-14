@@ -167,6 +167,9 @@ test_color_detection_clicolor_force() {
 test_color_detection_dumb_term() {
     start_test "Color detection disables for dumb terminal"
 
+    # Save original TERM value
+    local OLD_TERM="${TERM:-}"
+
     export TERM=dumb
 
     # Re-source to pick up environment change
@@ -177,12 +180,20 @@ test_color_detection_dumb_term() {
 
     if _detect_color_support; then
         fail_test "Colors should be disabled for TERM=dumb"
+        # Restore TERM before returning
+        if [[ -n "$OLD_TERM" ]]; then
+            export TERM="$OLD_TERM"
+        else
+            unset TERM
+        fi
         return
     fi
 
     # Restore TERM
-    if [[ -n "${OLD_TERM:-}" ]]; then
+    if [[ -n "$OLD_TERM" ]]; then
         export TERM="$OLD_TERM"
+    else
+        unset TERM
     fi
 
     pass_test
@@ -236,22 +247,33 @@ test_color_detection_specific_terms() {
     pass_test
 }
 
-# Test: Message sanitization with ASCII control codes
+# Test: Message sanitization with newlines and carriage returns
 test_message_sanitization_control_codes() {
-    start_test "Messages with control codes are sanitized"
+    start_test "Messages with newlines and carriage returns are sanitized"
 
     init_logger --quiet --log "$TEST_DIR/control.log"
 
-    # Log message with null byte and other control characters
-    # (avoiding actual null bytes which would truncate strings)
-    log_info "Message with\x01control\x02codes\x1F" 2>/dev/null
+    # Log message with newline and carriage return (using $'...' syntax for actual control chars)
+    # These are the control characters that the logger actually sanitizes (not all control chars)
+    log_info $'Message with\nnewline\rand\tcarriage return' 2>/dev/null
 
-    # The log file should not contain the control characters
-    if [[ -f "$TEST_DIR/control.log" ]]; then
-        local content
-        content=$(cat "$TEST_DIR/control.log")
-        # Check that control characters were stripped or replaced
-        assert_file_exists "$TEST_DIR/control.log" || return
+    # The log file should not contain newlines, carriage returns, or tabs
+    assert_file_exists "$TEST_DIR/control.log" || return
+    
+    local content
+    content=$(tail -1 "$TEST_DIR/control.log")
+    
+    # Check that newlines, carriage returns were replaced
+    # The message should be on a single line with spaces instead of control chars
+    if [[ "$content" =~ $'\n' ]] || [[ "$content" =~ $'\r' ]]; then
+        fail_test "Newlines or carriage returns were not properly sanitized"
+        return
+    fi
+    
+    # Verify the message content is present (with spaces instead of control chars)
+    if [[ ! "$content" =~ "Message with" ]] || [[ ! "$content" =~ "newline" ]]; then
+        fail_test "Message content was not preserved during sanitization"
+        return
     fi
 
     pass_test
@@ -306,8 +328,8 @@ test_message_ansi_stripping() {
 
     init_logger --quiet --log "$TEST_DIR/ansi.log"
 
-    # Log message with ANSI codes
-    log_info "Message with \033[31mred text\033[0m"
+    # Log message with ANSI codes (using $'...' syntax for actual escape sequences)
+    log_info $'Message with \033[31mred text\033[0m'
 
     # The ANSI codes should be stripped
     assert_file_exists "$TEST_DIR/ansi.log" || return
