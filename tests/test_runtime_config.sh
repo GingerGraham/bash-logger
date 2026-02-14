@@ -471,6 +471,7 @@ test_set_journal_tag_runtime() {
 
     init_logger --quiet
     local log_file="$TEST_DIR/tag_change.log"
+    # shellcheck disable=SC2034
     LOG_FILE="$log_file"
 
     set_journal_tag "initial-tag"

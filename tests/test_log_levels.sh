@@ -236,6 +236,7 @@ test_log_init_function() {
 
     init_logger --level DEBUG --quiet
     local log_file="$TEST_DIR/test.log"
+    # shellcheck disable=SC2034
     LOG_FILE="$log_file"
 
     log_init "Initialization message"
