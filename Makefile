@@ -150,7 +150,7 @@ coverage:
 	@if [ ! -x tests/run_tests.sh ]; then \
 		chmod +x tests/run_tests.sh || { echo "Error: Cannot make test runner executable"; exit 1; }; \
 	fi
-	@kcov --include-path=./logging.sh coverage-report ./tests/run_tests.sh
+	@TEST_PARALLEL_JOBS=1 kcov --include-path=./logging.sh coverage-report ./tests/run_tests.sh
 	@echo ""
 	@echo "✓ Coverage report generated in coverage-report/"
 
@@ -166,8 +166,8 @@ sonar:
 		exit 1; \
 	fi
 	@echo "Syncing version from logging.sh to sonar-project.properties..."
-	@VERSION=$$(grep 'BASH_LOGGER_VERSION=' logging.sh | sed 's/.*BASH_LOGGER_VERSION="\([^"]*\)".*/\1/') && \
-		sed -i.bak "s/^sonar.projectVersion=.*/sonar.projectVersion=$$VERSION/" sonar-project.properties && rm -f sonar-project.properties.bak && \
+	@VERSION=$$(grep 'readonly BASH_LOGGER_VERSION=' logging.sh | sed 's/.*BASH_LOGGER_VERSION="\([^"]*\)".*/\1/') && \
+		sed -i.bak "s|^sonar.projectVersion=.*|sonar.projectVersion=$$VERSION|" sonar-project.properties && rm -f sonar-project.properties.bak && \
 		echo "  Version set to: $$VERSION"
 	@echo "Running SonarQube scanner..."
 	@SONAR_TOKEN=$$(secret-tool lookup service sonarqube account scanner) sonar-scanner
