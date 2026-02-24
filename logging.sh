@@ -286,6 +286,34 @@ check_logger_available() {
 # Configuration file path (set by init_logger when using -c option)
 LOG_CONFIG_FILE=""
 
+# Validate a string value using shared guard checks (internal)
+# Checks: empty (optional), max length, and control characters (optional)
+# Returns 0 if valid, 1 otherwise
+_validate_string() {
+    local value="$1"
+    local max_length="$2"
+    local label="$3"
+    local allow_empty="${4:-false}"
+    local check_control_chars="${5:-true}"
+
+    if [[ "$allow_empty" != "true" && -z "$value" ]]; then
+        echo "Error: Empty $label" >&2
+        return 1
+    fi
+
+    if [[ ${#value} -gt $max_length ]]; then
+        echo "Error: $label exceeds maximum length of $max_length (actual: ${#value})" >&2
+        return 1
+    fi
+
+    if [[ "$check_control_chars" == "true" && "$value" =~ [[:cntrl:]] ]]; then
+        echo "Error: $label contains control characters" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 # Validate configuration value length (internal)
 # Returns 0 if valid, 1 if too long
 _validate_config_value_length() {
@@ -293,11 +321,12 @@ _validate_config_value_length() {
     local max_length="$2"
     local key="$3"
     local line_num="$4"
+    local label="Configuration value for '$key' at line $line_num"
 
-    if [[ ${#value} -gt $max_length ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num exceeds maximum length of $max_length characters (actual: ${#value})" >&2
+    if ! _validate_string "$value" "$max_length" "$label" "true" "false"; then
         return 1
     fi
+
     return 0
 }
 
@@ -308,28 +337,20 @@ _validate_config_file_path() {
     local path="$1"
     local key="$2"
     local line_num="$3"
+    local label="Configuration value for '$key' at line $line_num"
+
+    if ! _validate_string "$path" "$CONFIG_MAX_PATH_LENGTH" "$label" "true" "true"; then
+        return 1
+    fi
 
     # Check for empty path
     if [[ -z "$path" ]]; then
         return 0  # Empty is valid (means disabled)
     fi
 
-    # Validate path length
-    if [[ ${#path} -gt $CONFIG_MAX_PATH_LENGTH ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num exceeds maximum path length of $CONFIG_MAX_PATH_LENGTH (actual: ${#path})" >&2
-        return 1
-    fi
-
     # Must be absolute path (starts with /)
     if [[ "$path" != /* ]]; then
         echo "Error: Configuration value for '$key' at line $line_num must be an absolute path (got: '$path')" >&2
-        return 1
-    fi
-
-    # Check for control characters that could cause issues
-    # This includes newlines, carriage returns, tabs, null bytes, and terminal escape sequences
-    if [[ "$path" =~ [[:cntrl:]] ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num contains control characters" >&2
         return 1
     fi
 
@@ -362,8 +383,8 @@ _validate_config_format() {
     clean_format="${clean_format//\%m/}"
     clean_format="${clean_format//\%z/}"
 
-    # Check remaining string for control characters (excluding space, tab, newline which are stripped)
-    if [[ "$clean_format" =~ [[:cntrl:]] ]]; then
+    # Check remaining string for control characters (excluding valid format specifiers)
+    if ! _validate_string "$clean_format" "$CONFIG_MAX_VALUE_LENGTH" "configuration format at line $line_num" "true" "true" >/dev/null 2>&1; then
         echo "Warning: Configuration format at line $line_num contains control characters (may be stripped)" >&2
     fi
 
@@ -379,22 +400,16 @@ _validate_config_journal_tag() {
     local line_num="$3"
     local max_tag_length=64
 
-    # Check for empty tag
+    # Handle empty tag explicitly to preserve single-warning behavior
     if [[ -z "$tag" ]]; then
         echo "Warning: Empty journal tag at line $line_num" >&2
         return 1
     fi
 
-    # Check length
-    if [[ ${#tag} -gt $max_tag_length ]]; then
-        echo "Error: Journal tag at line $line_num exceeds maximum length of $max_tag_length (actual: ${#tag})" >&2
-        echo "  Hint: Truncating to maximum length" >&2
-        return 1
-    fi
-
-    # Check for control characters
-    if [[ "$tag" =~ [[:cntrl:]] ]]; then
-        echo "Error: Journal tag at line $line_num contains control characters" >&2
+    if ! _validate_string "$tag" "$max_tag_length" "journal tag at line $line_num" "false" "true"; then
+        if [[ ${#tag} -gt $max_tag_length ]]; then
+            echo "  Hint: Truncating to maximum length" >&2
+        fi
         return 1
     fi
 
