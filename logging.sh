@@ -960,8 +960,6 @@ init_logger() {
     local caller_script
     if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
         caller_script=$(basename "${BASH_SOURCE[1]}")
-        # Sanitize to prevent shell metacharacter injection
-        caller_script=$(_sanitize_script_name "$caller_script")
     else
         caller_script="unknown"
     fi
@@ -1102,7 +1100,7 @@ init_logger() {
         SCRIPT_NAME="$custom_script_name"
     elif [[ -z "${SCRIPT_NAME:-}" ]]; then
         # Only use auto-detected name if not already set (e.g., by config file)
-        SCRIPT_NAME="$caller_script"
+        SCRIPT_NAME=$(_sanitize_script_name "$caller_script")
     fi
     # If SCRIPT_NAME was set by config file, keep that value
 
