@@ -289,6 +289,34 @@ test_sanitize_complex_attack() {
     pass_test
 }
 
+# Test: Initialization message uses sanitized script name
+test_init_message_uses_sanitized_script_name() {
+    start_test "Init message uses sanitized script name for file logging"
+
+    local log_file="$TEST_DIR/init_sanitized.log"
+    local test_script="$TEST_DIR/malicious"$'\n'"name.sh"
+
+    cat > "$test_script" << 'EOF'
+#!/usr/bin/env bash
+source "$PROJECT_ROOT/logging.sh"
+init_logger --quiet --file "$1"
+EOF
+    chmod +x "$test_script"
+
+    PROJECT_ROOT="$PROJECT_ROOT" bash "$test_script" "$log_file" >/dev/null 2>&1 || {
+        fail_test "Failed to execute test script with newline in filename"
+        return 1
+    }
+
+    assert_file_contains "$log_file" "Logger initialized by malicious_name.sh" || return
+
+    local line_count
+    line_count=$(wc -l < "$log_file")
+    assert_equals "1" "$line_count" "Expected init log to remain a single line" || return
+
+    pass_test
+}
+
 # Run all tests
 test_sanitize_basic
 test_sanitize_attack_patterns
@@ -303,3 +331,4 @@ test_sanitize_idempotent
 test_sanitize_empty_whitespace
 test_sanitize_quotes
 test_sanitize_complex_attack
+test_init_message_uses_sanitized_script_name
