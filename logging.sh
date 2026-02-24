@@ -400,10 +400,13 @@ _validate_config_journal_tag() {
     local line_num="$3"
     local max_tag_length=64
 
+    # Handle empty tag explicitly to preserve single-warning behavior
+    if [[ -z "$tag" ]]; then
+        echo "Warning: Empty journal tag at line $line_num" >&2
+        return 1
+    fi
+
     if ! _validate_string "$tag" "$max_tag_length" "journal tag at line $line_num" "false" "true"; then
-        if [[ -z "$tag" ]]; then
-            echo "Warning: Empty journal tag at line $line_num" >&2
-        fi
         if [[ ${#tag} -gt $max_tag_length ]]; then
             echo "  Hint: Truncating to maximum length" >&2
         fi
