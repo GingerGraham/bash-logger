@@ -8,7 +8,7 @@ For the full assertion and helper API reference, see [Testing](testing.md).
 
 * [Your first test](#your-first-test)
   * [The complete walkthrough](#the-complete-walkthrough)
-  * [The start\_test / || return / pass\_test pattern](#the-start_test----return--pass_test-pattern)
+  * [The start\_test / || return / pass\_test pattern](#the-start_test---return--pass_test-pattern)
 * [Choosing the right assertion](#choosing-the-right-assertion)
   * [Prefer file assertions for log output](#prefer-file-assertions-for-log-output)
   * [When to use output capture instead](#when-to-use-output-capture-instead)
