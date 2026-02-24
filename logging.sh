@@ -979,7 +979,7 @@ init_logger() {
     # Get the calling script's name (can be overridden with -n|--name option)
     local caller_script
     if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
-        caller_script=$(basename "${BASH_SOURCE[1]}")
+        caller_script=$(_sanitize_script_name "$(basename "${BASH_SOURCE[1]}")")
     else
         caller_script="unknown"
     fi
@@ -1120,7 +1120,7 @@ init_logger() {
         SCRIPT_NAME="$custom_script_name"
     elif [[ -z "${SCRIPT_NAME:-}" ]]; then
         # Only use auto-detected name if not already set (e.g., by config file)
-        SCRIPT_NAME=$(_sanitize_script_name "$caller_script")
+        SCRIPT_NAME="$caller_script"
     fi
     # If SCRIPT_NAME was set by config file, keep that value
 
@@ -1181,7 +1181,7 @@ init_logger() {
 
         # Write the initialization message using the same format
         local init_message
-        init_message=$(_format_log_message "INIT" "Logger initialized by $caller_script")
+        init_message=$(_format_log_message "INIT" "Logger initialized by $SCRIPT_NAME")
         echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
             echo "Error: Failed to write test message to log file" >&2
             echo "  Hint: Verify the file is writable and disk space is available" >&2
