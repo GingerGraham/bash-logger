@@ -416,10 +416,10 @@ main() {
     local test_files=()
 
     if [[ ${#test_args[@]} -eq 0 ]]; then
-        # Discover all test files matching pattern
+        # Discover all test files matching pattern, excluding the example template
         while IFS= read -r test_file; do
             test_files+=("$test_file")
-        done < <(find "$SCRIPT_DIR" -maxdepth 1 -name "test_*.sh" -type f | sort)
+        done < <(find "$SCRIPT_DIR" -maxdepth 1 -name "test_*.sh" -not -name "test_example.sh" -type f | sort)
     else
         # Run specified tests
         for test_name in "${test_args[@]}"; do
