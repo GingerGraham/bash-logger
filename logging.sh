@@ -222,7 +222,11 @@ _should_use_stderr() {
 }
 
 # Path to validated logger command (set by _find_and_validate_logger)
-LOGGER_PATH=""
+# Keep mutable until first successful validation, then lock as readonly.
+# Guard assignment for re-source safety when LOGGER_PATH was already locked.
+if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
+    LOGGER_PATH=""
+fi
 
 # Find and validate the logger command to prevent PATH manipulation attacks
 # This function finds the logger executable and validates it's in a safe system location
@@ -233,6 +237,7 @@ _find_and_validate_logger() {
     logger_candidate=$(command -v logger 2>/dev/null)
 
     if [[ -z "$logger_candidate" ]]; then
+        USE_JOURNAL="false"
         return 1
     fi
 
@@ -245,7 +250,21 @@ _find_and_validate_logger() {
     # Accept: /bin, /usr/bin, /usr/local/bin, /sbin, /usr/sbin
     case "$logger_candidate" in
         /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger)
+            # If LOGGER_PATH is already locked, only accept the same validated path.
+            # This preserves immutability while still allowing repeat availability checks.
+            if readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
+                if [[ "$LOGGER_PATH" == "$logger_candidate" ]]; then
+                    return 0
+                fi
+                echo "Warning: logger path changed after validation: $logger_candidate" >&2
+                echo "  Locked logger path is: $LOGGER_PATH" >&2
+                echo "  Journal logging disabled for security" >&2
+                USE_JOURNAL="false"
+                return 1
+            fi
+
             LOGGER_PATH="$logger_candidate"
+            readonly LOGGER_PATH
             return 0
             ;;
         *)
@@ -253,6 +272,7 @@ _find_and_validate_logger() {
             echo "Warning: logger found at unexpected location: $logger_candidate" >&2
             echo "  Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin" >&2
             echo "  Journal logging disabled for security" >&2
+            USE_JOURNAL="false"
             return 1
             ;;
     esac
@@ -1572,22 +1592,20 @@ _log_message() {
         }
     fi
 
-    # If journal logging is enabled and logger is available, log to the system journal
+    # If journal logging is enabled and logger path is already validated, log to the system journal
     # Skip journal logging if skip_journal is true
-    if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" ]]; then
-        if check_logger_available; then
-            # Map our log level to syslog priority
-            local syslog_priority
-            syslog_priority=$(_get_syslog_priority "$level_value")
+    if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" && -n "$LOGGER_PATH" ]]; then
+        # Map our log level to syslog priority
+        local syslog_priority
+        syslog_priority=$(_get_syslog_priority "$level_value")
 
-            # Use the logger command to send to syslog/journal
-            # Strip any ANSI color codes from the message
-            local journal_message
-            journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
-            local plain_message
-            plain_message=$(_strip_ansi_codes "$journal_message")
-            "$LOGGER_PATH" -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
-        fi
+        # Use the logger command to send to syslog/journal
+        # Strip any ANSI color codes from the message
+        local journal_message
+        journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
+        local plain_message
+        plain_message=$(_strip_ansi_codes "$journal_message")
+        "$LOGGER_PATH" -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
     fi
 }
 

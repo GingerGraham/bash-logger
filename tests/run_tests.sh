@@ -416,15 +416,22 @@ main() {
     local test_files=()
 
     if [[ ${#test_args[@]} -eq 0 ]]; then
-        # Discover all test files matching pattern
+        # Discover all test files matching pattern, excluding the example template
         while IFS= read -r test_file; do
             test_files+=("$test_file")
-        done < <(find "$SCRIPT_DIR" -maxdepth 1 -name "test_*.sh" -type f | sort)
+        done < <(find "$SCRIPT_DIR" -maxdepth 1 -name "test_*.sh" -not -name "test_example.sh" -not -name "test_helpers.sh" -type f | sort)
     else
         # Run specified tests
         for test_name in "${test_args[@]}"; do
             # Remove .sh extension if provided
             test_name="${test_name%.sh}"
+
+            # test_helpers.sh contains shared helper functions, not a runnable test suite
+            if [[ "$test_name" == "test_helpers" ]]; then
+                echo -e "${COLOR_YELLOW}Warning: Skipping helper file (not a test suite): $SCRIPT_DIR/test_helpers.sh${COLOR_RESET}"
+                continue
+            fi
+
             # Add .sh extension
             test_file="$SCRIPT_DIR/${test_name}.sh"
 
