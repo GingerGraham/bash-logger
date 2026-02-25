@@ -1173,6 +1173,10 @@ init_logger() {
     fi
     # If SCRIPT_NAME was set by config file, keep that value
 
+    # Always sanitize SCRIPT_NAME regardless of source (env var, config, CLI, or auto-detected)
+    # to prevent log injection via control characters in the init message and all log entries
+    SCRIPT_NAME=$(_sanitize_script_name "$SCRIPT_NAME")
+
     # Set default journal tag if not specified but journal logging is enabled
     if [[ "$USE_JOURNAL" == "true" && -z "$JOURNAL_TAG" ]]; then
         JOURNAL_TAG="$SCRIPT_NAME"
