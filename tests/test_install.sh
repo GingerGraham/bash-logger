@@ -1291,6 +1291,142 @@ fi
     pass_test
 }
 
+# Test: download_release constructs correct asset name and download URLs
+test_download_release_url_construction() {
+    start_test "download_release constructs correct asset name and download URLs"
+
+    local output
+    output=$(run_install_test_script '
+TEMP_DIR="${TEST_TMP_DIR}/url_construct_test"
+mkdir -p "$TEMP_DIR"
+
+# Mock curl to capture URL arguments and create a fake archive so extraction succeeds
+curl() {
+    local url="" output_file="" prev_arg=""
+    for arg in "$@"; do
+        if [[ "$prev_arg" == "-o" ]]; then output_file="$arg"; fi
+        if [[ "$arg" == "https://"* ]]; then url="$arg"; fi
+        prev_arg="$arg"
+    done
+    echo "CURL_URL: $url"
+    if [[ -n "$output_file" ]]; then
+        local fake_dir; fake_dir=$(mktemp -d)
+        echo "# fake" > "${fake_dir}/logging.sh"
+        tar -czf "$output_file" -C "$fake_dir" logging.sh
+        rm -rf "$fake_dir"
+    fi
+    return 0
+}
+
+# Mock wget similarly in case curl is not available
+wget() {
+    local url="" output_file="" prev_arg=""
+    for arg in "$@"; do
+        if [[ "$prev_arg" == "-qO" ]]; then output_file="$arg"; fi
+        if [[ "$arg" == "https://"* ]]; then url="$arg"; fi
+        prev_arg="$arg"
+    done
+    echo "WGET_URL: $url"
+    if [[ -n "$output_file" ]]; then
+        local fake_dir; fake_dir=$(mktemp -d)
+        echo "# fake" > "${fake_dir}/logging.sh"
+        tar -czf "$output_file" -C "$fake_dir" logging.sh
+        rm -rf "$fake_dir"
+    fi
+    return 0
+}
+
+download_release "0.10.0" "$TEMP_DIR"
+')
+
+    assert_contains "$output" "bash-logger-0.10.0.tar.gz" || return
+    assert_contains "$output" "releases/download/0.10.0" || return
+
+    pass_test
+}
+
+# Test: download_release falls back to tag archive when primary asset download fails
+test_download_release_fallback_on_primary_failure() {
+    start_test "download_release falls back to tag archive URL when primary asset download fails"
+
+    local output
+    output=$(run_install_test_script '
+TEMP_DIR="${TEST_TMP_DIR}/fallback_test"
+mkdir -p "$TEMP_DIR"
+
+MOCK_CURL_CALLS=0
+curl() {
+    MOCK_CURL_CALLS=$((MOCK_CURL_CALLS + 1))
+    local url="" output_file="" prev_arg=""
+    for arg in "$@"; do
+        if [[ "$prev_arg" == "-o" ]]; then output_file="$arg"; fi
+        if [[ "$arg" == "https://"* ]]; then url="$arg"; fi
+        prev_arg="$arg"
+    done
+    echo "CURL_CALL_${MOCK_CURL_CALLS}: $url"
+    if [[ $MOCK_CURL_CALLS -le 2 ]]; then
+        return 1
+    fi
+    if [[ -n "$output_file" ]]; then
+        local fake_dir; fake_dir=$(mktemp -d)
+        echo "# fake" > "${fake_dir}/logging.sh"
+        tar -czf "$output_file" -C "$fake_dir" logging.sh
+        rm -rf "$fake_dir"
+    fi
+    return 0
+}
+
+MOCK_WGET_CALLS=0
+wget() {
+    MOCK_WGET_CALLS=$((MOCK_WGET_CALLS + 1))
+    local url="" output_file="" prev_arg=""
+    for arg in "$@"; do
+        if [[ "$prev_arg" == "-qO" ]]; then output_file="$arg"; fi
+        if [[ "$arg" == "https://"* ]]; then url="$arg"; fi
+        prev_arg="$arg"
+    done
+    echo "WGET_CALL_${MOCK_WGET_CALLS}: $url"
+    if [[ $MOCK_WGET_CALLS -le 2 ]]; then
+        return 1
+    fi
+    if [[ -n "$output_file" ]]; then
+        local fake_dir; fake_dir=$(mktemp -d)
+        echo "# fake" > "${fake_dir}/logging.sh"
+        tar -czf "$output_file" -C "$fake_dir" logging.sh
+        rm -rf "$fake_dir"
+    fi
+    return 0
+}
+
+download_release "0.10.0" "$TEMP_DIR"
+')
+
+    assert_contains "$output" "falling back to tag archive" || return
+    assert_contains "$output" "archive/refs/tags/0.10.0" || return
+
+    pass_test
+}
+
+# Test: download_release shows correct error when all downloads fail
+test_download_release_error_on_all_failures() {
+    start_test "download_release shows error message when all download attempts fail"
+
+    local output exit_code=0
+    output=$(run_install_test_script '
+TEMP_DIR="${TEST_TMP_DIR}/all_fail_test"
+mkdir -p "$TEMP_DIR"
+
+curl() { return 1; }
+wget() { return 1; }
+
+download_release "0.10.0" "$TEMP_DIR"
+') || exit_code=$?
+
+    assert_contains "$output" "Failed to download release" || return
+
+    pass_test
+}
+
 # Run all tests
 test_parse_args_user
 test_parse_args_system
@@ -1342,3 +1478,6 @@ test_configure_rc_file_detects_zsh
 test_configure_rc_file_already_installed_with_auto_rc
 test_configure_rc_file_already_installed_without_auto_rc
 test_configure_rc_file_already_installed_system_mode
+test_download_release_url_construction
+test_download_release_fallback_on_primary_failure
+test_download_release_error_on_all_failures
