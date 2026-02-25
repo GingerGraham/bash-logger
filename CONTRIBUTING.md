@@ -42,6 +42,10 @@ Great! Here's the process:
    * Verify existing functionality still works
    * Run tests locally: `./tests/run_tests.sh` or `make test`
    * Optionally run coverage: `make coverage` (requires [kcov](https://github.com/SimonKagstrom/kcov))
+   * New features should include tests that verify the feature works. Bug fixes should include a
+     regression test that would have caught the bug, where practical. See
+     [docs/writing-tests.md](docs/writing-tests.md) for a contributor guide on how to write and
+     structure tests, and [tests/test_example.sh](tests/test_example.sh) for a copy-ready skeleton.
 
 5. **Submit a PR** linking to any related issues
 

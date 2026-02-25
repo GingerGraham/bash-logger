@@ -724,6 +724,8 @@ jobs:
 
 ## Related Documentation
 
+* [Writing Tests](writing-tests.md) - Contributor guide: how to write and structure tests,
+  with annotated examples and common pitfalls
 * [Getting Started](getting-started.md) - Basic usage of the logging module
 * [Initialization](initialization.md) - Initialization options and configuration
 * [Examples](examples.md) - Comprehensive usage examples

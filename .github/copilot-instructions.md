@@ -32,6 +32,83 @@ All code changes **MUST** pass the linting requirements defined in `.pre-commit-
 * **Tool**: `tests/run_tests.sh`
 * **Requirement**: All changes must not break existing tests
 * **Scope**: Any code changes affecting core functionality must have tests added or updated
+* **Contributor guide**: [docs/writing-tests.md](../docs/writing-tests.md) — read this before writing tests
+
+#### Test lifecycle
+
+Every test follows the same three-step lifecycle:
+
+```bash
+test_feature_name() {
+    start_test "Human-readable description"  # registers test, calls setup_test, re-sources logging.sh
+
+    init_logger --level DEBUG --quiet
+    local log_file="$TEST_DIR/test.log"
+    LOG_FILE="$log_file"
+
+    log_info "expected message"
+
+    assert_file_contains "$log_file" "expected message" || return  # || return is mandatory
+
+    pass_test  # only reached if all assertions passed
+}
+
+test_feature_name  # functions must be called explicitly at the bottom of the suite file
+```
+
+#### The `|| return` requirement
+
+`|| return` after every assertion is **not optional**. Without it, execution continues past a
+failing assertion, later assertions run against an already-failed test, and `pass_test` may be
+reached despite failures — masking the real problem.
+
+```bash
+# CORRECT
+assert_file_contains "$log_file" "text" || return
+
+# WRONG — execution continues after failure
+assert_file_contains "$log_file" "text"
+```
+
+#### `$TEST_DIR` — always use it for file paths
+
+`$TEST_DIR` is a unique per-test subdirectory created by `setup_test`. The runner executes
+suites in parallel; using a fixed path like `/tmp/test.log` causes races between parallel jobs.
+
+```bash
+# CORRECT
+local log_file="$TEST_DIR/test.log"
+
+# WRONG — shared path breaks parallel execution
+local log_file="/tmp/test.log"
+```
+
+#### When to use file assertions vs output capture
+
+**Prefer `assert_file_contains`** for verifying log output. Point `LOG_FILE` at a path under
+`$TEST_DIR` and assert against that file. This tests the real output path and leaves the file
+available for inspection on failure.
+
+**Use subshell with stream redirects** only when testing *which stream* a message appears on
+(e.g., stderr vs stdout):
+
+```bash
+bash -c "
+    source '$PROJECT_ROOT/logging.sh'
+    init_logger
+    log_error 'message'
+" >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+assert_file_contains "$TEST_DIR/stderr" "message" || return
+assert_file_not_contains "$TEST_DIR/stdout" "message" || return
+```
+
+#### Isolation: why `logging.sh` is re-sourced on every test
+
+`start_test` calls `setup_test`, which re-sources `logging.sh`. This resets all global logger
+state (`LOG_FILE`, `LOG_LEVEL`, `QUIET_MODE`, etc.) before each test. Do not source
+`logging.sh` at the top of a suite file — that runs before `$TEST_DIR` exists and before
+per-test isolation is established.
 
 ## Commit Message Standards
 

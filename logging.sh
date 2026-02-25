@@ -222,7 +222,11 @@ _should_use_stderr() {
 }
 
 # Path to validated logger command (set by _find_and_validate_logger)
-LOGGER_PATH=""
+# Keep mutable until first successful validation, then lock as readonly.
+# Guard assignment for re-source safety when LOGGER_PATH was already locked.
+if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
+    LOGGER_PATH=""
+fi
 
 # Find and validate the logger command to prevent PATH manipulation attacks
 # This function finds the logger executable and validates it's in a safe system location
@@ -233,6 +237,7 @@ _find_and_validate_logger() {
     logger_candidate=$(command -v logger 2>/dev/null)
 
     if [[ -z "$logger_candidate" ]]; then
+        USE_JOURNAL="false"
         return 1
     fi
 
@@ -245,7 +250,21 @@ _find_and_validate_logger() {
     # Accept: /bin, /usr/bin, /usr/local/bin, /sbin, /usr/sbin
     case "$logger_candidate" in
         /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger)
+            # If LOGGER_PATH is already locked, only accept the same validated path.
+            # This preserves immutability while still allowing repeat availability checks.
+            if readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
+                if [[ "$LOGGER_PATH" == "$logger_candidate" ]]; then
+                    return 0
+                fi
+                echo "Warning: logger path changed after validation: $logger_candidate" >&2
+                echo "  Locked logger path is: $LOGGER_PATH" >&2
+                echo "  Journal logging disabled for security" >&2
+                USE_JOURNAL="false"
+                return 1
+            fi
+
             LOGGER_PATH="$logger_candidate"
+            readonly LOGGER_PATH
             return 0
             ;;
         *)
@@ -253,6 +272,7 @@ _find_and_validate_logger() {
             echo "Warning: logger found at unexpected location: $logger_candidate" >&2
             echo "  Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin" >&2
             echo "  Journal logging disabled for security" >&2
+            USE_JOURNAL="false"
             return 1
             ;;
     esac
@@ -266,6 +286,34 @@ check_logger_available() {
 # Configuration file path (set by init_logger when using -c option)
 LOG_CONFIG_FILE=""
 
+# Validate a string value using shared guard checks (internal)
+# Checks: empty (optional), max length, and control characters (optional)
+# Returns 0 if valid, 1 otherwise
+_validate_string() {
+    local value="$1"
+    local max_length="$2"
+    local label="$3"
+    local allow_empty="${4:-false}"
+    local check_control_chars="${5:-true}"
+
+    if [[ "$allow_empty" != "true" && -z "$value" ]]; then
+        echo "Error: Empty $label" >&2
+        return 1
+    fi
+
+    if [[ ${#value} -gt $max_length ]]; then
+        echo "Error: $label exceeds maximum length of $max_length (actual: ${#value})" >&2
+        return 1
+    fi
+
+    if [[ "$check_control_chars" == "true" && "$value" =~ [[:cntrl:]] ]]; then
+        echo "Error: $label contains control characters" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 # Validate configuration value length (internal)
 # Returns 0 if valid, 1 if too long
 _validate_config_value_length() {
@@ -273,11 +321,12 @@ _validate_config_value_length() {
     local max_length="$2"
     local key="$3"
     local line_num="$4"
+    local label="Configuration value for '$key' at line $line_num"
 
-    if [[ ${#value} -gt $max_length ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num exceeds maximum length of $max_length characters (actual: ${#value})" >&2
+    if ! _validate_string "$value" "$max_length" "$label" "true" "false"; then
         return 1
     fi
+
     return 0
 }
 
@@ -288,28 +337,20 @@ _validate_config_file_path() {
     local path="$1"
     local key="$2"
     local line_num="$3"
+    local label="Configuration value for '$key' at line $line_num"
+
+    if ! _validate_string "$path" "$CONFIG_MAX_PATH_LENGTH" "$label" "true" "true"; then
+        return 1
+    fi
 
     # Check for empty path
     if [[ -z "$path" ]]; then
         return 0  # Empty is valid (means disabled)
     fi
 
-    # Validate path length
-    if [[ ${#path} -gt $CONFIG_MAX_PATH_LENGTH ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num exceeds maximum path length of $CONFIG_MAX_PATH_LENGTH (actual: ${#path})" >&2
-        return 1
-    fi
-
     # Must be absolute path (starts with /)
     if [[ "$path" != /* ]]; then
         echo "Error: Configuration value for '$key' at line $line_num must be an absolute path (got: '$path')" >&2
-        return 1
-    fi
-
-    # Check for control characters that could cause issues
-    # This includes newlines, carriage returns, tabs, null bytes, and terminal escape sequences
-    if [[ "$path" =~ [[:cntrl:]] ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num contains control characters" >&2
         return 1
     fi
 
@@ -342,8 +383,8 @@ _validate_config_format() {
     clean_format="${clean_format//\%m/}"
     clean_format="${clean_format//\%z/}"
 
-    # Check remaining string for control characters (excluding space, tab, newline which are stripped)
-    if [[ "$clean_format" =~ [[:cntrl:]] ]]; then
+    # Check remaining string for control characters (excluding valid format specifiers)
+    if ! _validate_string "$clean_format" "$CONFIG_MAX_VALUE_LENGTH" "configuration format at line $line_num" "true" "true" >/dev/null 2>&1; then
         echo "Warning: Configuration format at line $line_num contains control characters (may be stripped)" >&2
     fi
 
@@ -359,22 +400,16 @@ _validate_config_journal_tag() {
     local line_num="$3"
     local max_tag_length=64
 
-    # Check for empty tag
+    # Handle empty tag explicitly to preserve single-warning behavior
     if [[ -z "$tag" ]]; then
         echo "Warning: Empty journal tag at line $line_num" >&2
         return 1
     fi
 
-    # Check length
-    if [[ ${#tag} -gt $max_tag_length ]]; then
-        echo "Error: Journal tag at line $line_num exceeds maximum length of $max_tag_length (actual: ${#tag})" >&2
-        echo "  Hint: Truncating to maximum length" >&2
-        return 1
-    fi
-
-    # Check for control characters
-    if [[ "$tag" =~ [[:cntrl:]] ]]; then
-        echo "Error: Journal tag at line $line_num contains control characters" >&2
+    if ! _validate_string "$tag" "$max_tag_length" "journal tag at line $line_num" "false" "true"; then
+        if [[ ${#tag} -gt $max_tag_length ]]; then
+            echo "  Hint: Truncating to maximum length" >&2
+        fi
         return 1
     fi
 
@@ -796,6 +831,40 @@ _get_syslog_priority() {
     esac
 }
 
+# Write to system journal safely (internal)
+# Disables journal logging after first logger availability/execution failure
+_write_to_journal() {
+    local priority="$1"
+    local tag="$2"
+    local message="$3"
+    local force_when_disabled="${4:-false}"
+
+    if [[ "$force_when_disabled" != "true" && "$USE_JOURNAL" != "true" ]]; then
+        return 0
+    fi
+
+    if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
+        if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
+            echo "Warning: logger command unavailable at '$LOGGER_PATH'" >&2
+            echo "  Journal logging disabled to prevent repeated failures" >&2
+            LOGGER_JOURNAL_ERROR_REPORTED="yes"
+        fi
+        USE_JOURNAL="false"
+        return 1
+    fi
+
+    "$LOGGER_PATH" -p "daemon.${priority}" -t "$tag" "$message" 2>/dev/null || {
+        if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
+            echo "Warning: logger command failed; disabling journal logging" >&2
+            LOGGER_JOURNAL_ERROR_REPORTED="yes"
+        fi
+        USE_JOURNAL="false"
+        return 1
+    }
+
+    return 0
+}
+
 # Function to sanitize log messages to prevent log injection (internal)
 # Removes control characters that could break log formats or inject fake entries
 _strip_ansi_codes() {
@@ -959,9 +1028,7 @@ init_logger() {
     # Get the calling script's name (can be overridden with -n|--name option)
     local caller_script
     if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
-        caller_script=$(basename "${BASH_SOURCE[1]}")
-        # Sanitize to prevent shell metacharacter injection
-        caller_script=$(_sanitize_script_name "$caller_script")
+        caller_script=$(_sanitize_script_name "$(basename "${BASH_SOURCE[1]}")")
     else
         caller_script="unknown"
     fi
@@ -1106,6 +1173,10 @@ init_logger() {
     fi
     # If SCRIPT_NAME was set by config file, keep that value
 
+    # Always sanitize SCRIPT_NAME regardless of source (env var, config, CLI, or auto-detected)
+    # to prevent log injection via control characters in the init message and all log entries
+    SCRIPT_NAME=$(_sanitize_script_name "$SCRIPT_NAME")
+
     # Set default journal tag if not specified but journal logging is enabled
     if [[ "$USE_JOURNAL" == "true" && -z "$JOURNAL_TAG" ]]; then
         JOURNAL_TAG="$SCRIPT_NAME"
@@ -1163,7 +1234,7 @@ init_logger() {
 
         # Write the initialization message using the same format
         local init_message
-        init_message=$(_format_log_message "INIT" "Logger initialized by $caller_script")
+        init_message=$(_format_log_message "INIT" "Logger initialized by $SCRIPT_NAME")
         echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
             echo "Error: Failed to write test message to log file" >&2
             echo "  Hint: Verify the file is writable and disk space is available" >&2
@@ -1207,9 +1278,7 @@ set_log_level() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 set_timezone_utc() {
@@ -1236,9 +1305,7 @@ set_timezone_utc() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to change log format
@@ -1265,9 +1332,7 @@ set_log_format() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to toggle journal logging
@@ -1304,8 +1369,8 @@ set_journal_logging() {
 
     # Log to journal if it was previously enabled or just being enabled
     # Only attempt journal write when logger path is set
-    if [[ -n "$LOGGER_PATH" && ( "$old_setting" == "true" || "$USE_JOURNAL" == "true" ) ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$old_setting" == "true" || "$USE_JOURNAL" == "true" ]]; then
+        _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message" "true"
     fi
 }
 
@@ -1333,9 +1398,7 @@ set_journal_tag() {
     fi
 
     # Log to journal if enabled, using the old tag
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
-    fi
+    _write_to_journal "notice" "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
 }
 
 # Function to set color mode
@@ -1377,9 +1440,7 @@ set_color_mode() {
     fi
 
     # Log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to set script name dynamically
@@ -1407,9 +1468,7 @@ set_script_name() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to enable/disable unsafe mode for newlines in log messages
@@ -1452,9 +1511,7 @@ set_unsafe_allow_newlines() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to enable/disable unsafe mode for ANSI codes in log messages
@@ -1497,9 +1554,7 @@ set_unsafe_allow_ansi_codes() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Logs to console (internal)
@@ -1574,22 +1629,20 @@ _log_message() {
         }
     fi
 
-    # If journal logging is enabled and logger is available, log to the system journal
+    # If journal logging is enabled and logger path is already validated, log to the system journal
     # Skip journal logging if skip_journal is true
     if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" ]]; then
-        if check_logger_available; then
-            # Map our log level to syslog priority
-            local syslog_priority
-            syslog_priority=$(_get_syslog_priority "$level_value")
+        # Map our log level to syslog priority
+        local syslog_priority
+        syslog_priority=$(_get_syslog_priority "$level_value")
 
-            # Use the logger command to send to syslog/journal
-            # Strip any ANSI color codes from the message
-            local journal_message
-            journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
-            local plain_message
-            plain_message=$(_strip_ansi_codes "$journal_message")
-            "$LOGGER_PATH" -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
-        fi
+        # Use the logger command to send to syslog/journal
+        # Strip any ANSI color codes from the message
+        local journal_message
+        journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
+        local plain_message
+        plain_message=$(_strip_ansi_codes "$journal_message")
+        _write_to_journal "$syslog_priority" "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
     fi
 }
 

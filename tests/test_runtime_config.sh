@@ -488,6 +488,36 @@ test_set_journal_tag_runtime() {
     pass_test
 }
 
+# Test: Journal logging disables after runtime logger failure
+test_journal_logging_disables_after_logger_failure() {
+    start_test "Journal logging disables after logger becomes unavailable"
+
+    local stderr_file="$TEST_DIR/journal_runtime_failure.stderr"
+    local state_file="$TEST_DIR/journal_runtime_failure.state"
+    local stdout_file="$TEST_DIR/journal_runtime_failure.stdout"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --quiet
+        USE_JOURNAL='true'
+        LOGGER_PATH='$TEST_DIR/missing-logger'
+        log_info 'first journal attempt'
+        echo \"USE_JOURNAL=\$USE_JOURNAL\" > '$state_file'
+        log_info 'second journal attempt'
+        echo \"USE_JOURNAL_AFTER=\$USE_JOURNAL\" >> '$state_file'
+    " >"$stdout_file" 2>"$stderr_file"
+
+    assert_file_contains "$state_file" "USE_JOURNAL=false" || return
+    assert_file_contains "$state_file" "USE_JOURNAL_AFTER=false" || return
+    assert_file_contains "$stderr_file" "logger command unavailable" || return
+
+    local warning_count
+    warning_count=$(grep -c "logger command unavailable" "$stderr_file")
+    assert_equals "1" "$warning_count" "Warning should only be emitted once" || return
+
+    pass_test
+}
+
 # Test: set_unsafe_allow_newlines function
 test_set_unsafe_allow_newlines() {
     start_test "set_unsafe_allow_newlines changes setting"
@@ -542,5 +572,6 @@ test_set_script_name_empty
 test_set_script_name_logs_change
 test_set_journal_logging_no_logger
 test_set_journal_tag_runtime
+test_journal_logging_disables_after_logger_failure
 test_set_unsafe_allow_newlines
 test_set_unsafe_allow_ansi_codes
