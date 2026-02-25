@@ -6,9 +6,14 @@
 # Rename it to test_<feature>.sh and replace the example tests with your own.
 #
 # How this file is used:
-#   The test runner (run_tests.sh) discovers all files named test_*.sh in this
-#   directory and sources them. Each test function must be called explicitly at
-#   the bottom of the file — defining the function is not enough.
+#   The test runner (run_tests.sh) auto-discovers test_*.sh files in this
+#   directory, but explicitly excludes test_example.sh and test_helpers.sh.
+#   This file is a template and is only sourced when you request it, e.g.:
+#       ./tests/run_tests.sh test_example
+#
+#   For real suites (your copied/renamed test_*.sh files), the runner sources
+#   the file and each test function must be called explicitly at the bottom of
+#   the file — defining the function is not enough.
 #
 # Run only this suite:
 #   ./tests/run_tests.sh test_example
