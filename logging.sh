@@ -831,6 +831,40 @@ _get_syslog_priority() {
     esac
 }
 
+# Write to system journal safely (internal)
+# Disables journal logging after first logger availability/execution failure
+_write_to_journal() {
+    local priority="$1"
+    local tag="$2"
+    local message="$3"
+    local force_when_disabled="${4:-false}"
+
+    if [[ "$force_when_disabled" != "true" && "$USE_JOURNAL" != "true" ]]; then
+        return 0
+    fi
+
+    if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
+        if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
+            echo "Warning: logger command unavailable at '$LOGGER_PATH'" >&2
+            echo "  Journal logging disabled to prevent repeated failures" >&2
+            LOGGER_JOURNAL_ERROR_REPORTED="yes"
+        fi
+        USE_JOURNAL="false"
+        return 1
+    fi
+
+    "$LOGGER_PATH" -p "daemon.${priority}" -t "$tag" "$message" 2>/dev/null || {
+        if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
+            echo "Warning: logger command failed; disabling journal logging" >&2
+            LOGGER_JOURNAL_ERROR_REPORTED="yes"
+        fi
+        USE_JOURNAL="false"
+        return 1
+    }
+
+    return 0
+}
+
 # Function to sanitize log messages to prevent log injection (internal)
 # Removes control characters that could break log formats or inject fake entries
 _strip_ansi_codes() {
@@ -1240,9 +1274,7 @@ set_log_level() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 set_timezone_utc() {
@@ -1269,9 +1301,7 @@ set_timezone_utc() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to change log format
@@ -1298,9 +1328,7 @@ set_log_format() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to toggle journal logging
@@ -1337,8 +1365,8 @@ set_journal_logging() {
 
     # Log to journal if it was previously enabled or just being enabled
     # Only attempt journal write when logger path is set
-    if [[ -n "$LOGGER_PATH" && ( "$old_setting" == "true" || "$USE_JOURNAL" == "true" ) ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    if [[ "$old_setting" == "true" || "$USE_JOURNAL" == "true" ]]; then
+        _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message" "true"
     fi
 }
 
@@ -1366,9 +1394,7 @@ set_journal_tag() {
     fi
 
     # Log to journal if enabled, using the old tag
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
-    fi
+    _write_to_journal "notice" "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
 }
 
 # Function to set color mode
@@ -1410,9 +1436,7 @@ set_color_mode() {
     fi
 
     # Log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to set script name dynamically
@@ -1440,9 +1464,7 @@ set_script_name() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to enable/disable unsafe mode for newlines in log messages
@@ -1485,9 +1507,7 @@ set_unsafe_allow_newlines() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to enable/disable unsafe mode for ANSI codes in log messages
@@ -1530,9 +1550,7 @@ set_unsafe_allow_ansi_codes() {
     fi
 
     # Always log to journal if enabled
-    if [[ "$USE_JOURNAL" == "true" && -n "$LOGGER_PATH" ]]; then
-        "$LOGGER_PATH" -p "daemon.notice" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
-    fi
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Logs to console (internal)
@@ -1609,7 +1627,7 @@ _log_message() {
 
     # If journal logging is enabled and logger path is already validated, log to the system journal
     # Skip journal logging if skip_journal is true
-    if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" && -n "$LOGGER_PATH" ]]; then
+    if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" ]]; then
         # Map our log level to syslog priority
         local syslog_priority
         syslog_priority=$(_get_syslog_priority "$level_value")
@@ -1620,7 +1638,7 @@ _log_message() {
         journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
         local plain_message
         plain_message=$(_strip_ansi_codes "$journal_message")
-        "$LOGGER_PATH" -p "daemon.${syslog_priority}" -t "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
+        _write_to_journal "$syslog_priority" "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
     fi
 }
 
