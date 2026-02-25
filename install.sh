@@ -547,16 +547,27 @@ download_release() {
 
     info "Downloading bash-logger ${tag}..."
 
-    local download_url="https://github.com/${GITHUB_REPO}/archive/refs/tags/${tag}.tar.gz"
+    local asset_name="${REPO_NAME}-${tag}.tar.gz"
+    local download_url="https://github.com/${GITHUB_REPO}/releases/download/${tag}/${asset_name}"
+    local fallback_url="https://github.com/${GITHUB_REPO}/archive/refs/tags/${tag}.tar.gz"
 
     if command -v curl >/dev/null 2>&1; then
         # Try IPv4 first with shorter timeout, then fallback
         if ! curl -4 --connect-timeout 10 --max-time 60 -fsSL "$download_url" -o "${temp_dir}/release.tar.gz" 2>/dev/null; then
-            info "IPv4 download failed, retrying with default settings..." >&2
-            curl --connect-timeout 10 --max-time 60 -fsSL "$download_url" -o "${temp_dir}/release.tar.gz" || error "Failed to download release"
+            info "Primary download failed, retrying with default settings..." >&2
+            if ! curl --connect-timeout 10 --max-time 60 -fsSL "$download_url" -o "${temp_dir}/release.tar.gz"; then
+                warn "Failed to download release asset ${asset_name}; falling back to tag archive" >&2
+                if ! curl -4 --connect-timeout 10 --max-time 60 -fsSL "$fallback_url" -o "${temp_dir}/release.tar.gz" 2>/dev/null; then
+                    info "Fallback IPv4 download failed, retrying with default settings..." >&2
+                    curl --connect-timeout 10 --max-time 60 -fsSL "$fallback_url" -o "${temp_dir}/release.tar.gz" || error "Failed to download release"
+                fi
+            fi
         fi
     elif command -v wget >/dev/null 2>&1; then
-        wget --timeout=60 --dns-timeout=10 --connect-timeout=10 -qO "${temp_dir}/release.tar.gz" "$download_url" || error "Failed to download release"
+        if ! wget --timeout=60 --dns-timeout=10 --connect-timeout=10 -qO "${temp_dir}/release.tar.gz" "$download_url"; then
+            warn "Failed to download release asset ${asset_name}; falling back to tag archive" >&2
+            wget --timeout=60 --dns-timeout=10 --connect-timeout=10 -qO "${temp_dir}/release.tar.gz" "$fallback_url" || error "Failed to download release"
+        fi
     fi
 
     info "Extracting files..."
