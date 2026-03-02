@@ -9,6 +9,8 @@
 ![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/GingerGraham/bash-logger/latest/total?label=Latest%20Release%20Downloads&logo=github)
 ![GitHub Repo stars](https://img.shields.io/github/stars/GingerGraham/bash-logger?style=social)
 
+![Logo](assets/images/logo-640x320.png)
+
 A flexible, reusable logging module for Bash scripts that provides standardized logging functionality with various configuration options.
 
 > [!NOTE]
