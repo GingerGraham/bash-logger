@@ -1769,7 +1769,7 @@ log_to_journal() {
 
     # Abort before any writes if logger is still unavailable after attempted discovery.
     if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
-        echo "Warning: log_to_journal called but logger command is not available" >&2
+        echo "WARNING: log_to_journal called but logger command is not available" >&2
         return 1
     fi
 
