@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.1](https://github.com/GingerGraham/bash-logger/compare/2.2.0...2.2.1) (2026-03-11)
 
+### Features
+
+* added functionality to send a single log message to the systemd journal without needing to have already initialized
+  journal logging or updating the running configuration ([#90](https://github.com/GingerGraham/bash-logger/issues/90))
+
 ### Bug Fixes
 
 * updating install script logic to use release artifacts ([#86](https://github.com/GingerGraham/bash-logger/issues/86))
