@@ -1726,13 +1726,14 @@ log_sensitive() {
 #   0 - Success
 #   1 - Invalid level or logger not available
 log_to_journal() {
-    if [[ $# -ne 2 ]]; then
+    if [[ $# -lt 2 ]]; then
         echo "Usage: log_to_journal LEVEL MESSAGE" >&2
         return 1
     fi
 
     local level_name="$1"
-    local message="$2"
+    shift
+    local message="$*"
 
     # Validate and normalise the level name to the canonical form used by _log_message
     local canonical_level
