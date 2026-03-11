@@ -87,7 +87,11 @@ test_log_to_journal_no_double_dispatch_when_journal_enabled() {
     " 2>/dev/null
 
     local count
-    count=$(grep -c 'dispatch_once_marker' "$STUB_CAPTURE" 2>/dev/null || echo "0")
+    if [ -f "$STUB_CAPTURE" ]; then
+        count=$(grep -c 'dispatch_once_marker' "$STUB_CAPTURE" 2>/dev/null || true)
+    else
+        count=0
+    fi
     assert_equals "1" "$count" \
         "Message should appear in the journal exactly once" || return
 
