@@ -1777,9 +1777,9 @@ log_to_journal() {
     if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
         # Mirror _write_to_journal: only warn once to avoid noisy stderr spam when
         # logger is missing or untrusted. Subsequent calls still fail but stay quiet.
-        if [[ "$LOGGER_JOURNAL_ERROR_REPORTED" != "true" ]]; then
+        if [[ -z "$LOGGER_JOURNAL_ERROR_REPORTED" ]]; then
             echo "WARNING: log_to_journal called but logger command is not available" >&2
-            LOGGER_JOURNAL_ERROR_REPORTED="true"
+            LOGGER_JOURNAL_ERROR_REPORTED="yes"
         fi
         return 1
     fi
