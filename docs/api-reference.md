@@ -575,10 +575,10 @@ output that could be captured or logged by terminal emulators or shell history.
 
 ### log_to_journal
 
-Send a single message directly to the system journal, regardless of the `USE_JOURNAL` setting.
+Log a single message using the normal routing (console and log file, if enabled) and also force it to be written to the system journal, regardless of the `USE_JOURNAL` setting.
 
 This follows the same per-call override pattern as `log_sensitive`. It is intended for callers
-that must guarantee journal delivery for a specific message without enabling journal logging
+that must guarantee journal delivery for a specific message while preserving normal console/file logging behavior, without enabling journal logging
 globally.
 
 **Syntax:**
