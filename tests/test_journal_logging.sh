@@ -52,7 +52,7 @@ test_log_to_journal_forces_write_when_journal_disabled() {
         init_logger --no-color --quiet
         USE_JOURNAL='false'
 
-        log_to_journal INFO "journal_force_test_unique_$RANDOM"
+        log_to_journal INFO \"journal_force_test_unique_\$RANDOM\"
         echo exit:\$?
     " 2>&1)
     exit_code=$(echo "$result" | grep -o 'exit:[0-9]*' | cut -d: -f2)
