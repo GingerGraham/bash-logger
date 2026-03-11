@@ -198,7 +198,39 @@ test_log_to_journal_below_level_is_suppressed() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 6: logger not available — warning to stderr and return 1
+# Test 6: Below-level message silently suppressed even when logger unavailable
+# ---------------------------------------------------------------------------
+test_log_to_journal_below_level_no_logger_no_warning() {
+    start_test "log_to_journal below log level emits no warning even when logger is unavailable"
+
+    local exit_code
+    local err
+    err=$(bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+
+        # Make the logger unavailable so any logger-discovery path would warn
+        _find_and_validate_logger() { return 1; }
+        check_logger_available() { return 1; }
+        LOGGER_PATH=''
+
+        # Set level to WARN — a DEBUG message is below this and must be silently suppressed
+        init_logger --no-color --quiet --level WARN 2>/dev/null
+        USE_JOURNAL='false'
+
+        log_to_journal DEBUG 'below_level_no_logger_message'
+    " 2>&1)
+    exit_code=$?
+
+    assert_equals "0" "$exit_code" \
+        "log_to_journal should return 0 when message is below current log level" || return
+    assert_not_contains "$err" "WARNING" \
+        "stderr should contain no warning when message is below current log level" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
+# Test 7: logger not available — warning to stderr and return 1
 # ---------------------------------------------------------------------------
 test_log_to_journal_no_logger_emits_warning() {
     start_test "log_to_journal without logger emits warning to stderr and returns 1"
@@ -230,7 +262,7 @@ test_log_to_journal_no_logger_emits_warning() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 7: Calling log_to_journal when USE_JOURNAL=true and logger is
+# Test 8: Calling log_to_journal when USE_JOURNAL=true and logger is
 # unavailable should use the existing _write_to_journal error path,
 # NOT the force_journal=true warning (no double-warn).
 # ---------------------------------------------------------------------------
@@ -270,7 +302,7 @@ test_log_to_journal_no_double_warn_when_journal_enabled() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 8: log_sensitive is unaffected — skip_journal still takes precedence
+# Test 9: log_sensitive is unaffected — skip_journal still takes precedence
 # ---------------------------------------------------------------------------
 test_log_sensitive_unaffected_by_force_journal() {
     start_test "log_sensitive still skips journal after log_to_journal change"
@@ -309,7 +341,7 @@ test_log_sensitive_unaffected_by_force_journal() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 9: Level aliases are accepted and resolve to canonical names
+# Test 10: Level aliases are accepted and resolve to canonical names
 # ---------------------------------------------------------------------------
 test_log_to_journal_level_aliases() {
     start_test "log_to_journal accepts level aliases (WARNING, ERR, CRIT, EMERG, FATAL)"
@@ -344,7 +376,7 @@ test_log_to_journal_level_aliases() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 10: Numeric syslog levels (0-7) are accepted
+# Test 11: Numeric syslog levels (0-7) are accepted
 # ---------------------------------------------------------------------------
 test_log_to_journal_numeric_levels() {
     start_test "log_to_journal accepts numeric syslog levels 0-7"
@@ -415,6 +447,7 @@ test_log_to_journal_no_double_dispatch_when_journal_enabled
 test_log_to_journal_invalid_level_returns_error
 test_log_to_journal_missing_args_returns_usage_error
 test_log_to_journal_below_level_is_suppressed
+test_log_to_journal_below_level_no_logger_no_warning
 test_log_to_journal_no_logger_emits_warning
 test_log_to_journal_no_double_warn_when_journal_enabled
 test_log_sensitive_unaffected_by_force_journal

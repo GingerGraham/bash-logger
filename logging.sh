@@ -1759,6 +1759,12 @@ log_to_journal() {
     local level_value
     level_value=$(_get_log_level_value "$canonical_level")
 
+    # Short-circuit: silently suppress messages that fall below the current log level,
+    # matching the behaviour of all other log functions — no warning, no discovery.
+    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]]; then
+        return 0
+    fi
+
     # Fast-path: if discovery has already run (successfully or not), skip it.
     # _LOGGER_DISCOVERY_DONE is set on every exit path of _find_and_validate_logger,
     # so an empty LOGGER_PATH with the flag set means logger is absent or untrusted —
