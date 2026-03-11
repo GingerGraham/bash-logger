@@ -228,6 +228,11 @@ _should_use_stderr() {
 if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
     LOGGER_PATH=""
 fi
+# Internal flag: set to "true" by _find_and_validate_logger on every exit path
+# (success and failure alike). Allows log_to_journal to skip discovery when
+# LOGGER_PATH is empty due to a failed/untrusted lookup rather than no lookup at all.
+# Not readonly — resetting to "false" on re-source is correct (new context must re-validate).
+_LOGGER_DISCOVERY_DONE="false"
 
 # Find and validate the logger command to prevent PATH manipulation attacks
 # This function finds the logger executable and validates it's in a safe system location
@@ -239,6 +244,7 @@ _find_and_validate_logger() {
 
     if [[ -z "$logger_candidate" ]]; then
         USE_JOURNAL="false"
+        _LOGGER_DISCOVERY_DONE="true"
         return 1
     fi
 
@@ -255,17 +261,20 @@ _find_and_validate_logger() {
             # This preserves immutability while still allowing repeat availability checks.
             if readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
                 if [[ "$LOGGER_PATH" == "$logger_candidate" ]]; then
+                    _LOGGER_DISCOVERY_DONE="true"
                     return 0
                 fi
                 echo "Warning: logger path changed after validation: $logger_candidate" >&2
                 echo "  Locked logger path is: $LOGGER_PATH" >&2
                 echo "  Journal logging disabled for security" >&2
                 USE_JOURNAL="false"
+                _LOGGER_DISCOVERY_DONE="true"
                 return 1
             fi
 
             LOGGER_PATH="$logger_candidate"
             readonly LOGGER_PATH
+            _LOGGER_DISCOVERY_DONE="true"
             return 0
             ;;
         *)
@@ -274,6 +283,7 @@ _find_and_validate_logger() {
             echo "  Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin" >&2
             echo "  Journal logging disabled for security" >&2
             USE_JOURNAL="false"
+            _LOGGER_DISCOVERY_DONE="true"
             return 1
             ;;
     esac
@@ -1634,15 +1644,6 @@ _log_message() {
     # If journal logging is enabled or force_journal is true, log to the system journal.
     # skip_journal takes precedence — it overrides force_journal when true.
     if [[ ( "$USE_JOURNAL" == "true" || "$force_journal" == "true" ) && "$skip_journal" != "true" ]]; then
-        # When force_journal=true but USE_JOURNAL=false, verify logger is available.
-        # Emit a warning instead of silently dropping the message.
-        if [[ "$force_journal" == "true" && "$USE_JOURNAL" != "true" ]]; then
-            if ! check_logger_available; then
-                echo "WARNING: log_to_journal called but logger command is not available" >&2
-                return 1
-            fi
-        fi
-
         # Map our log level to syslog priority
         local syslog_priority
         syslog_priority=$(_get_syslog_priority "$level_value")
@@ -1757,6 +1758,20 @@ log_to_journal() {
 
     local level_value
     level_value=$(_get_log_level_value "$canonical_level")
+
+    # Fast-path: if discovery has already run (successfully or not), skip it.
+    # _LOGGER_DISCOVERY_DONE is set on every exit path of _find_and_validate_logger,
+    # so an empty LOGGER_PATH with the flag set means logger is absent or untrusted —
+    # no point repeating command -v, symlink resolution, and path validation.
+    if [[ "$_LOGGER_DISCOVERY_DONE" != "true" ]]; then
+        check_logger_available
+    fi
+
+    # Abort before any writes if logger is still unavailable after attempted discovery.
+    if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
+        echo "WARNING: log_to_journal called but logger command is not available" >&2
+        return 1
+    fi
 
     _log_message "$canonical_level" "$level_value" "$message" "false" "false" "true"
 }

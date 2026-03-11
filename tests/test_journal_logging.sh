@@ -231,8 +231,11 @@ test_log_to_journal_no_logger_emits_warning() {
 # NOT the force_journal=true warning (no double-warn).
 # ---------------------------------------------------------------------------
 test_log_to_journal_no_double_warn_when_journal_enabled() {
-    start_test "log_to_journal does not double-warn when USE_JOURNAL=true and logger fails"
+    start_test "log_to_journal emits exactly one warning when USE_JOURNAL=true and logger unavailable"
 
+    # log_to_journal now performs a LOGGER_PATH-first availability check unconditionally
+    # (regardless of USE_JOURNAL). This means it warns and returns 1 before _log_message
+    # is called, so _write_to_journal never fires — no double-warning is possible.
     local err
     err=$(bash -c "
         source '$PROJECT_ROOT/logging.sh'
@@ -247,11 +250,17 @@ test_log_to_journal_no_double_warn_when_journal_enabled() {
 
         log_to_journal INFO 'double_warn_test'
     " 2>&1)
+    local exit_code=$?
 
-    # The force_journal warning must NOT appear when USE_JOURNAL=true
-    assert_not_contains "$err" \
-        "WARNING: log_to_journal called but logger command is not available" \
-        "Force-journal warning must not fire when USE_JOURNAL=true" || return
+    assert_equals "1" "$exit_code" \
+        "log_to_journal should return 1 when logger is unavailable" || return
+
+    # Warning should appear exactly once — from log_to_journal's pre-check only.
+    # _log_message is never reached, so _write_to_journal cannot emit a duplicate.
+    local warn_count
+    warn_count=$(echo "$err" | grep -c "WARNING: log_to_journal called but logger command is not available" || true)
+    assert_equals "1" "$warn_count" \
+        "Warning should appear exactly once (no double-warn from _write_to_journal)" || return
 
     pass_test
 }
