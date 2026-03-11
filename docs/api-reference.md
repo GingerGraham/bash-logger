@@ -602,13 +602,16 @@ log_to_journal LEVEL MESSAGE
 **Behaviour:**
 
 * Respects the current log level — if the resolved level value is above `CURRENT_LOG_LEVEL`
-  the message is silently suppressed, matching all other log functions.
+  the message is silently suppressed with return code `0`, matching all other log functions.
+  This suppression happens before any logger availability check, so no warning is emitted even
+  when `logger` is not available.
 * Applies the same sanitisation (newline and ANSI stripping) and truncation rules as all
   other log functions.
 * Console and file output follow the normal `CONSOLE_LOG` and `LOG_FILE` settings.
 * When `logger` is not available (for example when `LOGGER_PATH` is unset or the binary is
-  missing), a warning is emitted to stderr and the function returns `1` rather than silently
-  discarding the message, regardless of the value of `USE_JOURNAL`.
+  missing) and the message is at or above `CURRENT_LOG_LEVEL`, a warning is emitted to stderr
+  and the function returns `1` rather than silently discarding the message, regardless of the
+  value of `USE_JOURNAL`.
 * `log_sensitive` behaviour is unaffected — `log_to_journal` does not change the
   `skip_journal` logic and cannot cause sensitive messages to reach the journal.
 
