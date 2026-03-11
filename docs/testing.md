@@ -40,9 +40,9 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 
 ## Overview
 
-The bash-logger project includes a comprehensive test suite with 23 runnable test suites
-and 466 total tests (snapshot from `bash tests/run_tests.sh` on 2026-03-11).
-The test framework is built in pure Bash and designed to be:
+The bash-logger project includes a comprehensive Bash-based test suite. To see the current
+number of test suites and individual tests, run `bash tests/run_tests.sh` and check the
+summary output. The test framework is built in pure Bash and designed to be:
 
 * **Self-contained**: No external test frameworks required
 * **CI-friendly**: Clear exit codes and non-interactive
