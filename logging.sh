@@ -1713,7 +1713,7 @@ log_sensitive() {
 }
 
 # Log a single message directly to the system journal, regardless of USE_JOURNAL state.
-# Respects the current log level, sanitisation, and truncation rules.
+# Respects the current log level, sanitization, and truncation rules.
 # If the logger command is not available, emits a warning to stderr.
 #
 # Usage: log_to_journal LEVEL MESSAGE
