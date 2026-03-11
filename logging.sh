@@ -23,6 +23,7 @@
 #     - log_warn, log_error, log_critical
 #     - log_alert, log_emergency, log_fatal
 #     - log_init, log_sensitive         : Special purpose logging
+#     - log_to_journal <level> <message>  : Force a single message to the journal
 #
 #   Runtime Configuration:
 #     - set_log_level <level>           : Change log level dynamically
@@ -1590,6 +1591,7 @@ _log_message() {
     local message="$3"
     local skip_file="${4:-false}"
     local skip_journal="${5:-false}"
+    local force_journal="${6:-false}"
 
     # Skip logging if message level is more verbose than current log level
     # With syslog-style levels, HIGHER values are LESS severe (more verbose)
@@ -1629,9 +1631,18 @@ _log_message() {
         }
     fi
 
-    # If journal logging is enabled and logger path is already validated, log to the system journal
-    # Skip journal logging if skip_journal is true
-    if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" ]]; then
+    # If journal logging is enabled or force_journal is true, log to the system journal.
+    # skip_journal takes precedence — it overrides force_journal when true.
+    if [[ ( "$USE_JOURNAL" == "true" || "$force_journal" == "true" ) && "$skip_journal" != "true" ]]; then
+        # When force_journal=true but USE_JOURNAL=false, verify logger is available.
+        # Emit a warning instead of silently dropping the message.
+        if [[ "$force_journal" == "true" && "$USE_JOURNAL" != "true" ]]; then
+            if ! check_logger_available; then
+                echo "WARNING: log_to_journal called but logger command is not available" >&2
+                return 1
+            fi
+        fi
+
         # Map our log level to syslog priority
         local syslog_priority
         syslog_priority=$(_get_syslog_priority "$level_value")
@@ -1642,7 +1653,14 @@ _log_message() {
         journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
         local plain_message
         plain_message=$(_strip_ansi_codes "$journal_message")
-        _write_to_journal "$syslog_priority" "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
+
+        # Pass force_when_disabled=true when force_journal=true and USE_JOURNAL=false so
+        # _write_to_journal does not short-circuit the write.
+        local write_forced="false"
+        if [[ "$force_journal" == "true" && "$USE_JOURNAL" != "true" ]]; then
+            write_forced="true"
+        fi
+        _write_to_journal "$syslog_priority" "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message" "$write_forced"
     fi
 }
 
@@ -1691,6 +1709,56 @@ log_init() {
 # Function for sensitive logging - console only, never to file or journal
 log_sensitive() {
     _log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true" "true"
+}
+
+# Log a single message directly to the system journal, regardless of USE_JOURNAL state.
+# Respects the current log level, sanitisation, and truncation rules.
+# If the logger command is not available, emits a warning to stderr.
+#
+# Usage: log_to_journal LEVEL MESSAGE
+#
+# Parameters:
+#   LEVEL   - Log level name (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY)
+#   MESSAGE - The message to log
+#
+# Returns:
+#   0 - Success
+#   1 - Invalid level or logger not available
+log_to_journal() {
+    if [[ $# -ne 2 ]]; then
+        echo "Usage: log_to_journal LEVEL MESSAGE" >&2
+        return 1
+    fi
+
+    local level_name="$1"
+    local message="$2"
+
+    # Validate and normalise the level name to the canonical form used by _log_message
+    local canonical_level
+    case "${level_name^^}" in
+        DEBUG)                  canonical_level="DEBUG" ;;
+        INFO)                   canonical_level="INFO" ;;
+        NOTICE)                 canonical_level="NOTICE" ;;
+        WARN|WARNING)           canonical_level="WARN" ;;
+        ERROR|ERR)              canonical_level="ERROR" ;;
+        CRITICAL|CRIT)          canonical_level="CRITICAL" ;;
+        ALERT)                  canonical_level="ALERT" ;;
+        EMERGENCY|EMERG|FATAL)  canonical_level="EMERGENCY" ;;
+        [0-7])
+            # Numeric syslog level — resolve to its canonical name
+            canonical_level=$(_get_log_level_name "${level_name}")
+            ;;
+        *)
+            echo "Error: log_to_journal: unrecognised level '$level_name'" >&2
+            echo "  Valid levels: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
+            return 1
+            ;;
+    esac
+
+    local level_value
+    level_value=$(_get_log_level_value "$canonical_level")
+
+    _log_message "$canonical_level" "$level_value" "$message" "false" "false" "true"
 }
 
 # Only execute initialization if this script is being run directly
