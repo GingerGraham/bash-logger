@@ -330,7 +330,7 @@ test_log_to_journal_level_aliases() {
             init_logger --no-color --quiet --level DEBUG
             USE_JOURNAL='false'
 
-            log_to_journal '$alias' 'alias_test_${alias}'
+            log_to_journal '$alias' \"alias_test_${alias}\"
         " 2>/dev/null
 
         local exit_code=$?
