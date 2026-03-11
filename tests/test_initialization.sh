@@ -84,34 +84,6 @@ test_utc_option() {
     pass_test
 }
 
-# Test: Journal option (skip if logger not available)
-test_journal_option() {
-    start_test "Journal option enables journal logging"
-
-    if ! check_logger_available; then
-        skip_test "logger command not available"
-        return
-    fi
-
-    init_logger --journal
-
-    assert_equals "true" "$USE_JOURNAL" || return
-
-    pass_test
-}
-
-# Test: Journal can be disabled via config
-test_no_journal_via_runtime() {
-    start_test "Journal logging can be disabled at runtime"
-
-    init_logger
-    set_journal_logging false
-
-    assert_equals "false" "$USE_JOURNAL" || return
-
-    pass_test
-}
-
 # Test: Tag option
 test_tag_option() {
     start_test "Tag option sets journal tag"
@@ -382,8 +354,6 @@ test_log_file_option
 test_level_option
 test_verbose_option
 test_utc_option
-test_journal_option
-test_no_journal_via_runtime
 test_tag_option
 test_format_option
 test_color_always_option

@@ -23,6 +23,7 @@
 #     - log_warn, log_error, log_critical
 #     - log_alert, log_emergency, log_fatal
 #     - log_init, log_sensitive         : Special purpose logging
+#     - log_to_journal <level> <message>  : Force a single message to the journal
 #
 #   Runtime Configuration:
 #     - set_log_level <level>           : Change log level dynamically
@@ -227,6 +228,11 @@ _should_use_stderr() {
 if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
     LOGGER_PATH=""
 fi
+# Internal flag: set to "true" by _find_and_validate_logger on every exit path
+# (success and failure alike). Allows log_to_journal to skip discovery when
+# LOGGER_PATH is empty due to a failed/untrusted lookup rather than no lookup at all.
+# Not readonly — resetting to "false" on re-source is correct (new context must re-validate).
+_LOGGER_DISCOVERY_DONE="false"
 
 # Find and validate the logger command to prevent PATH manipulation attacks
 # This function finds the logger executable and validates it's in a safe system location
@@ -238,6 +244,7 @@ _find_and_validate_logger() {
 
     if [[ -z "$logger_candidate" ]]; then
         USE_JOURNAL="false"
+        _LOGGER_DISCOVERY_DONE="true"
         return 1
     fi
 
@@ -254,17 +261,20 @@ _find_and_validate_logger() {
             # This preserves immutability while still allowing repeat availability checks.
             if readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
                 if [[ "$LOGGER_PATH" == "$logger_candidate" ]]; then
+                    _LOGGER_DISCOVERY_DONE="true"
                     return 0
                 fi
                 echo "Warning: logger path changed after validation: $logger_candidate" >&2
                 echo "  Locked logger path is: $LOGGER_PATH" >&2
                 echo "  Journal logging disabled for security" >&2
                 USE_JOURNAL="false"
+                _LOGGER_DISCOVERY_DONE="true"
                 return 1
             fi
 
             LOGGER_PATH="$logger_candidate"
             readonly LOGGER_PATH
+            _LOGGER_DISCOVERY_DONE="true"
             return 0
             ;;
         *)
@@ -273,6 +283,7 @@ _find_and_validate_logger() {
             echo "  Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin" >&2
             echo "  Journal logging disabled for security" >&2
             USE_JOURNAL="false"
+            _LOGGER_DISCOVERY_DONE="true"
             return 1
             ;;
     esac
@@ -1590,6 +1601,7 @@ _log_message() {
     local message="$3"
     local skip_file="${4:-false}"
     local skip_journal="${5:-false}"
+    local force_journal="${6:-false}"
 
     # Skip logging if message level is more verbose than current log level
     # With syslog-style levels, HIGHER values are LESS severe (more verbose)
@@ -1629,9 +1641,9 @@ _log_message() {
         }
     fi
 
-    # If journal logging is enabled and logger path is already validated, log to the system journal
-    # Skip journal logging if skip_journal is true
-    if [[ "$USE_JOURNAL" == "true" && "$skip_journal" != "true" ]]; then
+    # If journal logging is enabled or force_journal is true, log to the system journal.
+    # skip_journal takes precedence — it overrides force_journal when true.
+    if [[ ( "$USE_JOURNAL" == "true" || "$force_journal" == "true" ) && "$skip_journal" != "true" ]]; then
         # Map our log level to syslog priority
         local syslog_priority
         syslog_priority=$(_get_syslog_priority "$level_value")
@@ -1642,7 +1654,14 @@ _log_message() {
         journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
         local plain_message
         plain_message=$(_strip_ansi_codes "$journal_message")
-        _write_to_journal "$syslog_priority" "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message"
+
+        # Pass force_when_disabled=true when force_journal=true and USE_JOURNAL=false so
+        # _write_to_journal does not short-circuit the write.
+        local write_forced="false"
+        if [[ "$force_journal" == "true" && "$USE_JOURNAL" != "true" ]]; then
+            write_forced="true"
+        fi
+        _write_to_journal "$syslog_priority" "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message" "$write_forced"
     fi
 }
 
@@ -1691,6 +1710,82 @@ log_init() {
 # Function for sensitive logging - console only, never to file or journal
 log_sensitive() {
     _log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true" "true"
+}
+
+# Log a single message directly to the system journal, regardless of USE_JOURNAL state.
+# Respects the current log level, sanitization, and truncation rules.
+# If the logger command is not available, emits a warning to stderr.
+#
+# Usage: log_to_journal LEVEL MESSAGE
+#
+# Parameters:
+#   LEVEL   - Log level name (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY)
+#   MESSAGE - The message to log
+#
+# Returns:
+#   0 - Success
+#   1 - Invalid level or logger not available
+log_to_journal() {
+    if [[ $# -lt 2 ]]; then
+        echo "Usage: log_to_journal LEVEL MESSAGE" >&2
+        return 1
+    fi
+
+    local level_name="$1"
+    shift
+    local message="$*"
+
+    # Validate and normalise the level name to the canonical form used by _log_message
+    local canonical_level
+    case "${level_name^^}" in
+        DEBUG)                  canonical_level="DEBUG" ;;
+        INFO)                   canonical_level="INFO" ;;
+        NOTICE)                 canonical_level="NOTICE" ;;
+        WARN|WARNING)           canonical_level="WARN" ;;
+        ERROR|ERR)              canonical_level="ERROR" ;;
+        CRITICAL|CRIT)          canonical_level="CRITICAL" ;;
+        ALERT)                  canonical_level="ALERT" ;;
+        EMERGENCY|EMERG|FATAL)  canonical_level="EMERGENCY" ;;
+        [0-7])
+            # Numeric syslog level — resolve to its canonical name
+            canonical_level=$(_get_log_level_name "${level_name}")
+            ;;
+        *)
+            echo "Error: log_to_journal: unrecognised level '$level_name'" >&2
+            echo "  Valid levels: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
+            return 1
+            ;;
+    esac
+
+    local level_value
+    level_value=$(_get_log_level_value "$canonical_level")
+
+    # Short-circuit: silently suppress messages that fall below the current log level,
+    # matching the behaviour of all other log functions — no warning, no discovery.
+    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]]; then
+        return 0
+    fi
+
+    # Fast-path: if discovery has already run (successfully or not), skip it.
+    # _LOGGER_DISCOVERY_DONE is set on every exit path of _find_and_validate_logger,
+    # so an empty LOGGER_PATH with the flag set means logger is absent or untrusted —
+    # no point repeating command -v, symlink resolution, and path validation.
+    if [[ "$_LOGGER_DISCOVERY_DONE" != "true" ]]; then
+        check_logger_available
+    fi
+
+    # Abort before any writes if logger is still unavailable after attempted discovery.
+    if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
+        # Mirror _write_to_journal: only warn once to avoid noisy stderr spam when
+        # logger is missing or untrusted. Subsequent calls still fail but stay quiet.
+        if [[ -z "$LOGGER_JOURNAL_ERROR_REPORTED" ]]; then
+            echo "WARNING: log_to_journal called but logger command is not available" >&2
+            LOGGER_JOURNAL_ERROR_REPORTED="yes"
+        fi
+        return 1
+    fi
+
+    _log_message "$canonical_level" "$level_value" "$message" "false" "false" "true"
 }
 
 # Only execute initialization if this script is being run directly

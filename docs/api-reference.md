@@ -20,6 +20,7 @@ Complete reference for all public functions in the bash-logger module.
   * [log_fatal](#log_fatal)
   * [log_init](#log_init)
   * [log_sensitive](#log_sensitive)
+  * [log_to_journal](#log_to_journal)
 * [Runtime Configuration Functions](#runtime-configuration-functions)
   * [set_log_level](#set_log_level)
   * [set_log_format](#set_log_format)
@@ -569,6 +570,72 @@ output that could be captured or logged by terminal emulators or shell history.
 **See Also:**
 
 * [Sensitive Data Guide](sensitive-data.md)
+
+---
+
+### log_to_journal
+
+Log a single message using the normal routing (console and log file, if enabled) and also force it to be written to the system journal, regardless of the `USE_JOURNAL` setting.
+
+This follows the same per-call override pattern as `log_sensitive`. It is intended for callers
+that must guarantee journal delivery for a specific message while preserving normal console/file logging behavior, without enabling journal logging
+globally.
+
+**Syntax:**
+
+```bash
+log_to_journal LEVEL MESSAGE
+```
+
+**Parameters:**
+
+* `LEVEL` - Log level name: `DEBUG`, `INFO`, `NOTICE`, `WARN`, `ERROR`, `CRITICAL`, `ALERT`,
+  `EMERGENCY` (aliases `WARNING`, `ERR`, `CRIT`, `EMERG`, `FATAL` are also accepted), or a
+  numeric syslog level `0`–7.
+* `MESSAGE` - The message to send to the journal.
+
+**Returns:**
+
+* `0` - Success
+* `1` - Unrecognised level name, wrong number of arguments, or `logger` command not available
+
+**Behaviour:**
+
+* Respects the current log level — if the resolved level value is above `CURRENT_LOG_LEVEL`
+  the message is silently suppressed with return code `0`, matching all other log functions.
+  This suppression happens before any logger availability check, so no warning is emitted even
+  when `logger` is not available.
+* Applies the same sanitisation (newline and ANSI stripping) and truncation rules as all
+  other log functions.
+* Console and file output follow the normal `CONSOLE_LOG` and `LOG_FILE` settings.
+* When `logger` is not available (for example when `LOGGER_PATH` is unset or the binary is
+  missing) and the message is at or above `CURRENT_LOG_LEVEL`, a warning is emitted to stderr
+  and the function returns `1` rather than silently discarding the message, regardless of the
+  value of `USE_JOURNAL`.
+* `log_sensitive` behaviour is unaffected — `log_to_journal` does not change the
+  `skip_journal` logic and cannot cause sensitive messages to reach the journal.
+
+**Examples:**
+
+```bash
+# Force a critical audit event to the journal without enabling journal logging globally
+log_to_journal CRITICAL "User 'root' logged in from $REMOTE_ADDR"
+
+# Use alongside regular logging
+init_logger --log /var/log/myapp.log
+log_info "Normal file-only message"
+log_to_journal NOTICE "Significant event that must reach the journal"
+
+# Guard against unavailable logger
+if ! log_to_journal ERROR "Deployment complete"; then
+    log_error "Could not write to system journal"
+fi
+```
+
+**See Also:**
+
+* [Journal Logging Guide](journal-logging.md)
+* [set_journal_logging](#set_journal_logging)
 
 ---
 

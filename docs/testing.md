@@ -40,9 +40,9 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 
 ## Overview
 
-The bash-logger project includes a comprehensive test suite with 103 tests across 6 test
-suites, validating all functionality of the logging module. The test framework is built
-in pure Bash and designed to be:
+The bash-logger project includes a comprehensive Bash-based test suite. To see the current
+number of test suites and individual tests, run `bash tests/run_tests.sh` and check the
+summary output. The test framework is built in pure Bash and designed to be:
 
 * **Self-contained**: No external test frameworks required
 * **CI-friendly**: Clear exit codes and non-interactive
@@ -124,12 +124,29 @@ cd tests
 
 Available test suites:
 
+* `test_ansi_injection` - ANSI escape sanitization and related security tests
+* `test_concurrent_access` - Concurrency and parallel logging behavior
+* `test_config` - Configuration file parsing and behavior
+* `test_config_security` - Security hardening for configuration input
+* `test_edge_cases` - Boundary and unusual input handling
+* `test_environment_security` - Environment-based security checks
+* `test_error_conditions` - Error handling and defensive behavior
+* `test_format` - Message format templates and formatting behavior
+* `test_fuzzing` - Fuzz-style robustness checks
+* `test_initialization` - Logger initialization behavior
+* `test_install` - Installation and setup scripts
+* `test_journal_logging` - Journal-specific behavior and forced journal logging
+* `test_junit_output` - JUnit XML report generation
 * `test_log_levels` - Log level functionality
-* `test_initialization` - Logger initialization
-* `test_output` - Output routing and formatting
-* `test_format` - Message format templates
-* `test_config` - Configuration file parsing
+* `test_mixed_sanitization_modes` - Combined sanitization mode behavior
+* `test_output` - Output routing and stream behavior
+* `test_path_traversal` - Path traversal protections
+* `test_resource_limits` - Resource and size limit behavior
 * `test_runtime_config` - Runtime configuration changes
+* `test_script_name_sanitization` - Script and tag name sanitization
+* `test_sensitive_data` - Sensitive data handling protections
+* `test_toctou_protection` - TOCTOU/race-condition protections
+* `test_unsafe_newlines` - Unsafe newline mode behavior
 
 ### Understanding Test Output
 
@@ -151,9 +168,10 @@ Running test_log_levels...
   Test Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Total Tests:   103
-Passed:        103
+Total Tests:   466
+Passed:        461
 Failed:        0
+Skipped:       5
 
 All tests passed!
 ```
@@ -325,28 +343,53 @@ The test suite is organized into the following files:
 
 **Test Suites** (`tests/`):
 
-* `test_log_levels.sh` - 12 tests for log levels
-* `test_initialization.sh` - 21 tests for initialization
-* `test_output.sh` - 17 tests for output routing
-* `test_format.sh` - 16 tests for message formatting
-* `test_config.sh` - 21 tests for config file parsing
-* `test_runtime_config.sh` - 16 tests for runtime changes
+`run_tests.sh` discovers test suites automatically using `test_*.sh`
+(excluding `test_helpers.sh` and `test_example.sh`).
+
+Current runnable suite files include:
+
+* `test_ansi_injection.sh`
+* `test_concurrent_access.sh`
+* `test_config.sh`
+* `test_config_security.sh`
+* `test_edge_cases.sh`
+* `test_environment_security.sh`
+* `test_error_conditions.sh`
+* `test_format.sh`
+* `test_fuzzing.sh`
+* `test_initialization.sh`
+* `test_install.sh`
+* `test_journal_logging.sh`
+* `test_junit_output.sh`
+* `test_log_levels.sh`
+* `test_mixed_sanitization_modes.sh`
+* `test_output.sh`
+* `test_path_traversal.sh`
+* `test_resource_limits.sh`
+* `test_runtime_config.sh`
+* `test_script_name_sanitization.sh`
+* `test_sensitive_data.sh`
+* `test_toctou_protection.sh`
+* `test_unsafe_newlines.sh`
 
 ### Test Coverage
 
 Current test coverage includes:
 
-| Component             | Coverage    | Tests              |
-| --------------------- | ----------- | ------------------ |
-| Log Levels            | ✅ Complete | 12                 |
-| Initialization        | ✅ Complete | 21                 |
-| Output Routing        | ✅ Complete | 17                 |
-| Message Formatting    | ✅ Complete | 16                 |
-| Configuration Files   | ✅ Complete | 21                 |
-| Runtime Configuration | ✅ Complete | 16                 |
-| Journal Logging       | ⚠️ Basic    | Included           |
-| Color Detection       | ⚠️ Limited  | Terminal-dependent |
-| **Total**             |             | **103**            |
+* Core logging behavior: ✅ Extensive
+  Notes: levels, output streams, formatting, initialization.
+* Configuration handling: ✅ Extensive
+  Notes: parsing, validation, and security-focused config tests.
+* Journal logging: ✅ Extensive
+  Notes: initialization, runtime toggles, and forced per-call journal writes.
+* Security hardening: ✅ Extensive
+  Notes: sensitive data, path traversal, ANSI/newline handling, and TOCTOU.
+* Reliability and robustness: ✅ Extensive
+  Notes: concurrency, fuzzing, edge cases, and resource limits.
+* CI/reporting integrations: ✅ Covered
+  Notes: JUnit XML output and SonarQube-related flow.
+
+Use `./tests/run_tests.sh` to get the authoritative, current totals on your machine.
 
 ## Writing Tests
 
@@ -592,19 +635,8 @@ test_feature_edge_case
 chmod +x tests/test_feature.sh
 ```
 
-1. **Add to test runner**: Edit `tests/run_tests.sh`, add to the test files array:
-
-```bash
-test_files=(
-    "$SCRIPT_DIR/test_log_levels.sh"
-    "$SCRIPT_DIR/test_initialization.sh"
-    "$SCRIPT_DIR/test_output.sh"
-    "$SCRIPT_DIR/test_format.sh"
-    "$SCRIPT_DIR/test_config.sh"
-    "$SCRIPT_DIR/test_runtime_config.sh"
-    "$SCRIPT_DIR/test_feature.sh"  # Add your new suite
-)
-```
+1. **No test runner edit required**: `tests/run_tests.sh` auto-discovers
+   `test_*.sh` files in `tests/` (excluding `test_helpers.sh` and `test_example.sh`).
 
 1. **Run your new tests**:
 
