@@ -49,7 +49,7 @@ Great! Here's the process:
 
 5. **Submit a PR** linking to any related issues
 
-### Maintainer Development Workflow Transparency
+### Development workflow transparency
 
 For transparency: the project maintainer uses a combination of GitHub Copilot and Claude to help develop, review, and test changes in this repository.
 
