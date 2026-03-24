@@ -150,6 +150,11 @@ See [docs/PRE-COMMIT.md](docs/PRE-COMMIT.md) for setup instructions.
 
 This project is currently maintained by [@GingerGraham](https://github.com/GingerGraham).
 
+### Development Workflow Transparency
+
+The maintainer uses a combination of GitHub Copilot and Claude to assist with development, code review, and test design/execution in this repository.
+Final decisions, validation, and responsibility for merged changes remain with the maintainer.
+
 ## License
 
 This module is provided under the [MIT License](LICENSE).

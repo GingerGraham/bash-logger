@@ -49,6 +49,12 @@ Great! Here's the process:
 
 5. **Submit a PR** linking to any related issues
 
+### Development workflow transparency
+
+For transparency: the project maintainer uses a combination of GitHub Copilot and Claude to help develop, review, and test changes in this repository.
+
+Contributors are not required to use any AI tooling. Human review and maintainer approval are required before changes are merged.
+
 ### Coding Style
 
 * Use 4 spaces for indentation (no tabs)
