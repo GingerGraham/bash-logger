@@ -99,7 +99,36 @@ test_log_to_journal_no_double_dispatch_when_journal_enabled() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 3: Unrecognised level name returns 1 and prints an error
+# Test 3: Configured syslog facility is used in logger priority argument
+# ---------------------------------------------------------------------------
+test_log_to_journal_uses_configured_syslog_facility() {
+    start_test "log_to_journal uses configured syslog facility in -p"
+
+    _create_stub_logger "$TEST_DIR"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+
+        LOGGER_PATH='$STUB_LOGGER'
+        _find_and_validate_logger() { return 0; }
+        check_logger_available() { return 0; }
+
+        init_logger --no-color --quiet --facility local3
+        USE_JOURNAL='false'
+
+        log_to_journal INFO 'facility_priority_marker'
+    " 2>/dev/null
+
+    assert_file_contains "$STUB_CAPTURE" "local3.info" \
+        "Stub logger should receive the configured facility in -p" || return
+    assert_file_contains "$STUB_CAPTURE" "facility_priority_marker" \
+        "Stub logger should capture the journal message" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
+# Test 4: Unrecognised level name returns 1 and prints an error
 # ---------------------------------------------------------------------------
 test_log_to_journal_invalid_level_returns_error() {
     start_test "log_to_journal with invalid level returns 1 and prints error"
@@ -128,7 +157,7 @@ test_log_to_journal_invalid_level_returns_error() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 4: Missing arguments returns 1 and prints a usage error
+# Test 5: Missing arguments returns 1 and prints a usage error
 # ---------------------------------------------------------------------------
 test_log_to_journal_missing_args_returns_usage_error() {
     start_test "log_to_journal with missing arguments returns 1 and usage error"
@@ -168,7 +197,7 @@ test_log_to_journal_missing_args_returns_usage_error() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 5: Message below current log level is silently suppressed
+# Test 6: Message below current log level is silently suppressed
 # ---------------------------------------------------------------------------
 test_log_to_journal_below_level_is_suppressed() {
     start_test "log_to_journal message below log level is silently suppressed"
@@ -198,7 +227,7 @@ test_log_to_journal_below_level_is_suppressed() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 6: Below-level message silently suppressed even when logger unavailable
+# Test 7: Below-level message silently suppressed even when logger unavailable
 # ---------------------------------------------------------------------------
 test_log_to_journal_below_level_no_logger_no_warning() {
     start_test "log_to_journal below log level emits no warning even when logger is unavailable"
@@ -230,7 +259,7 @@ test_log_to_journal_below_level_no_logger_no_warning() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 7: logger not available — warning to stderr and return 1
+# Test 8: logger not available — warning to stderr and return 1
 # ---------------------------------------------------------------------------
 test_log_to_journal_no_logger_emits_warning() {
     start_test "log_to_journal without logger emits warning to stderr and returns 1"
@@ -262,7 +291,7 @@ test_log_to_journal_no_logger_emits_warning() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 8: Calling log_to_journal when USE_JOURNAL=true and logger is
+# Test 9: Calling log_to_journal when USE_JOURNAL=true and logger is
 # unavailable should use the existing _write_to_journal error path,
 # NOT the force_journal=true warning (no double-warn).
 # ---------------------------------------------------------------------------
@@ -302,7 +331,7 @@ test_log_to_journal_no_double_warn_when_journal_enabled() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 9: log_sensitive is unaffected — skip_journal still takes precedence
+# Test 10: log_sensitive is unaffected — skip_journal still takes precedence
 # ---------------------------------------------------------------------------
 test_log_sensitive_unaffected_by_force_journal() {
     start_test "log_sensitive still skips journal after log_to_journal change"
@@ -341,7 +370,7 @@ test_log_sensitive_unaffected_by_force_journal() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 10: Level aliases are accepted and resolve to canonical names
+# Test 11: Level aliases are accepted and resolve to canonical names
 # ---------------------------------------------------------------------------
 test_log_to_journal_level_aliases() {
     start_test "log_to_journal accepts level aliases (WARNING, ERR, CRIT, EMERG, FATAL)"
@@ -376,7 +405,7 @@ test_log_to_journal_level_aliases() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 11: Numeric syslog levels (0-7) are accepted
+# Test 12: Numeric syslog levels (0-7) are accepted
 # ---------------------------------------------------------------------------
 test_log_to_journal_numeric_levels() {
     start_test "log_to_journal accepts numeric syslog levels 0-7"
@@ -444,6 +473,7 @@ test_journal_option
 test_no_journal_via_runtime
 test_log_to_journal_forces_write_when_journal_disabled
 test_log_to_journal_no_double_dispatch_when_journal_enabled
+test_log_to_journal_uses_configured_syslog_facility
 test_log_to_journal_invalid_level_returns_error
 test_log_to_journal_missing_args_returns_usage_error
 test_log_to_journal_below_level_is_suppressed

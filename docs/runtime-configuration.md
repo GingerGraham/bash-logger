@@ -13,6 +13,7 @@ different phases of operation.
   * [set_timezone_utc](#set_timezone_utc)
   * [set_journal_logging](#set_journal_logging)
   * [set_journal_tag](#set_journal_tag)
+  * [set_syslog_facility](#set_syslog_facility)
   * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
   * [set_unsafe_allow_ansi_codes](#set_unsafe_allow_ansi_codes)
 * [Use Cases](#use-cases)
@@ -220,6 +221,30 @@ set_journal_tag "database-backup"
 
 # Use operation name
 set_journal_tag "cleanup-job"
+```
+
+### set_syslog_facility
+
+Change the syslog facility used for journal/syslog entries.
+
+**Syntax:**
+
+```bash
+set_syslog_facility FACILITY
+```
+
+**Parameters:**
+
+* `FACILITY` - One of: `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`, `local0`, `local1`, `local2`, `local3`, `local4`, `local5`, `local6`, `local7`
+
+**Examples:**
+
+```bash
+# Route logs to a custom application facility
+set_syslog_facility local0
+
+# Restore default behavior
+set_syslog_facility daemon
 ```
 
 ### set_unsafe_allow_newlines

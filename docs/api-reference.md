@@ -27,6 +27,7 @@ Complete reference for all public functions in the bash-logger module.
   * [set_timezone_utc](#set_timezone_utc)
   * [set_journal_logging](#set_journal_logging)
   * [set_journal_tag](#set_journal_tag)
+  * [set_syslog_facility](#set_syslog_facility)
   * [set_color_mode](#set_color_mode)
   * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
   * [set_unsafe_allow_ansi_codes](#set_unsafe_allow_ansi_codes)
@@ -71,6 +72,7 @@ init_logger [options]
 | `--verbose`                   | `-v`  | Enable DEBUG level logging                       | false       |
 | `--journal`                   | `-j`  | Enable system journal logging                    | false       |
 | `--tag TAG`                   | `-t`  | Set journal tag                                  | (script)    |
+| `--facility FACILITY`         | `-F`  | Set syslog facility for journal logging          | daemon      |
 | `--utc`                       | `-u`  | Use UTC timestamps instead of local time         | false       |
 | `--format FORMAT`             | `-f`  | Set log message format                           | (see below) |
 | `--color`                     |       | Force color output                               | auto        |
@@ -865,6 +867,48 @@ set_journal_tag "myapp-${COMPONENT_NAME}"
 
 ---
 
+### set_syslog_facility
+
+Change the syslog facility used for journal log entries.
+
+**Syntax:**
+
+```bash
+set_syslog_facility FACILITY
+```
+
+**Parameters:**
+
+* `FACILITY` - One of: `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`, `local0`, `local1`, `local2`, `local3`, `local4`, `local5`, `local6`, `local7`
+
+**Returns:**
+
+* `0` - Success
+* `1` - Invalid facility
+
+**Examples:**
+
+```bash
+# Use an application-specific facility
+set_syslog_facility local0
+
+# Switch back to default
+set_syslog_facility daemon
+```
+
+**Effects:**
+
+* Validates the facility name before applying it
+* Logs a CONFIG message documenting the change
+* Takes effect immediately for all subsequent journal log entries
+
+**See Also:**
+
+* [Runtime Configuration Guide](runtime-configuration.md#set_syslog_facility)
+* [Journal Logging Guide](journal-logging.md)
+
+---
+
 ### set_color_mode
 
 Change color output mode for console logging.
@@ -1045,6 +1089,7 @@ LOG_FILE               # Current log file path (empty if not logging to file)
 CONSOLE_LOG            # "true" or "false" - console output enabled
 USE_JOURNAL            # "true" or "false" - journal logging enabled
 JOURNAL_TAG            # Current journal tag
+SYSLOG_FACILITY        # Current syslog facility for journal entries
 USE_UTC                # "true" or "false" - UTC timestamps
 LOG_FORMAT             # Current format string
 USE_COLORS             # "auto", "always", or "never"
