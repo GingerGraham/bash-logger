@@ -128,7 +128,7 @@ test_log_to_journal_uses_configured_syslog_facility() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 3: Unrecognised level name returns 1 and prints an error
+# Test 4: Unrecognised level name returns 1 and prints an error
 # ---------------------------------------------------------------------------
 test_log_to_journal_invalid_level_returns_error() {
     start_test "log_to_journal with invalid level returns 1 and prints error"
@@ -157,7 +157,7 @@ test_log_to_journal_invalid_level_returns_error() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 4: Missing arguments returns 1 and prints a usage error
+# Test 5: Missing arguments returns 1 and prints a usage error
 # ---------------------------------------------------------------------------
 test_log_to_journal_missing_args_returns_usage_error() {
     start_test "log_to_journal with missing arguments returns 1 and usage error"
@@ -197,7 +197,7 @@ test_log_to_journal_missing_args_returns_usage_error() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 5: Message below current log level is silently suppressed
+# Test 6: Message below current log level is silently suppressed
 # ---------------------------------------------------------------------------
 test_log_to_journal_below_level_is_suppressed() {
     start_test "log_to_journal message below log level is silently suppressed"
@@ -227,7 +227,7 @@ test_log_to_journal_below_level_is_suppressed() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 6: Below-level message silently suppressed even when logger unavailable
+# Test 7: Below-level message silently suppressed even when logger unavailable
 # ---------------------------------------------------------------------------
 test_log_to_journal_below_level_no_logger_no_warning() {
     start_test "log_to_journal below log level emits no warning even when logger is unavailable"
@@ -259,7 +259,7 @@ test_log_to_journal_below_level_no_logger_no_warning() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 7: logger not available — warning to stderr and return 1
+# Test 8: logger not available — warning to stderr and return 1
 # ---------------------------------------------------------------------------
 test_log_to_journal_no_logger_emits_warning() {
     start_test "log_to_journal without logger emits warning to stderr and returns 1"
@@ -291,7 +291,7 @@ test_log_to_journal_no_logger_emits_warning() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 8: Calling log_to_journal when USE_JOURNAL=true and logger is
+# Test 9: Calling log_to_journal when USE_JOURNAL=true and logger is
 # unavailable should use the existing _write_to_journal error path,
 # NOT the force_journal=true warning (no double-warn).
 # ---------------------------------------------------------------------------
@@ -331,7 +331,7 @@ test_log_to_journal_no_double_warn_when_journal_enabled() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 9: log_sensitive is unaffected — skip_journal still takes precedence
+# Test 10: log_sensitive is unaffected — skip_journal still takes precedence
 # ---------------------------------------------------------------------------
 test_log_sensitive_unaffected_by_force_journal() {
     start_test "log_sensitive still skips journal after log_to_journal change"
@@ -370,7 +370,7 @@ test_log_sensitive_unaffected_by_force_journal() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 10: Level aliases are accepted and resolve to canonical names
+# Test 11: Level aliases are accepted and resolve to canonical names
 # ---------------------------------------------------------------------------
 test_log_to_journal_level_aliases() {
     start_test "log_to_journal accepts level aliases (WARNING, ERR, CRIT, EMERG, FATAL)"
@@ -405,7 +405,7 @@ test_log_to_journal_level_aliases() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 11: Numeric syslog levels (0-7) are accepted
+# Test 12: Numeric syslog levels (0-7) are accepted
 # ---------------------------------------------------------------------------
 test_log_to_journal_numeric_levels() {
     start_test "log_to_journal accepts numeric syslog levels 0-7"

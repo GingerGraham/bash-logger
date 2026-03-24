@@ -13,7 +13,7 @@ different phases of operation.
   * [set_timezone_utc](#set_timezone_utc)
   * [set_journal_logging](#set_journal_logging)
   * [set_journal_tag](#set_journal_tag)
-    * [set_syslog_facility](#set_syslog_facility)
+  * [set_syslog_facility](#set_syslog_facility)
   * [set_unsafe_allow_newlines](#set_unsafe_allow_newlines)
   * [set_unsafe_allow_ansi_codes](#set_unsafe_allow_ansi_codes)
 * [Use Cases](#use-cases)
