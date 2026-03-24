@@ -444,7 +444,10 @@ _validate_config_journal_tag() {
 _validate_syslog_facility() {
     local facility="$1"
 
-    case "$facility" in
+    # Normalize facility to lowercase for case-insensitive validation
+    local facility_normalized="${facility,,}"
+
+    case "$facility_normalized" in
         kern|user|mail|daemon|auth|syslog|lpr|news|uucp|cron|authpriv|ftp|local0|local1|local2|local3|local4|local5|local6|local7)
             return 0
             ;;
@@ -572,7 +575,7 @@ _parse_config_file() {
                     ;;
                 facility|syslog_facility)
                     if _validate_syslog_facility "$value"; then
-                        SYSLOG_FACILITY="$value"
+                        SYSLOG_FACILITY="${value,,}"
                     else
                         echo "  Hint: Skipping invalid syslog facility at line $line_num" >&2
                     fi
@@ -1149,8 +1152,12 @@ init_logger() {
                 shift 2
                 ;;
             -F|--facility)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --facility requires a value" >&2
+                    return 1
+                fi
                 if _validate_syslog_facility "$2"; then
-                    SYSLOG_FACILITY="$2"
+                    SYSLOG_FACILITY="${2,,}"
                 else
                     echo "  Hint: Keeping existing syslog facility '$SYSLOG_FACILITY'" >&2
                 fi
@@ -1457,7 +1464,7 @@ set_syslog_facility() {
         return 1
     fi
 
-    SYSLOG_FACILITY="$1"
+    SYSLOG_FACILITY="${1,,}"
 
     local message="Syslog facility changed from \"$old_facility\" to \"$SYSLOG_FACILITY\""
     local log_entry
