@@ -99,6 +99,35 @@ test_log_to_journal_no_double_dispatch_when_journal_enabled() {
 }
 
 # ---------------------------------------------------------------------------
+# Test 3: Configured syslog facility is used in logger priority argument
+# ---------------------------------------------------------------------------
+test_log_to_journal_uses_configured_syslog_facility() {
+    start_test "log_to_journal uses configured syslog facility in -p"
+
+    _create_stub_logger "$TEST_DIR"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+
+        LOGGER_PATH='$STUB_LOGGER'
+        _find_and_validate_logger() { return 0; }
+        check_logger_available() { return 0; }
+
+        init_logger --no-color --quiet --facility local3
+        USE_JOURNAL='false'
+
+        log_to_journal INFO 'facility_priority_marker'
+    " 2>/dev/null
+
+    assert_file_contains "$STUB_CAPTURE" "local3.info" \
+        "Stub logger should receive the configured facility in -p" || return
+    assert_file_contains "$STUB_CAPTURE" "facility_priority_marker" \
+        "Stub logger should capture the journal message" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
 # Test 3: Unrecognised level name returns 1 and prints an error
 # ---------------------------------------------------------------------------
 test_log_to_journal_invalid_level_returns_error() {
@@ -444,6 +473,7 @@ test_journal_option
 test_no_journal_via_runtime
 test_log_to_journal_forces_write_when_journal_disabled
 test_log_to_journal_no_double_dispatch_when_journal_enabled
+test_log_to_journal_uses_configured_syslog_facility
 test_log_to_journal_invalid_level_returns_error
 test_log_to_journal_missing_args_returns_usage_error
 test_log_to_journal_below_level_is_suppressed

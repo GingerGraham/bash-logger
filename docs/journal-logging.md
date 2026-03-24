@@ -18,6 +18,10 @@ applications running on modern Linux distributions.
   * [Default Tag](#default-tag)
   * [Custom Tag](#custom-tag)
   * [Tag Best Practices](#tag-best-practices)
+* [Journal Facilities](#journal-facilities)
+  * [Default Facility](#default-facility)
+  * [Custom Facility](#custom-facility)
+  * [Facility Best Practices](#facility-best-practices)
 * [Log Level Mapping](#log-level-mapping)
 * [Viewing Journal Logs](#viewing-journal-logs)
   * [Basic journalctl Commands](#basic-journalctl-commands)
@@ -100,6 +104,9 @@ init_logger --journal
 # With custom tag
 init_logger --journal --tag "myapp"
 
+# With custom tag and facility
+init_logger --journal --tag "myapp" --facility "local0"
+
 # Combined with file logging
 init_logger --journal --log "/var/log/myapp.log" --tag "myapp"
 ```
@@ -110,6 +117,7 @@ init_logger --journal --log "/var/log/myapp.log" --tag "myapp"
 [logging]
 journal = true
 tag = myapp
+facility = local0
 level = INFO
 ```
 
@@ -123,6 +131,9 @@ set_journal_logging true
 
 # Change the tag
 set_journal_tag "new-app-name"
+
+# Change the facility
+set_syslog_facility local1
 
 # Disable journal logging
 set_journal_logging false
@@ -165,6 +176,44 @@ init_logger --journal --tag "database-monitor"
 2. **Keep it short** - Easier to type in journalctl commands
 3. **Use hyphens** - Better than spaces for command-line use
 4. **Be descriptive** - Make it clear what's logging
+
+## Journal Facilities
+
+Facilities determine the syslog facility class used with journal entries.
+
+### Default Facility
+
+By default, bash-logger uses:
+
+* `daemon`
+
+### Custom Facility
+
+Set a custom facility at initialization, via config file, or at runtime:
+
+```bash
+# Initialization
+init_logger --journal --facility local0
+
+# Runtime
+set_syslog_facility local1
+```
+
+```ini
+[logging]
+facility = local0
+```
+
+Valid facilities:
+
+* `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`
+* `local0`, `local1`, `local2`, `local3`, `local4`, `local5`, `local6`, `local7`
+
+### Facility Best Practices
+
+1. **Prefer `local0`-`local7` for application logs** to avoid colliding with system-reserved classes.
+2. **Keep facility selection consistent across environments** for easier filtering and alerting.
+3. **Document the chosen facility** in service runbooks and monitoring configuration.
 
 ## Log Level Mapping
 

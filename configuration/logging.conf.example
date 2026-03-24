@@ -41,6 +41,13 @@ journal = false
 # tag = myapp
 tag =
 
+# Syslog facility for journal entries (default: daemon)
+# Valid values: kern, user, mail, daemon, auth, syslog, lpr, news, uucp,
+# cron, authpriv, ftp, local0, local1, local2, local3, local4, local5,
+# local6, local7
+# Note: local0-local7 are available for custom application use
+facility = daemon
+
 # Use UTC timestamps (default: false)
 # Set to true to use UTC time instead of local time
 utc = false

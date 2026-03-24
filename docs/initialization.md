@@ -68,6 +68,7 @@ The `init_logger` function accepts the following options:
 | `-u, --utc`                                     | Use UTC time instead of local time                                                  |
 | `-j, --journal`                                 | Enable logging to systemd journal                                                   |
 | `-t, --tag TAG`                                 | Set custom tag for journal logs (default: script name)                              |
+| `-F, --facility FACILITY`                       | Set syslog facility for journal logs (default: daemon)                              |
 | `--color, --colour`                             | Explicitly enable color output (default: auto-detect)                               |
 | `--no-color, --no-colour`                       | Disable color output                                                                |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
@@ -124,6 +125,9 @@ init_logger --journal
 
 # Journal with custom tag
 init_logger --journal --tag "myapp"
+
+# Journal with custom tag and facility
+init_logger --journal --tag "myapp" --facility "local0"
 
 # Journal and file logging
 init_logger --journal --log "/var/log/myapp.log" --tag "myapp"
@@ -236,6 +240,7 @@ init_logger \
   --log "/var/log/myapp/app.log" \
   --journal \
   --tag "myapp" \
+  --facility "local0" \
   --level INFO \
   --utc \
   --stderr-level WARN

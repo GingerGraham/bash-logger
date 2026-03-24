@@ -110,7 +110,7 @@ See: [Configuration](docs/configuration.md)
 ### Journal Integration
 
 ```bash
-init_logger --journal --tag "myapp"
+init_logger --journal --tag "myapp" --facility "local0"
 ```
 
 See: [Journal Logging](docs/journal-logging.md)

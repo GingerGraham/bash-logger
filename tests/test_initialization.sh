@@ -95,6 +95,43 @@ test_tag_option() {
     pass_test
 }
 
+# Test: Facility option
+test_facility_option() {
+    start_test "Facility option sets syslog facility"
+
+    init_logger --facility local3
+
+    assert_equals "local3" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
+# Test: Invalid facility option
+test_invalid_facility_option() {
+    start_test "Invalid facility option is rejected"
+
+    init_logger --facility local1
+
+    local stderr
+    stderr=$(init_logger --facility invalid_facility 2>&1 >/dev/null)
+
+    assert_contains "$stderr" "Invalid syslog facility" || return
+    assert_equals "local1" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
+# Test: Default syslog facility
+test_default_syslog_facility() {
+    start_test "Default syslog facility is daemon"
+
+    init_logger
+
+    assert_equals "daemon" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
 # Test: Format option
 test_format_option() {
     start_test "Format option sets log format"
@@ -355,6 +392,9 @@ test_level_option
 test_verbose_option
 test_utc_option
 test_tag_option
+test_facility_option
+test_invalid_facility_option
+test_default_syslog_facility
 test_format_option
 test_color_always_option
 test_color_never_option

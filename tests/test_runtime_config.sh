@@ -192,6 +192,50 @@ test_set_journal_tag() {
     pass_test
 }
 
+# Test: set_syslog_facility with valid value
+test_set_syslog_facility_valid() {
+    start_test "set_syslog_facility accepts valid facility"
+
+    init_logger
+
+    set_syslog_facility "local2"
+    assert_equals "local2" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
+# Test: set_syslog_facility with invalid value
+test_set_syslog_facility_invalid() {
+    start_test "set_syslog_facility rejects invalid facility"
+
+    init_logger
+    set_syslog_facility "local4"
+
+    if set_syslog_facility "invalid_facility" >/dev/null 2>&1; then
+        fail_test "set_syslog_facility should return non-zero for invalid facility"
+        return
+    fi
+
+    assert_equals "local4" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
+# Test: set_syslog_facility updates active facility
+test_set_syslog_facility_reflects_change() {
+    start_test "set_syslog_facility change is reflected"
+
+    init_logger
+
+    set_syslog_facility "local0"
+    assert_equals "local0" "$SYSLOG_FACILITY" || return
+
+    set_syslog_facility "local7"
+    assert_equals "local7" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
 # Test: set_color_mode function
 test_set_color_mode() {
     start_test "set_color_mode changes color setting"
@@ -558,6 +602,9 @@ test_set_timezone_utc
 test_set_timezone_local
 test_set_journal_logging
 test_set_journal_tag
+test_set_syslog_facility_valid
+test_set_syslog_facility_invalid
+test_set_syslog_facility_reflects_change
 test_set_color_mode
 test_multiple_runtime_changes
 test_runtime_changes_dont_affect_history

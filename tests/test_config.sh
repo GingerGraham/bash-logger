@@ -88,6 +88,23 @@ EOF
     pass_test
 }
 
+# Test: Syslog facility in config
+test_config_syslog_facility() {
+    start_test "Syslog facility in config"
+
+    local config_file="$TEST_DIR/facility.conf"
+    cat > "$config_file" << 'EOF'
+[logging]
+facility = local5
+EOF
+
+    init_logger --config "$config_file"
+
+    assert_equals "local5" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
 # Test: Color settings in config
 test_config_colors() {
     start_test "Color settings in config"
@@ -483,6 +500,7 @@ test_basic_config_load
 test_multiple_config_options
 test_config_log_file
 test_config_journal
+test_config_syslog_facility
 test_config_colors
 test_config_color_variations
 test_config_stderr_level

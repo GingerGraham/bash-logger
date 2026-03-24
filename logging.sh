@@ -32,6 +32,7 @@
 #     - set_timezone_utc <true|false>   : Toggle UTC timestamps
 #     - set_journal_logging <true|false>: Toggle system journal logging
 #     - set_journal_tag <tag>           : Change journal tag
+#     - set_syslog_facility <facility>  : Change syslog facility
 #     - set_color_mode <auto|always|never> : Change color output
 #     - set_unsafe_allow_newlines <true|false> : Allow newlines in log messages (NOT RECOMMENDED)
 #     - set_unsafe_allow_ansi_codes <true|false> : Allow ANSI codes in log messages (NOT RECOMMENDED)
@@ -90,6 +91,10 @@ USE_UTC="false" # Set to true to use UTC time in logs
 # Journal logging settings
 USE_JOURNAL="false"
 JOURNAL_TAG=""  # Tag for syslog/journal entries
+if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* SYSLOG_FACILITY="; then
+    unset SYSLOG_FACILITY 2>/dev/null || true
+fi
+SYSLOG_FACILITY="${SYSLOG_FACILITY:-daemon}"  # Syslog facility for journal entries
 
 # Color settings
 USE_COLORS="auto"  # Can be "auto", "always", or "never"
@@ -434,6 +439,23 @@ _validate_config_journal_tag() {
     return 0
 }
 
+# Validate syslog facility value (internal)
+# Returns 0 if valid, 1 otherwise
+_validate_syslog_facility() {
+    local facility="$1"
+
+    case "$facility" in
+        kern|user|mail|daemon|auth|syslog|lpr|news|uucp|cron|authpriv|ftp|local0|local1|local2|local3|local4|local5|local6|local7)
+            return 0
+            ;;
+        *)
+            echo "Warning: Invalid syslog facility '$facility'" >&2
+            echo "  Valid facilities: kern, user, mail, daemon, auth, syslog, lpr, news, uucp, cron, authpriv, ftp, local0-local7" >&2
+            return 1
+            ;;
+    esac
+}
+
 # Parse an INI-style configuration file (internal)
 # Usage: _parse_config_file "/path/to/config.ini"
 # Returns 0 on success, 1 on error
@@ -546,6 +568,13 @@ _parse_config_file() {
                             JOURNAL_TAG="${value//[^a-zA-Z0-9._-]/_}"
                             echo "  Hint: Sanitized journal tag to remove shell metacharacters" >&2
                         fi
+                    fi
+                    ;;
+                facility|syslog_facility)
+                    if _validate_syslog_facility "$value"; then
+                        SYSLOG_FACILITY="$value"
+                    else
+                        echo "  Hint: Skipping invalid syslog facility at line $line_num" >&2
                     fi
                     ;;
                 utc|use_utc)
@@ -864,7 +893,7 @@ _write_to_journal() {
         return 1
     fi
 
-    "$LOGGER_PATH" -p "daemon.${priority}" -t "$tag" "$message" 2>/dev/null || {
+    "$LOGGER_PATH" -p "${SYSLOG_FACILITY}.${priority}" -t "$tag" "$message" 2>/dev/null || {
         if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
             echo "Warning: logger command failed; disabling journal logging" >&2
             LOGGER_JOURNAL_ERROR_REPORTED="yes"
@@ -1117,6 +1146,14 @@ init_logger() {
                 ;;
             -t|--tag)
                 JOURNAL_TAG="$2"
+                shift 2
+                ;;
+            -F|--facility)
+                if _validate_syslog_facility "$2"; then
+                    SYSLOG_FACILITY="$2"
+                else
+                    echo "  Hint: Keeping existing syslog facility '$SYSLOG_FACILITY'" >&2
+                fi
                 shift 2
                 ;;
             -u|--utc)
@@ -1410,6 +1447,38 @@ set_journal_tag() {
 
     # Log to journal if enabled, using the old tag
     _write_to_journal "notice" "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
+}
+
+# Function to set syslog facility
+set_syslog_facility() {
+    local old_facility="$SYSLOG_FACILITY"
+
+    if ! _validate_syslog_facility "$1"; then
+        return 1
+    fi
+
+    SYSLOG_FACILITY="$1"
+
+    local message="Syslog facility changed from \"$old_facility\" to \"$SYSLOG_FACILITY\""
+    local log_entry
+    log_entry=$(_format_log_message "CONFIG" "$message")
+
+    # Always print to console if enabled
+    if [[ "$CONSOLE_LOG" == "true" ]]; then
+        if _should_use_colors; then
+            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
+        else
+            printf '%s\n' "${log_entry}"
+        fi
+    fi
+
+    # Always write to log file if set
+    if [[ -n "$LOG_FILE" ]]; then
+        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    fi
+
+    # Always log to journal if enabled
+    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
 }
 
 # Function to set color mode

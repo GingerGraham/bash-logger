@@ -65,6 +65,9 @@ journal = false
 # Journal/syslog tag (defaults to script name)
 tag = myapp
 
+# Syslog facility for journal entries
+facility = daemon
+
 # Use UTC timestamps: true/false
 utc = false
 
@@ -118,6 +121,13 @@ max_journal_length = 4096
 | `max_line_length`         | `max-line-length`, `log_max_line_length`    | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length before formatting      |
 | `max_journal_length`      | `max-journal-length`, `journal_max_length`  | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length for journal            |
 
+### Syslog Facility Key
+
+The `facility` key (alias: `syslog_facility`) controls the syslog facility used for journal entries.
+
+* Default: `daemon`
+* Valid values: `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`, `local0`, `local1`, `local2`, `local3`, `local4`, `local5`, `local6`, `local7`
+
 ### Configuration Value Limits
 
 Configuration values are validated to ensure security and prevent issues:
@@ -125,6 +135,7 @@ Configuration values are validated to ensure security and prevent issues:
 * **All values**: Maximum length of 4,096 characters
 * **Log file paths**: Must be absolute paths (start with `/`); no control characters or shell metacharacters
 * **Journal tag**: Maximum 64 characters; shell metacharacters will be sanitized
+* **Syslog facility**: Must be one of `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`, or `local0`-`local7`
 * **Log levels**: Must be valid level names (DEBUG-EMERGENCY) or numbers (0-7)
 * **Numeric values** (`max_line_length`, `max_journal_length`): Must be 0-1,048,576 (1MB limit)
 * **Boolean values**: Must be true/false, yes/no, on/off, or 1/0
@@ -242,6 +253,7 @@ format = %d %z [%l] [%s] %m
 log_file = /var/log/myapp/app.log
 journal = true
 tag = myapp
+facility = local0
 utc = true
 stderr_level = WARN
 quiet = false
