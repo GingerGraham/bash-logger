@@ -108,6 +108,46 @@ log_error "Error message in JSON format"
 # Clean up temporary config file
 rm -f "$CONFIG_FILE"
 
+echo -e "\n========== Testing init_message suppression =========="
+echo "When multiple scripts share a log file (e.g. a main script and subscripts)"
+echo "repeated INIT entries can clutter the log. Use --no-init-message to suppress them."
+echo
+
+SHARED_LOG="${LOGS_DIR}/demo_config_shared.log"
+true > "$SHARED_LOG"
+
+echo "--- Run 1: default behaviour (INIT message written) ---"
+init_logger --log "$SHARED_LOG" || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+log_info "Message from main script"
+
+echo "--- Run 2: subscript using --no-init-message (no extra INIT entry) ---"
+init_logger --log "$SHARED_LOG" --no-init-message || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+log_info "Message from subscript"
+
+echo "--- Run 3: same suppression via config file ---"
+cat > "$CONFIG_FILE" << 'EOF'
+[logging]
+init_message = false
+EOF
+init_logger --config "$CONFIG_FILE" --log "$SHARED_LOG" || {
+    echo "Failed to initialize logger" >&2
+    exit 1
+}
+log_info "Message from another subscript (config-driven)"
+
+echo
+echo "Shared log file contents (note: only one INIT entry from run 1):"
+cat "$SHARED_LOG"
+
+# Clean up
+rm -f "$CONFIG_FILE" "$SHARED_LOG"
+
 echo -e "\n========== Configuration File Demo Complete =========="
 echo "Log file: ${LOGGING_FILE}"
 echo

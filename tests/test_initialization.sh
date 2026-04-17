@@ -384,6 +384,52 @@ EOF
     pass_test
 }
 
+# Test: INIT message written to log file by default
+test_init_message_default() {
+    start_test "INIT message is written to log file by default"
+
+    local log_file="$TEST_DIR/init_default.log"
+    init_logger --log "$log_file"
+
+    assert_file_contains "$log_file" "INIT" || return
+    assert_file_contains "$log_file" "Logger initialized" || return
+    assert_equals "true" "$LOG_INIT_MESSAGE" || return
+
+    pass_test
+}
+
+# Test: --no-init-message suppresses the INIT log file entry
+test_no_init_message_flag() {
+    start_test "--no-init-message suppresses INIT entry in log file"
+
+    local log_file="$TEST_DIR/no_init_flag.log"
+    init_logger --log "$log_file" --no-init-message
+
+    assert_file_not_contains "$log_file" "Logger initialized" || return
+    assert_equals "false" "$LOG_INIT_MESSAGE" || return
+
+    pass_test
+}
+
+# Test: init_message = false in config suppresses the INIT log file entry
+test_no_init_message_config() {
+    start_test "init_message=false in config suppresses INIT entry in log file"
+
+    local config_file="$TEST_DIR/no_init.conf"
+    cat > "$config_file" << 'EOF'
+[logging]
+init_message = false
+EOF
+
+    local log_file="$TEST_DIR/no_init_config.log"
+    init_logger --config "$config_file" --log "$log_file"
+
+    assert_file_not_contains "$log_file" "Logger initialized" || return
+    assert_equals "false" "$LOG_INIT_MESSAGE" || return
+
+    pass_test
+}
+
 # Run all tests
 test_default_initialization
 test_quiet_option
@@ -413,3 +459,6 @@ test_script_name_short_option
 test_script_name_in_output
 test_script_name_from_config
 test_script_name_cli_overrides_config
+test_init_message_default
+test_no_init_message_flag
+test_no_init_message_config
