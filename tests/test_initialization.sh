@@ -406,6 +406,7 @@ test_no_init_message_flag() {
     init_logger --log "$log_file" --no-init-message
 
     assert_file_not_contains "$log_file" "Logger initialized" || return
+    assert_file_not_contains "$log_file" " INIT " || return
     assert_equals "false" "$LOG_INIT_MESSAGE" || return
 
     pass_test
@@ -425,6 +426,7 @@ EOF
     init_logger --config "$config_file" --log "$log_file"
 
     assert_file_not_contains "$log_file" "Logger initialized" || return
+    assert_file_not_contains "$log_file" " INIT " || return
     assert_equals "false" "$LOG_INIT_MESSAGE" || return
 
     pass_test

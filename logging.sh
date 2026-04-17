@@ -1312,7 +1312,7 @@ init_logger() {
             local init_message
             init_message=$(_format_log_message "INIT" "Logger initialized by $SCRIPT_NAME")
             echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
-                echo "Error: Failed to write test message to log file" >&2
+                echo "Error: Failed to write initialization message to log file" >&2
                 echo "  Hint: Verify the file is writable and disk space is available" >&2
                 return 1
             }
