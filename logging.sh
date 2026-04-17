@@ -87,6 +87,7 @@ LOG_FILE=""
 VERBOSE="false"
 CURRENT_LOG_LEVEL=$LOG_LEVEL_INFO
 USE_UTC="false" # Set to true to use UTC time in logs
+LOG_INIT_MESSAGE="true" # Set to false to suppress the INIT message written to the log file on init_logger
 
 # Journal logging settings
 USE_JOURNAL="false"
@@ -703,11 +704,25 @@ _parse_config_file() {
                         echo "  Hint: Using default value of 4096" >&2
                     fi
                     ;;
+                init_message|log_init_message)
+                    case "${value,,}" in
+                        true|yes|1|on)
+                            LOG_INIT_MESSAGE="true"
+                            ;;
+                        false|no|0|off)
+                            LOG_INIT_MESSAGE="false"
+                            ;;
+                        *)
+                            echo "Warning: Invalid init_message value '$value' at line $line_num, expected true/false" >&2
+                            ;;
+                    esac
+                    ;;
                 *)
                     echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
                     echo "  Hint: Valid keys are: level, format, log_file, journal, tag, utc, color," >&2
                     echo "        stderr_level, quiet, console_log, script_name, verbose," >&2
-                    echo "        unsafe_allow_newlines, unsafe_allow_ansi_codes, max_line_length, max_journal_length" >&2
+                    echo "        unsafe_allow_newlines, unsafe_allow_ansi_codes, max_line_length, max_journal_length," >&2
+                    echo "        init_message" >&2
                     ;;
             esac
         else
@@ -1210,6 +1225,10 @@ init_logger() {
                 fi
                 shift 2
                 ;;
+            --no-init-message)
+                LOG_INIT_MESSAGE="false"
+                shift
+                ;;
             *)
                 echo "Unknown parameter for logger: $1" >&2
                 return 1
@@ -1288,13 +1307,16 @@ init_logger() {
         fi
 
         # Write the initialization message using the same format
-        local init_message
-        init_message=$(_format_log_message "INIT" "Logger initialized by $SCRIPT_NAME")
-        echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
-            echo "Error: Failed to write test message to log file" >&2
-            echo "  Hint: Verify the file is writable and disk space is available" >&2
-            return 1
-        }
+        # Can be suppressed with --no-init-message (or init_message=false in config)
+        if [[ "$LOG_INIT_MESSAGE" == "true" ]]; then
+            local init_message
+            init_message=$(_format_log_message "INIT" "Logger initialized by $SCRIPT_NAME")
+            echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
+                echo "Error: Failed to write initialization message to log file" >&2
+                echo "  Hint: Verify the file is writable and disk space is available" >&2
+                return 1
+            }
+        fi
 
         echo "Logger: Successfully initialized with log file enabled" >&2
     fi

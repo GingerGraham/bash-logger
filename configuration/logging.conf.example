@@ -69,6 +69,12 @@ stderr_level = ERROR
 # Set to true to suppress all console output (useful for daemon scripts)
 quiet = false
 
+# Write the INIT message to the log file on initialization (default: true)
+# Set to false to suppress "Logger initialized by <name>" from being appended to the
+# log file on every init_logger call (useful when multiple scripts share the same log
+# file, e.g. a main script and subscripts that all log to the same file)
+init_message = true
+
 # Enable verbose/debug logging (default: false)
 # When true, sets log level to DEBUG
 # Note: If both 'verbose' and 'level' are set, 'level' takes precedence

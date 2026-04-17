@@ -8,6 +8,8 @@ configuration from code.
 
 * [Configuration File Format](#configuration-file-format)
 * [Configuration Keys](#configuration-keys)
+  * [Syslog Facility Key](#syslog-facility-key)
+  * [Configuration Value Limits](#configuration-value-limits)
   * [Boolean Values](#boolean-values)
   * [Key Aliases](#key-aliases)
 * [Using Configuration Files](#using-configuration-files)
@@ -120,6 +122,7 @@ max_journal_length = 4096
 | `unsafe_allow_ansi_codes` | `unsafe-allow-ansi-codes`                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Allow ANSI codes in log messages (unsafe) |
 | `max_line_length`         | `max-line-length`, `log_max_line_length`    | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length before formatting      |
 | `max_journal_length`      | `max-journal-length`, `journal_max_length`  | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length for journal            |
+| `init_message`            | `log_init_message`                          | true/false, yes/no, on/off, 1/0                                   | `true`            | Write INIT entry to log file on startup   |
 
 ### Syslog Facility Key
 

@@ -71,6 +71,7 @@ The `init_logger` function accepts the following options:
 | `-F, --facility FACILITY`                       | Set syslog facility for journal logs (default: daemon)                              |
 | `--color, --colour`                             | Explicitly enable color output (default: auto-detect)                               |
 | `--no-color, --no-colour`                       | Disable color output                                                                |
+| `--no-init-message`                             | Suppress the INIT entry written to the log file on initialization                   |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
 | `-A, --unsafe-allow-ansi-codes`                 | Allow ANSI escape codes in log messages (not recommended; disables sanitization)    |
 | `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
