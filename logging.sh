@@ -494,6 +494,18 @@ _validate_syslog_facility() {
     esac
 }
 
+# Parse a boolean string value to a canonical "true" or "false" (internal)
+# Accepts: true/yes/on/1 -> prints "true"; false/no/off/0 -> prints "false"
+# Returns 0 on success, 1 for unrecognised input (prints nothing)
+_parse_bool_value() {
+    local input="${1,,}"
+    case "$input" in
+        true|yes|on|1)   echo "true";  return 0 ;;
+        false|no|off|0)  echo "false"; return 0 ;;
+        *)               return 1 ;;
+    esac
+}
+
 # Parse an INI-style configuration file (internal)
 # Usage: _parse_config_file "/path/to/config.ini"
 # Returns 0 on success, 1 on error
@@ -697,30 +709,14 @@ _parse_config_file() {
                     esac
                     ;;
                 unsafe_allow_newlines|unsafe-allow-newlines)
-                    case "${value,,}" in
-                        true|yes|1|on)
-                            LOG_UNSAFE_ALLOW_NEWLINES="true"
-                            ;;
-                        false|no|0|off)
-                            LOG_UNSAFE_ALLOW_NEWLINES="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
+                    if ! LOG_UNSAFE_ALLOW_NEWLINES=$(_parse_bool_value "$value"); then
+                        echo "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
+                    fi
                     ;;
                 unsafe_allow_ansi_codes|unsafe-allow-ansi-codes)
-                    case "${value,,}" in
-                        true|yes|1|on)
-                            LOG_UNSAFE_ALLOW_ANSI_CODES="true"
-                            ;;
-                        false|no|0|off)
-                            LOG_UNSAFE_ALLOW_ANSI_CODES="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
+                    if ! LOG_UNSAFE_ALLOW_ANSI_CODES=$(_parse_bool_value "$value"); then
+                        echo "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
+                    fi
                     ;;
                 max_line_length|max-line-length|log_max_line_length|log-max-line-length)
                     if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
@@ -1641,8 +1637,14 @@ set_script_name() {
 # WARNING: Disabling sanitization can allow log injection attacks. Only use if you have
 #          explicit control over all logged messages and your log parsing handles newlines safely.
 set_unsafe_allow_newlines() {
+    local new_value
+    new_value=$(_parse_bool_value "$1") || {
+        echo "Error: set_unsafe_allow_newlines: invalid value '$1'" >&2
+        echo "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$LOG_UNSAFE_ALLOW_NEWLINES"
-    LOG_UNSAFE_ALLOW_NEWLINES="$1"
+    LOG_UNSAFE_ALLOW_NEWLINES="$new_value"
 
     local safety_notice=""
     if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
@@ -1684,8 +1686,14 @@ set_unsafe_allow_newlines() {
 # WARNING: Disabling sanitization can allow terminal manipulation attacks. Only use if you have
 #          explicit control over all logged messages and trust their source.
 set_unsafe_allow_ansi_codes() {
+    local new_value
+    new_value=$(_parse_bool_value "$1") || {
+        echo "Error: set_unsafe_allow_ansi_codes: invalid value '$1'" >&2
+        echo "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$LOG_UNSAFE_ALLOW_ANSI_CODES"
-    LOG_UNSAFE_ALLOW_ANSI_CODES="$1"
+    LOG_UNSAFE_ALLOW_ANSI_CODES="$new_value"
 
     local safety_notice=""
     if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then

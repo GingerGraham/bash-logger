@@ -712,6 +712,50 @@ test_set_unsafe_allow_newlines() {
     pass_test
 }
 
+# Test: set_unsafe_allow_newlines normalises truthy inputs
+test_set_unsafe_allow_newlines_truthy_variants() {
+    start_test "set_unsafe_allow_newlines accepts truthy variants"
+
+    init_logger --quiet
+
+    for val in yes on 1 YES On YES; do
+        set_unsafe_allow_newlines "$val"
+        assert_equals "true" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_newlines normalises falsy inputs
+test_set_unsafe_allow_newlines_falsy_variants() {
+    start_test "set_unsafe_allow_newlines accepts falsy variants"
+
+    init_logger --quiet
+
+    for val in no off 0 NO Off FALSE; do
+        set_unsafe_allow_newlines "$val"
+        assert_equals "false" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_newlines rejects invalid input
+test_set_unsafe_allow_newlines_invalid_input() {
+    start_test "set_unsafe_allow_newlines rejects invalid value and preserves state"
+
+    init_logger --quiet
+    LOG_UNSAFE_ALLOW_NEWLINES="false"
+
+    local stderr_file="$TEST_DIR/stderr.txt"
+    set_unsafe_allow_newlines "maybe" 2>"$stderr_file"
+    assert_not_equals 0 "$?" || return
+    assert_equals "false" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    assert_file_contains "$stderr_file" "invalid value" || return
+
+    pass_test
+}
+
 # Test: set_unsafe_allow_ansi_codes function
 test_set_unsafe_allow_ansi_codes() {
     start_test "set_unsafe_allow_ansi_codes changes setting"
@@ -723,6 +767,50 @@ test_set_unsafe_allow_ansi_codes() {
 
     set_unsafe_allow_ansi_codes false
     assert_equals "false" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_ansi_codes normalises truthy inputs
+test_set_unsafe_allow_ansi_codes_truthy_variants() {
+    start_test "set_unsafe_allow_ansi_codes accepts truthy variants"
+
+    init_logger --quiet
+
+    for val in yes on 1 YES On TRUE; do
+        set_unsafe_allow_ansi_codes "$val"
+        assert_equals "true" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_ansi_codes normalises falsy inputs
+test_set_unsafe_allow_ansi_codes_falsy_variants() {
+    start_test "set_unsafe_allow_ansi_codes accepts falsy variants"
+
+    init_logger --quiet
+
+    for val in no off 0 NO Off FALSE; do
+        set_unsafe_allow_ansi_codes "$val"
+        assert_equals "false" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_ansi_codes rejects invalid input
+test_set_unsafe_allow_ansi_codes_invalid_input() {
+    start_test "set_unsafe_allow_ansi_codes rejects invalid value and preserves state"
+
+    init_logger --quiet
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+
+    local stderr_file="$TEST_DIR/stderr.txt"
+    set_unsafe_allow_ansi_codes "enabled" 2>"$stderr_file"
+    assert_not_equals 0 "$?" || return
+    assert_equals "false" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+    assert_file_contains "$stderr_file" "invalid value" || return
 
     pass_test
 }
@@ -764,4 +852,10 @@ test_set_journal_logging_no_logger
 test_set_journal_tag_runtime
 test_journal_logging_disables_after_logger_failure
 test_set_unsafe_allow_newlines
+test_set_unsafe_allow_newlines_truthy_variants
+test_set_unsafe_allow_newlines_falsy_variants
+test_set_unsafe_allow_newlines_invalid_input
 test_set_unsafe_allow_ansi_codes
+test_set_unsafe_allow_ansi_codes_truthy_variants
+test_set_unsafe_allow_ansi_codes_falsy_variants
+test_set_unsafe_allow_ansi_codes_invalid_input
