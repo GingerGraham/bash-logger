@@ -243,8 +243,10 @@ if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
     LOGGER_PATH=""
 fi
 # Internal flag: set to "true" by _find_and_validate_logger on every exit path
-# (success and failure alike). Allows log_to_journal to skip discovery when
-# LOGGER_PATH is empty due to a failed/untrusted lookup rather than no lookup at all.
+# (success and failure alike). Used by log_to_journal to skip discovery only when
+# LOGGER_PATH is already set — i.e. a previous discovery succeeded and locked the path.
+# When LOGGER_PATH is empty (prior discovery failed or logger was not found), discovery
+# is always retried so that logger becoming available mid-session is handled correctly.
 # Not readonly — resetting to "false" on re-source is correct (new context must re-validate).
 _LOGGER_DISCOVERY_DONE="false"
 
@@ -1931,11 +1933,11 @@ log_to_journal() {
         return 0
     fi
 
-    # Fast-path: if discovery has already run (successfully or not), skip it.
-    # _LOGGER_DISCOVERY_DONE is set on every exit path of _find_and_validate_logger,
-    # so an empty LOGGER_PATH with the flag set means logger is absent or untrusted —
-    # no point repeating command -v, symlink resolution, and path validation.
-    if [[ "$_LOGGER_DISCOVERY_DONE" != "true" ]]; then
+    # Fast-path: skip discovery only when LOGGER_PATH is already set (a prior successful
+    # discovery locked the path as readonly). If LOGGER_PATH is empty — regardless of
+    # whether _LOGGER_DISCOVERY_DONE is true — retry discovery so that logger becoming
+    # available mid-session (installed, PATH corrected, etc.) is handled correctly.
+    if [[ "$_LOGGER_DISCOVERY_DONE" != "true" || -z "$LOGGER_PATH" ]]; then
         check_logger_available
     fi
 
