@@ -108,7 +108,14 @@ FILES=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run|-n)  DRY_RUN="true"; shift ;;
-        --repo|-r)     REPO="$2"; shift 2 ;;
+        --repo|-r)
+            if [[ $# -lt 2 ]]; then
+                err "Option $1 requires an argument."
+                exit 1
+            fi
+            REPO="$2"
+            shift 2
+            ;;
         --help|-h)     usage ;;
         --)            shift; FILES+=("$@"); break ;;
         -*)            err "Unknown option: $1"; exit 1 ;;
