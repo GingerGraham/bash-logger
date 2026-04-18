@@ -253,7 +253,6 @@ test_set_journal_tag_rejects_control_chars() {
     init_logger
     set_journal_tag "clean-tag"
 
-    # shellcheck disable=SC2034  # local variable used via $() below
     if set_journal_tag $'tag\twith\ttabs' >/dev/null 2>&1; then
         fail_test "set_journal_tag should return non-zero for tag with control characters"
         return
