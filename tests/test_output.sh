@@ -402,6 +402,54 @@ test_set_color_mode_auto() {
     pass_test
 }
 
+# Test: log_init respects --stderr-level EMERGENCY (strict threshold)
+test_log_init_respects_stderr_level_emergency() {
+    start_test "log_init does not route to stderr when --stderr-level EMERGENCY"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --stderr-level EMERGENCY --no-color
+        log_init 'Application starting'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stdout" "Application starting" || return
+    assert_file_not_contains "$TEST_DIR/stderr" "Application starting" || return
+
+    pass_test
+}
+
+# Test: log_init routes to stderr when --stderr-level DEBUG (permissive threshold)
+test_log_init_respects_stderr_level_debug() {
+    start_test "log_init routes to stderr when --stderr-level DEBUG"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --stderr-level DEBUG --no-color
+        log_init 'Application starting'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stderr" "Application starting" || return
+
+    pass_test
+}
+
+# Test: log_init always shows even when --level is more restrictive
+test_log_init_always_shows_regardless_of_level() {
+    start_test "log_init always shows regardless of log level filter"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --level ERROR --no-color
+        log_init 'Application starting'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    local combined
+    combined=$(cat "$TEST_DIR/stdout" "$TEST_DIR/stderr")
+    assert_contains "$combined" "Application starting" || return
+
+    pass_test
+}
+
 # Run all tests
 test_console_output_default
 test_console_output_quiet
@@ -424,3 +472,6 @@ test_log_line_truncation
 test_set_color_mode_always
 test_set_color_mode_never
 test_set_color_mode_auto
+test_log_init_respects_stderr_level_emergency
+test_log_init_respects_stderr_level_debug
+test_log_init_always_shows_regardless_of_level

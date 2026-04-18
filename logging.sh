@@ -76,6 +76,7 @@ if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* BASH_LOGGER_VERSION
     readonly LOG_LEVEL_NOTICE=5     # Normal but significant conditions
     readonly LOG_LEVEL_INFO=6       # Informational messages
     readonly LOG_LEVEL_DEBUG=7      # Debug information (least severe)
+    readonly LOG_LEVEL_INIT=6       # Initialization messages (maps to INFO for stderr routing)
 
     # Aliases for backward compatibility
     readonly LOG_LEVEL_FATAL=$LOG_LEVEL_EMERGENCY  # Alias for EMERGENCY
@@ -1700,10 +1701,12 @@ _log_message() {
     local skip_file="${4:-false}"
     local skip_journal="${5:-false}"
     local force_journal="${6:-false}"
+    local force_show="${7:-false}"
 
     # Skip logging if message level is more verbose than current log level
     # With syslog-style levels, HIGHER values are LESS severe (more verbose)
-    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]]; then
+    # force_show=true bypasses this filter (used by log_init to always show)
+    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" && "$force_show" != "true" ]]; then
         return
     fi
 
@@ -1802,7 +1805,7 @@ log_fatal() {
 }
 
 log_init() {
-    _log_message "INIT" -1 "$1"  # Using -1 to ensure it always shows
+    _log_message "INIT" "$LOG_LEVEL_INIT" "$1" "false" "false" "false" "true"
 }
 
 # Function for sensitive logging - console only, never to file or journal
