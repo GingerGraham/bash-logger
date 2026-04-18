@@ -999,10 +999,24 @@ _strip_ansi_codes() {
     local step2b
     step2b=$(printf '%s' "$step2" | sed "s|${esc}][^${esc}]*${esc}\\\\||g")
 
+    # Remove DCS (Device Control String) sequences: ESC P ... ESC \
+    # These carry device control payloads (e.g. Sixel graphics, DECRQSS responses).
+    # Both the payload and the ST terminator must be removed along with the opener.
+    local step2c
+    step2c=$(printf '%s' "$step2b" | sed "s|${esc}P[^${esc}]*${esc}\\\\||g")
+
+    # Remove PM (Privacy Message) sequences: ESC ^ ... ESC \
+    local step2d
+    step2d=$(printf '%s' "$step2c" | sed "s|${esc}^[^${esc}]*${esc}\\\\||g")
+
+    # Remove APC (Application Program Command) sequences: ESC _ ... ESC \
+    local step2e
+    step2e=$(printf '%s' "$step2d" | sed "s|${esc}_[^${esc}]*${esc}\\\\||g")
+
     # Remove remaining escape sequences (simplified fallback)
     local step3
     # shellcheck disable=SC1117
-    step3=$(printf '%s' "$step2b" | sed 's/\x1b[^[]//g')
+    step3=$(printf '%s' "$step2e" | sed 's/\x1b[^[]//g')
 
     echo "$step3"
 }

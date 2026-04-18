@@ -381,6 +381,81 @@ test_other_csi_parameter_bytes_stripped() {
     fi
 }
 
+# Test: DCS sequences are fully stripped (payload + ST terminator)
+test_dcs_sequences_stripped() {
+    start_test "DCS sequences are fully stripped including payload and ST terminator"
+
+    # DCS sequence: ESC P <payload> ESC \  (e.g. Sixel graphics, DECRQSS responses)
+    local malicious_input=$'\ePsixel-data-here\e\\'
+    local expected=""
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "DCS payload not stripped: got '$sanitized' expected ''"
+    fi
+}
+
+# Test: PM sequences are fully stripped (payload + ST terminator)
+test_pm_sequences_stripped() {
+    start_test "PM sequences are fully stripped including payload and ST terminator"
+
+    # PM sequence: ESC ^ <payload> ESC \  (Privacy Message)
+    local malicious_input=$'\e^metadata\e\\'
+    local expected=""
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "PM payload not stripped: got '$sanitized' expected ''"
+    fi
+}
+
+# Test: APC sequences are fully stripped (payload + ST terminator)
+test_apc_sequences_stripped() {
+    start_test "APC sequences are fully stripped including payload and ST terminator"
+
+    # APC sequence: ESC _ <payload> ESC \  (Application Program Command)
+    local malicious_input=$'\e_app-data\e\\'
+    local expected=""
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "APC payload not stripped: got '$sanitized' expected ''"
+    fi
+}
+
+# Test: Mixed DCS, PM, and APC sequences interleaved with normal text are stripped
+test_mixed_dcs_pm_apc_stripped() {
+    start_test "Mixed DCS, PM, and APC sequences interleaved with normal text are stripped"
+
+    local malicious_input=$'Start\ePdcs-payload\e\\Middle\e^pm-payload\e\\End\e_apc-payload\e\\Tail'
+    local expected="StartMiddleEndTail"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    if [[ "$sanitized" == "$expected" ]]; then
+        pass_test
+    else
+        fail_test "Mixed DCS/PM/APC not stripped: got '$sanitized' expected '$expected'"
+    fi
+}
+
 # Run all tests
 test_default_strips_csi_sequences
 test_default_strips_screen_control
@@ -401,6 +476,10 @@ test_osc_with_embedded_escapes_stripped
 test_multiple_consecutive_osc_stripped
 test_mixed_mode_newlines_allowed_ansi_stripped
 test_other_csi_parameter_bytes_stripped
+test_dcs_sequences_stripped
+test_pm_sequences_stripped
+test_apc_sequences_stripped
+test_mixed_dcs_pm_apc_stripped
 
 # Cleanup after running all tests
 cleanup_test_suite
