@@ -773,28 +773,28 @@ _get_log_level_value() {
     local line_num="${2:-}"
     case "${level_name^^}" in
         "DEBUG")
-            echo $LOG_LEVEL_DEBUG
+            echo "$LOG_LEVEL_DEBUG"
             ;;
         "INFO")
-            echo $LOG_LEVEL_INFO
+            echo "$LOG_LEVEL_INFO"
             ;;
         "NOTICE")
-            echo $LOG_LEVEL_NOTICE
+            echo "$LOG_LEVEL_NOTICE"
             ;;
         "WARN" | "WARNING")
-            echo $LOG_LEVEL_WARN
+            echo "$LOG_LEVEL_WARN"
             ;;
         "ERROR" | "ERR")
-            echo $LOG_LEVEL_ERROR
+            echo "$LOG_LEVEL_ERROR"
             ;;
         "CRITICAL" | "CRIT")
-            echo $LOG_LEVEL_CRITICAL
+            echo "$LOG_LEVEL_CRITICAL"
             ;;
         "ALERT")
-            echo $LOG_LEVEL_ALERT
+            echo "$LOG_LEVEL_ALERT"
             ;;
         "EMERGENCY" | "EMERG" | "FATAL")
-            echo $LOG_LEVEL_EMERGENCY
+            echo "$LOG_LEVEL_EMERGENCY"
             ;;
         *)
             # If it's a number between 0-7 (valid syslog levels), use it directly
@@ -807,7 +807,7 @@ _get_log_level_value() {
                     echo "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
                 fi
                 # Default to INFO if invalid
-                echo $LOG_LEVEL_INFO
+                echo "$LOG_LEVEL_INFO"
             fi
             ;;
     esac
