@@ -468,6 +468,98 @@ test_no_journal_via_runtime() {
     pass_test
 }
 
+# ---------------------------------------------------------------------------
+# Test 15: log_to_journal retries discovery after a failed init_logger --journal
+# Regression test for https://github.com/GingerGraham/bash-logger/issues/93
+# Reproduces the exact scenario: _LOGGER_DISCOVERY_DONE=true + LOGGER_PATH=""
+# (the state left by a failed init_logger --journal), then a stub logger appears.
+# ---------------------------------------------------------------------------
+test_log_to_journal_retries_discovery_after_failed_init() {
+    start_test "log_to_journal retries discovery when LOGGER_PATH empty after failed init (issue #93)"
+
+    _create_stub_logger "$TEST_DIR"
+
+    local result exit_code
+    result=$(bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+
+        # Simulate the state left by a failed init_logger --journal:
+        # discovery was attempted (_LOGGER_DISCOVERY_DONE=true) but logger was not
+        # found or not trusted (LOGGER_PATH='').
+        # Override _find_and_validate_logger to reflect that the stub is now available.
+        _find_and_validate_logger() {
+            LOGGER_PATH='$STUB_LOGGER'
+            _LOGGER_DISCOVERY_DONE='true'
+            return 0
+        }
+        check_logger_available() { _find_and_validate_logger; }
+
+        _LOGGER_DISCOVERY_DONE='true'
+        LOGGER_PATH=''
+        USE_JOURNAL='false'
+
+        init_logger --no-color --quiet 2>/dev/null
+
+        log_to_journal INFO 'issue93_rediscovery_marker'
+        echo exit:\$?
+    " 2>&1)
+    exit_code=$(echo "$result" | grep -o 'exit:[0-9]*' | cut -d: -f2)
+
+    assert_equals "0" "$exit_code" \
+        "log_to_journal should return 0 after successful rediscovery" || return
+    assert_file_contains "$STUB_CAPTURE" "issue93_rediscovery_marker" \
+        "Stub logger should have captured the message after rediscovery" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
+# Test 16: log_to_journal retries discovery on second call after first failure
+# Even after a warning is emitted on the first call (logger unavailable), the
+# second call should still attempt re-discovery when LOGGER_PATH is still empty.
+# ---------------------------------------------------------------------------
+test_log_to_journal_retries_on_second_call_after_first_failure() {
+    start_test "log_to_journal retries discovery on second call after first failure"
+
+    _create_stub_logger "$TEST_DIR"
+
+    local result exit_code
+    result=$(bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+
+        # First call: logger not available — discovery fails, warning emitted.
+        # Second call: stub logger now available — discovery should be retried.
+        _attempt=0
+        _find_and_validate_logger() {
+            _attempt=\$(( _attempt + 1 ))
+            if [[ \$_attempt -lt 2 ]]; then
+                LOGGER_PATH=''
+                _LOGGER_DISCOVERY_DONE='true'
+                return 1
+            fi
+            LOGGER_PATH='$STUB_LOGGER'
+            _LOGGER_DISCOVERY_DONE='true'
+            return 0
+        }
+        check_logger_available() { _find_and_validate_logger; }
+
+        init_logger --no-color --quiet 2>/dev/null
+        USE_JOURNAL='false'
+
+        log_to_journal INFO 'first_call_should_fail'   2>/dev/null || true
+        log_to_journal INFO 'second_call_should_succeed'
+        echo exit:\$?
+    " 2>&1)
+    exit_code=$(echo "$result" | grep -o 'exit:[0-9]*' | cut -d: -f2)
+
+    assert_equals "0" "$exit_code" \
+        "log_to_journal second call should return 0 after rediscovery" || return
+    assert_file_contains "$STUB_CAPTURE" "second_call_should_succeed" \
+        "Stub logger should have captured the second message after rediscovery" || return
+
+    pass_test
+}
+
 # Run all tests
 test_journal_option
 test_no_journal_via_runtime
@@ -483,3 +575,5 @@ test_log_to_journal_no_double_warn_when_journal_enabled
 test_log_sensitive_unaffected_by_force_journal
 test_log_to_journal_level_aliases
 test_log_to_journal_numeric_levels
+test_log_to_journal_retries_discovery_after_failed_init
+test_log_to_journal_retries_on_second_call_after_first_failure

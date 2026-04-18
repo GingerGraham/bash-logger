@@ -192,6 +192,92 @@ test_set_journal_tag() {
     pass_test
 }
 
+# Test: set_journal_tag rejects empty string
+test_set_journal_tag_rejects_empty() {
+    start_test "set_journal_tag rejects empty tag"
+
+    init_logger
+    set_journal_tag "original-tag"
+
+    if set_journal_tag "" >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for empty tag"
+        return
+    fi
+
+    assert_equals "original-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag rejects oversized tags
+test_set_journal_tag_rejects_long_tag() {
+    start_test "set_journal_tag rejects tag longer than 64 characters"
+
+    init_logger
+    set_journal_tag "short-tag"
+
+    local long_tag
+    long_tag=$(printf 'A%.0s' {1..200})
+
+    if set_journal_tag "$long_tag" >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for tag exceeding 64 characters"
+        return
+    fi
+
+    assert_equals "short-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag rejects tags with shell metacharacters
+test_set_journal_tag_rejects_metacharacters() {
+    start_test "set_journal_tag rejects tag containing shell metacharacters"
+
+    init_logger
+    set_journal_tag "safe-tag"
+
+    if set_journal_tag 'bad$tag' >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for tag with metacharacters"
+        return
+    fi
+
+    assert_equals "safe-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag rejects tags with control characters
+test_set_journal_tag_rejects_control_chars() {
+    start_test "set_journal_tag rejects tag containing control characters"
+
+    init_logger
+    set_journal_tag "clean-tag"
+
+    if set_journal_tag $'tag\twith\ttabs' >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for tag with control characters"
+        return
+    fi
+
+    assert_equals "clean-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag preserves existing tag on rejection
+test_set_journal_tag_preserves_tag_on_rejection() {
+    start_test "set_journal_tag preserves existing tag when new value is invalid"
+
+    init_logger
+    set_journal_tag "my-app"
+    assert_equals "my-app" "$JOURNAL_TAG" || return
+
+    set_journal_tag "$(printf 'X%.0s' {1..200})" >/dev/null 2>&1 || true
+
+    assert_equals "my-app" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
 # Test: set_syslog_facility with valid value
 test_set_syslog_facility_valid() {
     start_test "set_syslog_facility accepts valid facility"
@@ -249,6 +335,54 @@ test_set_color_mode() {
     assert_equals "never" "$USE_COLORS" || return
 
     set_color_mode auto
+    assert_equals "auto" "$USE_COLORS" || return
+
+    pass_test
+}
+
+# Test: set_color_mode rejects unrecognised mode
+test_set_color_mode_rejects_invalid() {
+    start_test "set_color_mode rejects unrecognised mode"
+
+    init_logger
+
+    if set_color_mode "foobar" >/dev/null 2>&1; then
+        fail_test "set_color_mode should return non-zero for unrecognised mode 'foobar'"
+        return
+    fi
+
+    pass_test
+}
+
+# Test: set_color_mode preserves USE_COLORS on invalid input
+test_set_color_mode_preserves_state_on_invalid() {
+    start_test "set_color_mode preserves USE_COLORS on invalid input"
+
+    init_logger
+    set_color_mode "always"
+
+    if set_color_mode "foobar" >/dev/null 2>&1; then
+        fail_test "set_color_mode should return non-zero for unrecognised mode 'foobar'"
+        return
+    fi
+
+    assert_equals "always" "$USE_COLORS" || return
+
+    pass_test
+}
+
+# Test: set_color_mode rejects wrong-case canonical value
+test_set_color_mode_rejects_wrong_case() {
+    start_test "set_color_mode rejects wrong-case canonical value"
+
+    init_logger
+    set_color_mode "auto"
+
+    if set_color_mode "ALWAYS" >/dev/null 2>&1; then
+        fail_test "set_color_mode should return non-zero for wrong-case value 'ALWAYS'"
+        return
+    fi
+
     assert_equals "auto" "$USE_COLORS" || return
 
     pass_test
@@ -577,6 +711,50 @@ test_set_unsafe_allow_newlines() {
     pass_test
 }
 
+# Test: set_unsafe_allow_newlines normalises truthy inputs
+test_set_unsafe_allow_newlines_truthy_variants() {
+    start_test "set_unsafe_allow_newlines accepts truthy variants"
+
+    init_logger --quiet
+
+    for val in yes on 1 YES On YES; do
+        set_unsafe_allow_newlines "$val"
+        assert_equals "true" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_newlines normalises falsy inputs
+test_set_unsafe_allow_newlines_falsy_variants() {
+    start_test "set_unsafe_allow_newlines accepts falsy variants"
+
+    init_logger --quiet
+
+    for val in no off 0 NO Off FALSE; do
+        set_unsafe_allow_newlines "$val"
+        assert_equals "false" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_newlines rejects invalid input
+test_set_unsafe_allow_newlines_invalid_input() {
+    start_test "set_unsafe_allow_newlines rejects invalid value and preserves state"
+
+    init_logger --quiet
+    LOG_UNSAFE_ALLOW_NEWLINES="false"
+
+    local stderr_file="$TEST_DIR/stderr.txt"
+    set_unsafe_allow_newlines "maybe" 2>"$stderr_file"
+    assert_not_equals 0 "$?" || return
+    assert_equals "false" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    assert_file_contains "$stderr_file" "invalid value" || return
+
+    pass_test
+}
+
 # Test: set_unsafe_allow_ansi_codes function
 test_set_unsafe_allow_ansi_codes() {
     start_test "set_unsafe_allow_ansi_codes changes setting"
@@ -592,6 +770,50 @@ test_set_unsafe_allow_ansi_codes() {
     pass_test
 }
 
+# Test: set_unsafe_allow_ansi_codes normalises truthy inputs
+test_set_unsafe_allow_ansi_codes_truthy_variants() {
+    start_test "set_unsafe_allow_ansi_codes accepts truthy variants"
+
+    init_logger --quiet
+
+    for val in yes on 1 YES On TRUE; do
+        set_unsafe_allow_ansi_codes "$val"
+        assert_equals "true" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_ansi_codes normalises falsy inputs
+test_set_unsafe_allow_ansi_codes_falsy_variants() {
+    start_test "set_unsafe_allow_ansi_codes accepts falsy variants"
+
+    init_logger --quiet
+
+    for val in no off 0 NO Off FALSE; do
+        set_unsafe_allow_ansi_codes "$val"
+        assert_equals "false" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+    done
+
+    pass_test
+}
+
+# Test: set_unsafe_allow_ansi_codes rejects invalid input
+test_set_unsafe_allow_ansi_codes_invalid_input() {
+    start_test "set_unsafe_allow_ansi_codes rejects invalid value and preserves state"
+
+    init_logger --quiet
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+
+    local stderr_file="$TEST_DIR/stderr.txt"
+    set_unsafe_allow_ansi_codes "enabled" 2>"$stderr_file"
+    assert_not_equals 0 "$?" || return
+    assert_equals "false" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+    assert_file_contains "$stderr_file" "invalid value" || return
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -602,10 +824,18 @@ test_set_timezone_utc
 test_set_timezone_local
 test_set_journal_logging
 test_set_journal_tag
+test_set_journal_tag_rejects_empty
+test_set_journal_tag_rejects_long_tag
+test_set_journal_tag_rejects_metacharacters
+test_set_journal_tag_rejects_control_chars
+test_set_journal_tag_preserves_tag_on_rejection
 test_set_syslog_facility_valid
 test_set_syslog_facility_invalid
 test_set_syslog_facility_reflects_change
 test_set_color_mode
+test_set_color_mode_rejects_invalid
+test_set_color_mode_preserves_state_on_invalid
+test_set_color_mode_rejects_wrong_case
 test_multiple_runtime_changes
 test_runtime_changes_dont_affect_history
 test_set_log_level_verbose_interaction
@@ -621,4 +851,10 @@ test_set_journal_logging_no_logger
 test_set_journal_tag_runtime
 test_journal_logging_disables_after_logger_failure
 test_set_unsafe_allow_newlines
+test_set_unsafe_allow_newlines_truthy_variants
+test_set_unsafe_allow_newlines_falsy_variants
+test_set_unsafe_allow_newlines_invalid_input
 test_set_unsafe_allow_ansi_codes
+test_set_unsafe_allow_ansi_codes_truthy_variants
+test_set_unsafe_allow_ansi_codes_falsy_variants
+test_set_unsafe_allow_ansi_codes_invalid_input

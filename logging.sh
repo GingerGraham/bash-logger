@@ -66,6 +66,13 @@ if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* BASH_LOGGER_VERSION
         fi
     done
 
+    # Unset deduplication flags that gate write-failure warnings.
+    # These flags are mutable (legitimately set to "yes" during normal operation) so they
+    # are not readonly, but they must start empty on each fresh source to prevent a
+    # pre-existing environment value from permanently suppressing error reporting.
+    unset LOGGER_FILE_ERROR_REPORTED    2>/dev/null || true
+    unset LOGGER_JOURNAL_ERROR_REPORTED 2>/dev/null || true
+
     # Log levels (following complete syslog standard - higher number = less severe)
     # These are readonly to prevent malicious override after initialization
     readonly LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
@@ -76,6 +83,7 @@ if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* BASH_LOGGER_VERSION
     readonly LOG_LEVEL_NOTICE=5     # Normal but significant conditions
     readonly LOG_LEVEL_INFO=6       # Informational messages
     readonly LOG_LEVEL_DEBUG=7      # Debug information (least severe)
+    readonly LOG_LEVEL_INIT=6       # Initialization messages (maps to INFO for stderr routing)
 
     # Aliases for backward compatibility
     readonly LOG_LEVEL_FATAL=$LOG_LEVEL_EMERGENCY  # Alias for EMERGENCY
@@ -235,8 +243,10 @@ if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
     LOGGER_PATH=""
 fi
 # Internal flag: set to "true" by _find_and_validate_logger on every exit path
-# (success and failure alike). Allows log_to_journal to skip discovery when
-# LOGGER_PATH is empty due to a failed/untrusted lookup rather than no lookup at all.
+# (success and failure alike). Used by log_to_journal to skip discovery only when
+# LOGGER_PATH is already set — i.e. a previous discovery succeeded and locked the path.
+# When LOGGER_PATH is empty (prior discovery failed or logger was not found), discovery
+# is always retried so that logger becoming available mid-session is handled correctly.
 # Not readonly — resetting to "false" on re-source is correct (new context must re-validate).
 _LOGGER_DISCOVERY_DONE="false"
 
@@ -440,6 +450,32 @@ _validate_config_journal_tag() {
     return 0
 }
 
+# Validate journal tag value (internal)
+# Checks for reasonable length and dangerous characters
+# Returns 0 if valid, 1 otherwise
+_validate_journal_tag() {
+    local tag="$1"
+    local max_tag_length=64
+
+    if [[ -z "$tag" ]]; then
+        echo "Warning: Empty journal tag" >&2
+        return 1
+    fi
+
+    if ! _validate_string "$tag" "$max_tag_length" "journal tag" "false" "true"; then
+        return 1
+    fi
+
+    # Check for shell metacharacters that could cause issues
+    # Character class includes: $ ` ; | & < > ( ) { } [ ] \
+    if [[ "$tag" =~ []$\`\;\|\&\<\>\(\)\{\}\[\\] ]]; then
+        echo "Warning: Journal tag contains shell metacharacters" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 # Validate syslog facility value (internal)
 # Returns 0 if valid, 1 otherwise
 _validate_syslog_facility() {
@@ -457,6 +493,18 @@ _validate_syslog_facility() {
             echo "  Valid facilities: kern, user, mail, daemon, auth, syslog, lpr, news, uucp, cron, authpriv, ftp, local0-local7" >&2
             return 1
             ;;
+    esac
+}
+
+# Parse a boolean string value to a canonical "true" or "false" (internal)
+# Accepts: true/yes/on/1 -> prints "true"; false/no/off/0 -> prints "false"
+# Returns 0 on success, 1 for unrecognised input (prints nothing)
+_parse_bool_value() {
+    local input="${1,,}"
+    case "$input" in
+        true|yes|on|1)   echo "true";  return 0 ;;
+        false|no|off|0)  echo "false"; return 0 ;;
+        *)               return 1 ;;
     esac
 }
 
@@ -663,30 +711,14 @@ _parse_config_file() {
                     esac
                     ;;
                 unsafe_allow_newlines|unsafe-allow-newlines)
-                    case "${value,,}" in
-                        true|yes|1|on)
-                            LOG_UNSAFE_ALLOW_NEWLINES="true"
-                            ;;
-                        false|no|0|off)
-                            LOG_UNSAFE_ALLOW_NEWLINES="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
+                    if ! LOG_UNSAFE_ALLOW_NEWLINES=$(_parse_bool_value "$value"); then
+                        echo "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
+                    fi
                     ;;
                 unsafe_allow_ansi_codes|unsafe-allow-ansi-codes)
-                    case "${value,,}" in
-                        true|yes|1|on)
-                            LOG_UNSAFE_ALLOW_ANSI_CODES="true"
-                            ;;
-                        false|no|0|off)
-                            LOG_UNSAFE_ALLOW_ANSI_CODES="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
+                    if ! LOG_UNSAFE_ALLOW_ANSI_CODES=$(_parse_bool_value "$value"); then
+                        echo "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
+                    fi
                     ;;
                 max_line_length|max-line-length|log_max_line_length|log-max-line-length)
                     if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
@@ -965,10 +997,24 @@ _strip_ansi_codes() {
     local step2b
     step2b=$(printf '%s' "$step2" | sed "s|${esc}][^${esc}]*${esc}\\\\||g")
 
+    # Remove DCS (Device Control String) sequences: ESC P ... ESC \
+    # These carry device control payloads (e.g. Sixel graphics, DECRQSS responses).
+    # Both the payload and the ST terminator must be removed along with the opener.
+    local step2c
+    step2c=$(printf '%s' "$step2b" | sed "s|${esc}P[^${esc}]*${esc}\\\\||g")
+
+    # Remove PM (Privacy Message) sequences: ESC ^ ... ESC \
+    local step2d
+    step2d=$(printf '%s' "$step2c" | sed "s|${esc}^[^${esc}]*${esc}\\\\||g")
+
+    # Remove APC (Application Program Command) sequences: ESC _ ... ESC \
+    local step2e
+    step2e=$(printf '%s' "$step2d" | sed "s|${esc}_[^${esc}]*${esc}\\\\||g")
+
     # Remove remaining escape sequences (simplified fallback)
     local step3
     # shellcheck disable=SC1117
-    step3=$(printf '%s' "$step2b" | sed 's/\x1b[^[]//g')
+    step3=$(printf '%s' "$step2e" | sed 's/\x1b[^[]//g')
 
     echo "$step3"
 }
@@ -1453,6 +1499,10 @@ set_journal_logging() {
 
 # Function to set journal tag
 set_journal_tag() {
+    if ! _validate_journal_tag "$1"; then
+        return 1
+    fi
+
     local old_tag="$JOURNAL_TAG"
     JOURNAL_TAG="$1"
 
@@ -1514,21 +1564,26 @@ set_syslog_facility() {
 set_color_mode() {
     local mode="$1"
     local old_setting="$USE_COLORS"
+    local new_value
 
     case "$mode" in
         true|on|yes|1)
-            USE_COLORS="always"
+            new_value="always"
             ;;
         false|off|no|0)
-            USE_COLORS="never"
+            new_value="never"
             ;;
-        auto)
-            USE_COLORS="auto"
+        auto|always|never)
+            new_value="$mode"
             ;;
         *)
-            USE_COLORS="$mode"  # Set directly if it's already "always", "never", or "auto"
+            echo "Error: set_color_mode: unrecognised mode '$mode'" >&2
+            echo "  Valid modes: auto, always, never (or: true/false, on/off, yes/no, 1/0)" >&2
+            return 1
             ;;
     esac
+
+    USE_COLORS="$new_value"
 
     local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
     local log_entry
@@ -1584,8 +1639,14 @@ set_script_name() {
 # WARNING: Disabling sanitization can allow log injection attacks. Only use if you have
 #          explicit control over all logged messages and your log parsing handles newlines safely.
 set_unsafe_allow_newlines() {
+    local new_value
+    new_value=$(_parse_bool_value "$1") || {
+        echo "Error: set_unsafe_allow_newlines: invalid value '$1'" >&2
+        echo "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$LOG_UNSAFE_ALLOW_NEWLINES"
-    LOG_UNSAFE_ALLOW_NEWLINES="$1"
+    LOG_UNSAFE_ALLOW_NEWLINES="$new_value"
 
     local safety_notice=""
     if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
@@ -1627,8 +1688,14 @@ set_unsafe_allow_newlines() {
 # WARNING: Disabling sanitization can allow terminal manipulation attacks. Only use if you have
 #          explicit control over all logged messages and trust their source.
 set_unsafe_allow_ansi_codes() {
+    local new_value
+    new_value=$(_parse_bool_value "$1") || {
+        echo "Error: set_unsafe_allow_ansi_codes: invalid value '$1'" >&2
+        echo "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$LOG_UNSAFE_ALLOW_ANSI_CODES"
-    LOG_UNSAFE_ALLOW_ANSI_CODES="$1"
+    LOG_UNSAFE_ALLOW_ANSI_CODES="$new_value"
 
     local safety_notice=""
     if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
@@ -1700,10 +1767,12 @@ _log_message() {
     local skip_file="${4:-false}"
     local skip_journal="${5:-false}"
     local force_journal="${6:-false}"
+    local force_show="${7:-false}"
 
     # Skip logging if message level is more verbose than current log level
     # With syslog-style levels, HIGHER values are LESS severe (more verbose)
-    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]]; then
+    # force_show=true bypasses this filter (used by log_init to always show)
+    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" && "$force_show" != "true" ]]; then
         return
     fi
 
@@ -1765,49 +1834,49 @@ _log_message() {
 
 # Helper functions for different log levels
 log_debug() {
-    _log_message "DEBUG" $LOG_LEVEL_DEBUG "$1"
+    _log_message "DEBUG" "$LOG_LEVEL_DEBUG" "$1"
 }
 
 log_info() {
-    _log_message "INFO" $LOG_LEVEL_INFO "$1"
+    _log_message "INFO" "$LOG_LEVEL_INFO" "$1"
 }
 
 log_notice() {
-    _log_message "NOTICE" $LOG_LEVEL_NOTICE "$1"
+    _log_message "NOTICE" "$LOG_LEVEL_NOTICE" "$1"
 }
 
 log_warn() {
-    _log_message "WARN" $LOG_LEVEL_WARN "$1"
+    _log_message "WARN" "$LOG_LEVEL_WARN" "$1"
 }
 
 log_error() {
-    _log_message "ERROR" $LOG_LEVEL_ERROR "$1"
+    _log_message "ERROR" "$LOG_LEVEL_ERROR" "$1"
 }
 
 log_critical() {
-    _log_message "CRITICAL" $LOG_LEVEL_CRITICAL "$1"
+    _log_message "CRITICAL" "$LOG_LEVEL_CRITICAL" "$1"
 }
 
 log_alert() {
-    _log_message "ALERT" $LOG_LEVEL_ALERT "$1"
+    _log_message "ALERT" "$LOG_LEVEL_ALERT" "$1"
 }
 
 log_emergency() {
-    _log_message "EMERGENCY" $LOG_LEVEL_EMERGENCY "$1"
+    _log_message "EMERGENCY" "$LOG_LEVEL_EMERGENCY" "$1"
 }
 
 # Alias for backward compatibility
 log_fatal() {
-    _log_message "FATAL" $LOG_LEVEL_EMERGENCY "$1"
+    _log_message "FATAL" "$LOG_LEVEL_EMERGENCY" "$1"
 }
 
 log_init() {
-    _log_message "INIT" -1 "$1"  # Using -1 to ensure it always shows
+    _log_message "INIT" "$LOG_LEVEL_INIT" "$1" "false" "false" "false" "true"
 }
 
 # Function for sensitive logging - console only, never to file or journal
 log_sensitive() {
-    _log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true" "true"
+    _log_message "SENSITIVE" "$LOG_LEVEL_INFO" "$1" "true" "true"
 }
 
 # Log a single message directly to the system journal, regardless of USE_JOURNAL state.
@@ -1864,11 +1933,11 @@ log_to_journal() {
         return 0
     fi
 
-    # Fast-path: if discovery has already run (successfully or not), skip it.
-    # _LOGGER_DISCOVERY_DONE is set on every exit path of _find_and_validate_logger,
-    # so an empty LOGGER_PATH with the flag set means logger is absent or untrusted —
-    # no point repeating command -v, symlink resolution, and path validation.
-    if [[ "$_LOGGER_DISCOVERY_DONE" != "true" ]]; then
+    # Fast-path: skip discovery only when LOGGER_PATH is already set (a prior successful
+    # discovery locked the path as readonly). If LOGGER_PATH is empty — regardless of
+    # whether _LOGGER_DISCOVERY_DONE is true — retry discovery so that logger becoming
+    # available mid-session (installed, PATH corrected, etc.) is handled correctly.
+    if [[ "$_LOGGER_DISCOVERY_DONE" != "true" || -z "$LOGGER_PATH" ]]; then
         check_logger_available
     fi
 

@@ -15,7 +15,7 @@
 run_install_test_script() {
     local script_content="$1"
     local test_script="$TEST_DIR/test_script_$$.sh"
-    
+
     cat > "$test_script" << EOF
 #!/usr/bin/env bash
 set -euo pipefail
@@ -25,7 +25,7 @@ main() { :; }
 
 $script_content
 EOF
-    
+
     bash "$test_script" 2>&1
 }
 
@@ -33,7 +33,7 @@ EOF
 assert_command_failed() {
     local exit_code="$1"
     local message="$2"
-    
+
     if [[ ${exit_code:-0} -eq 0 ]]; then
         fail_test "$message"
         return 1
@@ -1345,15 +1345,17 @@ download_release "0.10.0" "$TEMP_DIR"
     pass_test
 }
 
-# Test: download_release falls back to tag archive when primary asset download fails
-test_download_release_fallback_on_primary_failure() {
-    start_test "download_release falls back to tag archive URL when primary asset download fails"
+# Test: download_release (curl) falls back to tag archive when primary asset download fails
+# curl uses a 3-attempt chain: IPv4+primary -> default+primary -> default+fallback
+test_download_release_curl_fallback_on_primary_failure() {
+    start_test "download_release (curl) falls back to tag archive URL when primary asset download fails"
 
     local output
     output=$(run_install_test_script '
 TEMP_DIR="${TEST_TMP_DIR}/fallback_test"
 mkdir -p "$TEMP_DIR"
 
+# Fail attempts 1-2 (IPv4+primary, default+primary); succeed on attempt 3 (default+fallback)
 MOCK_CURL_CALLS=0
 curl() {
     MOCK_CURL_CALLS=$((MOCK_CURL_CALLS + 1))
@@ -1376,6 +1378,37 @@ curl() {
     return 0
 }
 
+download_release "0.10.0" "$TEMP_DIR"
+')
+
+    assert_contains "$output" "falling back to tag archive" || return
+    assert_contains "$output" "archive/refs/tags/0.10.0" || return
+    assert_contains "$output" "CURL_CALL_3" || return
+
+    pass_test
+}
+
+# Test: download_release (wget) falls back to tag archive when primary asset download fails
+# wget uses a 4-attempt chain: IPv4+primary -> default+primary -> IPv4+fallback -> default+fallback
+# This differs from curl (3 attempts): wget adds an IPv4-forced retry on the fallback URL too.
+test_download_release_wget_fallback_on_primary_failure() {
+    start_test "download_release (wget) falls back to tag archive URL when primary asset download fails"
+
+    local output
+    output=$(run_install_test_script '
+TEMP_DIR="${TEST_TMP_DIR}/wget_fallback_test"
+mkdir -p "$TEMP_DIR"
+
+# Override command() to hide curl so the wget code path in download_release is exercised
+command() {
+    case "$1 $2" in
+        "-v curl") return 1 ;;
+        "-v wget") return 0 ;;
+        *) builtin command "$@" ;;
+    esac
+}
+
+# Fail attempts 1-3 (IPv4+primary, default+primary, IPv4+fallback); succeed on attempt 4 (default+fallback)
 MOCK_WGET_CALLS=0
 wget() {
     MOCK_WGET_CALLS=$((MOCK_WGET_CALLS + 1))
@@ -1386,7 +1419,7 @@ wget() {
         prev_arg="$arg"
     done
     echo "WGET_CALL_${MOCK_WGET_CALLS}: $url"
-    if [[ $MOCK_WGET_CALLS -le 2 ]]; then
+    if [[ $MOCK_WGET_CALLS -le 3 ]]; then
         return 1
     fi
     if [[ -n "$output_file" ]]; then
@@ -1403,6 +1436,7 @@ download_release "0.10.0" "$TEMP_DIR"
 
     assert_contains "$output" "falling back to tag archive" || return
     assert_contains "$output" "archive/refs/tags/0.10.0" || return
+    assert_contains "$output" "WGET_CALL_4" || return
 
     pass_test
 }
@@ -1479,5 +1513,6 @@ test_configure_rc_file_already_installed_with_auto_rc
 test_configure_rc_file_already_installed_without_auto_rc
 test_configure_rc_file_already_installed_system_mode
 test_download_release_url_construction
-test_download_release_fallback_on_primary_failure
+test_download_release_curl_fallback_on_primary_failure
+test_download_release_wget_fallback_on_primary_failure
 test_download_release_error_on_all_failures
