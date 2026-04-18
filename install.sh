@@ -561,7 +561,12 @@ download_release() {
             fi
         fi
     elif command -v wget >/dev/null 2>&1; then
-        # Mirror curl behavior: try IPv4 first, then default settings for both URLs
+        # wget uses a 4-attempt chain, mirroring curl's IPv4-first preference on both URLs:
+        #   attempt 1: -4      + primary URL  (IPv4-forced)
+        #   attempt 2: default + primary URL
+        #   attempt 3: -4      + fallback URL (IPv4-forced; curl omits this step)
+        #   attempt 4: default + fallback URL
+        # curl uses only 3 attempts (no IPv4-forced retry on the fallback URL).
         if ! wget -4 --timeout=60 --dns-timeout=10 --connect-timeout=10 \
             -qO "${temp_dir}/release.tar.gz" "$download_url" 2>/dev/null; then
             info "Primary download failed, retrying with default settings..." >&2
