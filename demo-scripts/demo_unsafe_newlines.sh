@@ -46,7 +46,7 @@ demo_header "Log Injection Prevention Demo"
 
 # Create temporary files for this demo
 DEMO_TEMP_DIR=$(mktemp -d -t bash-logger-demo.XXXXXX)
-trap 'rm -rf $DEMO_TEMP_DIR' EXIT
+trap 'rm -rf -- "$DEMO_TEMP_DIR"' EXIT
 
 echo "This demo illustrates how bash-logger protects against log injection attacks"
 echo "by sanitizing newline characters in log messages."
