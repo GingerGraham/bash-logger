@@ -19,15 +19,15 @@ the init-message suppression option.
 
 **Findings Summary:**
 
-| ID | Severity | Type | Title |
-|----|----------|------|-------|
-| BUG-01 | LOW | Bug | `log_init()` messages unconditionally route to stderr |
-| BUG-02 | LOW | Bug | `set_journal_tag()` bypasses all input validation |
-| BUG-03 | LOW | Bug | `_strip_ansi_codes()` leaves DCS/PM/APC sequence bodies intact |
-| BUG-04 | LOW | Bug | Pre-set `LOGGER_*_ERROR_REPORTED` env vars suppress write-failure warnings |
-| INFO-01 | INFO | Docs | `SECURITY.md` supported-versions table not updated for v2.4.0 |
-| FEAT-01 | — | Enhancement | Validate boolean input in `set_unsafe_allow_*()` functions |
-| FEAT-02 | — | Enhancement | `set_color_mode()` should reject unrecognised mode values |
+| ID      | Severity | Type        | Title                                                                      |
+| ------- | -------- | ----------- | -------------------------------------------------------------------------- |
+| BUG-01  | LOW      | Bug         | `log_init()` messages unconditionally route to stderr                      |
+| BUG-02  | LOW      | Bug         | `set_journal_tag()` bypasses all input validation                          |
+| BUG-03  | LOW      | Bug         | `_strip_ansi_codes()` leaves DCS/PM/APC sequence bodies intact             |
+| BUG-04  | LOW      | Bug         | Pre-set `LOGGER_*_ERROR_REPORTED` env vars suppress write-failure warnings |
+| INFO-01 | INFO     | Docs        | `SECURITY.md` supported-versions table not updated for v2.4.0              |
+| FEAT-01 | —        | Enhancement | Validate boolean input in `set_unsafe_allow_*()` functions                 |
+| FEAT-02 | —        | Enhancement | `set_color_mode()` should reject unrecognised mode values                  |
 
 * 0 Critical vulnerabilities
 * 0 High vulnerabilities
@@ -223,7 +223,7 @@ This mirrors the pattern already established by `set_syslog_facility()` calling
 
 * **Step 1:** Removes CSI sequences (`\e[...letter`) — complete
 * **Step 2:** Removes OSC sequences (`\e]...BEL` and `\e]...\e\\`) — complete
-* **Step 3:** Removes two-character escape sequences (`\eX` where X ≠ `[`) — *partial*
+* **Step 3:** Removes two-character escape sequences (`\eX` where X ≠ `[`) — _partial_
 
 Step 3 correctly removes the two-byte introducer for Device Control String (`\eP`), Privacy
 Message (`\e^`), and Application Program Command (`\e_`) sequences, but the payload data and
@@ -400,7 +400,7 @@ LOG_UNSAFE_ALLOW_NEWLINES="$1"
 
 Values like `"True"`, `"yes"`, `"1"`, or `"enable"` are accepted silently. Because the
 protection check is `!= "true"`, only the exact string `"true"` disables sanitisation —
-so mistyped values leave protection *enabled* — but the CONFIG log entry records the
+so mistyped values leave protection _enabled_ — but the CONFIG log entry records the
 incorrect value, producing a misleading audit trail.
 
 This contrasts with every other runtime setter: `set_syslog_facility()` validates against
@@ -474,26 +474,26 @@ are initialised.
 
 ## Test Coverage Assessment
 
-| Finding | Existing Test Coverage | Recommended New Tests |
-|---------|----------------------|----------------------|
-| BUG-01 | None — no test for stderr routing of `log_init` | `test_initialization.sh`: assert `log_init` does not write to stderr when `--stderr-level EMERGENCY` |
-| BUG-02 | `test_journal_logging.sh` covers `log_to_journal` but not `set_journal_tag` validation | `test_runtime_configuration.sh` (or new file): oversized tag, tag with control chars |
-| BUG-03 | `test_ansi_injection.sh` covers CSI/OSC but not DCS/PM/APC bodies | Add DCS, PM, APC body-stripping tests to `test_ansi_injection.sh` |
-| BUG-04 | `test_environment_security.sh` covers `LOG_LEVEL_*` and `COLOR_*` but not error flags | Add pre-set `LOGGER_FILE_ERROR_REPORTED` / `LOGGER_JOURNAL_ERROR_REPORTED` tests |
+| Finding | Existing Test Coverage                                                                 | Recommended New Tests                                                                                |
+| ------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| BUG-01  | None — no test for stderr routing of `log_init`                                        | `test_initialization.sh`: assert `log_init` does not write to stderr when `--stderr-level EMERGENCY` |
+| BUG-02  | `test_journal_logging.sh` covers `log_to_journal` but not `set_journal_tag` validation | `test_runtime_configuration.sh` (or new file): oversized tag, tag with control chars                 |
+| BUG-03  | `test_ansi_injection.sh` covers CSI/OSC but not DCS/PM/APC bodies                      | Add DCS, PM, APC body-stripping tests to `test_ansi_injection.sh`                                    |
+| BUG-04  | `test_environment_security.sh` covers `LOG_LEVEL_*` and `COLOR_*` but not error flags  | Add pre-set `LOGGER_FILE_ERROR_REPORTED` / `LOGGER_JOURNAL_ERROR_REPORTED` tests                     |
 
 ---
 
 ## Comparison to Previous Audits
 
-| Metric | v1.2.1 (Feb 2026) | v2.1.2 (Feb 2026) | v2.4.0 (Apr 2026) |
-|--------|-------------------|-------------------|-------------------|
-| Critical | 0 | 0 | 0 |
-| High | 0 | 0 | 0 |
-| Medium | 2 | 0 | 0 |
-| Low | 3 | 0 | 4 |
-| Enhancements | 4 | 2 | 2 |
-| Security Tests | ~20 | 70+ | 70+ (new gaps identified) |
-| Overall Posture | GOOD | EXCELLENT | EXCELLENT |
+| Metric          | v1.2.1 (Feb 2026) | v2.1.2 (Feb 2026) | v2.4.0 (Apr 2026)         |
+| --------------- | ----------------- | ----------------- | ------------------------- |
+| Critical        | 0                 | 0                 | 0                         |
+| High            | 0                 | 0                 | 0                         |
+| Medium          | 2                 | 0                 | 0                         |
+| Low             | 3                 | 0                 | 4                         |
+| Enhancements    | 4                 | 2                 | 2                         |
+| Security Tests  | ~20               | 70+               | 70+ (new gaps identified) |
+| Overall Posture | GOOD              | EXCELLENT         | EXCELLENT                 |
 
 The four LOW findings represent defence-in-depth gaps and API consistency issues introduced
 or exposed by features added since v2.1.2. None involve the core sanitisation or
