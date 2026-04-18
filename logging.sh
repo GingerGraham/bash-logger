@@ -1566,21 +1566,26 @@ set_syslog_facility() {
 set_color_mode() {
     local mode="$1"
     local old_setting="$USE_COLORS"
+    local new_value
 
     case "$mode" in
         true|on|yes|1)
-            USE_COLORS="always"
+            new_value="always"
             ;;
         false|off|no|0)
-            USE_COLORS="never"
+            new_value="never"
             ;;
-        auto)
-            USE_COLORS="auto"
+        auto|always|never)
+            new_value="$mode"
             ;;
         *)
-            USE_COLORS="$mode"  # Set directly if it's already "always", "never", or "auto"
+            echo "Error: set_color_mode: unrecognised mode '$mode'" >&2
+            echo "  Valid modes: auto, always, never (or: true/false, on/off, yes/no, 1/0)" >&2
+            return 1
             ;;
     esac
+
+    USE_COLORS="$new_value"
 
     local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
     local log_entry

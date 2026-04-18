@@ -341,6 +341,54 @@ test_set_color_mode() {
     pass_test
 }
 
+# Test: set_color_mode rejects unrecognised mode
+test_set_color_mode_rejects_invalid() {
+    start_test "set_color_mode rejects unrecognised mode"
+
+    init_logger
+
+    if set_color_mode "foobar" >/dev/null 2>&1; then
+        fail_test "set_color_mode should return non-zero for unrecognised mode 'foobar'"
+        return
+    fi
+
+    pass_test
+}
+
+# Test: set_color_mode preserves USE_COLORS on invalid input
+test_set_color_mode_preserves_state_on_invalid() {
+    start_test "set_color_mode preserves USE_COLORS on invalid input"
+
+    init_logger
+    set_color_mode "always"
+
+    if set_color_mode "foobar" >/dev/null 2>&1; then
+        fail_test "set_color_mode should return non-zero for unrecognised mode 'foobar'"
+        return
+    fi
+
+    assert_equals "always" "$USE_COLORS" || return
+
+    pass_test
+}
+
+# Test: set_color_mode rejects wrong-case canonical value
+test_set_color_mode_rejects_wrong_case() {
+    start_test "set_color_mode rejects wrong-case canonical value"
+
+    init_logger
+    set_color_mode "auto"
+
+    if set_color_mode "ALWAYS" >/dev/null 2>&1; then
+        fail_test "set_color_mode should return non-zero for wrong-case value 'ALWAYS'"
+        return
+    fi
+
+    assert_equals "auto" "$USE_COLORS" || return
+
+    pass_test
+}
+
 # Test: Multiple runtime changes
 test_multiple_runtime_changes() {
     start_test "Multiple runtime changes work together"
@@ -698,6 +746,9 @@ test_set_syslog_facility_valid
 test_set_syslog_facility_invalid
 test_set_syslog_facility_reflects_change
 test_set_color_mode
+test_set_color_mode_rejects_invalid
+test_set_color_mode_preserves_state_on_invalid
+test_set_color_mode_rejects_wrong_case
 test_multiple_runtime_changes
 test_runtime_changes_dont_affect_history
 test_set_log_level_verbose_interaction
