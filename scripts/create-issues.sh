@@ -135,7 +135,8 @@ fi
 
 # ── Preflight checks ──────────────────────────────────────────────────────────
 if ! command -v gh >/dev/null 2>&1; then
-    err "gh CLI not found. Install it with: sudo dnf install gh"
+    err "gh CLI not found. Install it using your system package manager or see:"
+    err "https://cli.github.com/"
     err "Then authenticate with: gh auth login"
     exit 1
 fi
