@@ -66,6 +66,13 @@ if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* BASH_LOGGER_VERSION
         fi
     done
 
+    # Unset deduplication flags that gate write-failure warnings.
+    # These flags are mutable (legitimately set to "yes" during normal operation) so they
+    # are not readonly, but they must start empty on each fresh source to prevent a
+    # pre-existing environment value from permanently suppressing error reporting.
+    unset LOGGER_FILE_ERROR_REPORTED    2>/dev/null || true
+    unset LOGGER_JOURNAL_ERROR_REPORTED 2>/dev/null || true
+
     # Log levels (following complete syslog standard - higher number = less severe)
     # These are readonly to prevent malicious override after initialization
     readonly LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)

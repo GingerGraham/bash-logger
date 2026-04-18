@@ -497,6 +497,54 @@ test_readonly_variable_conflicts() {
     fi
 }
 
+# Test: Pre-set LOGGER_FILE_ERROR_REPORTED is cleared at source time
+test_preset_file_error_reported_flag_cleared() {
+    start_test "Pre-set LOGGER_FILE_ERROR_REPORTED is cleared at source time"
+
+    local log_file="$TEST_DIR/flagtest.log"
+    local stderr_file="$TEST_DIR/flagtest.stderr"
+
+    # Export the flag before sourcing to simulate a pre-injected environment value
+    export LOGGER_FILE_ERROR_REPORTED="injected"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --log '$log_file' --no-color --quiet
+        touch '$log_file'
+        chmod 000 '$log_file'
+        log_info 'trigger write failure'
+    " 2>"$stderr_file"
+
+    unset LOGGER_FILE_ERROR_REPORTED
+
+    # The warning must appear — confirming the flag was cleared on source and not suppressed
+    assert_file_contains "$stderr_file" "Failed to write to log file" || return
+
+    pass_test
+}
+
+# Test: Pre-set LOGGER_JOURNAL_ERROR_REPORTED is cleared at source time
+test_preset_journal_error_reported_flag_cleared() {
+    start_test "Pre-set LOGGER_JOURNAL_ERROR_REPORTED is cleared at source time"
+
+    local state_file="$TEST_DIR/journal_flag.state"
+
+    # Export the flag before sourcing to simulate a pre-injected environment value
+    export LOGGER_JOURNAL_ERROR_REPORTED="injected"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        echo \"LOGGER_JOURNAL_ERROR_REPORTED=\${LOGGER_JOURNAL_ERROR_REPORTED:-}\" > '$state_file'
+    "
+
+    unset LOGGER_JOURNAL_ERROR_REPORTED
+
+    # The flag must be empty after sourcing — confirming it was cleared by the unset
+    assert_file_not_contains "$state_file" "injected" || return
+
+    pass_test
+}
+
 # Run all tests
 test_preset_log_file_handling
 test_malicious_path_variable
@@ -516,3 +564,5 @@ test_cdpath_variable
 test_globignore_variable
 test_prompt_command_injection
 test_readonly_variable_conflicts
+test_preset_file_error_reported_flag_cleared
+test_preset_journal_error_reported_flag_cleared
