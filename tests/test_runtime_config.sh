@@ -192,6 +192,93 @@ test_set_journal_tag() {
     pass_test
 }
 
+# Test: set_journal_tag rejects empty string
+test_set_journal_tag_rejects_empty() {
+    start_test "set_journal_tag rejects empty tag"
+
+    init_logger
+    set_journal_tag "original-tag"
+
+    if set_journal_tag "" >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for empty tag"
+        return
+    fi
+
+    assert_equals "original-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag rejects oversized tags
+test_set_journal_tag_rejects_long_tag() {
+    start_test "set_journal_tag rejects tag longer than 64 characters"
+
+    init_logger
+    set_journal_tag "short-tag"
+
+    local long_tag
+    long_tag=$(printf 'A%.0s' {1..200})
+
+    if set_journal_tag "$long_tag" >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for tag exceeding 64 characters"
+        return
+    fi
+
+    assert_equals "short-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag rejects tags with shell metacharacters
+test_set_journal_tag_rejects_metacharacters() {
+    start_test "set_journal_tag rejects tag containing shell metacharacters"
+
+    init_logger
+    set_journal_tag "safe-tag"
+
+    if set_journal_tag 'bad$tag' >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for tag with metacharacters"
+        return
+    fi
+
+    assert_equals "safe-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag rejects tags with control characters
+test_set_journal_tag_rejects_control_chars() {
+    start_test "set_journal_tag rejects tag containing control characters"
+
+    init_logger
+    set_journal_tag "clean-tag"
+
+    # shellcheck disable=SC2034  # local variable used via $() below
+    if set_journal_tag $'tag\twith\ttabs' >/dev/null 2>&1; then
+        fail_test "set_journal_tag should return non-zero for tag with control characters"
+        return
+    fi
+
+    assert_equals "clean-tag" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
+# Test: set_journal_tag preserves existing tag on rejection
+test_set_journal_tag_preserves_tag_on_rejection() {
+    start_test "set_journal_tag preserves existing tag when new value is invalid"
+
+    init_logger
+    set_journal_tag "my-app"
+    assert_equals "my-app" "$JOURNAL_TAG" || return
+
+    set_journal_tag "$(printf 'X%.0s' {1..200})" >/dev/null 2>&1 || true
+
+    assert_equals "my-app" "$JOURNAL_TAG" || return
+
+    pass_test
+}
+
 # Test: set_syslog_facility with valid value
 test_set_syslog_facility_valid() {
     start_test "set_syslog_facility accepts valid facility"
@@ -602,6 +689,11 @@ test_set_timezone_utc
 test_set_timezone_local
 test_set_journal_logging
 test_set_journal_tag
+test_set_journal_tag_rejects_empty
+test_set_journal_tag_rejects_long_tag
+test_set_journal_tag_rejects_metacharacters
+test_set_journal_tag_rejects_control_chars
+test_set_journal_tag_preserves_tag_on_rejection
 test_set_syslog_facility_valid
 test_set_syslog_facility_invalid
 test_set_syslog_facility_reflects_change

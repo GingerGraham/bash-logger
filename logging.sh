@@ -441,6 +441,32 @@ _validate_config_journal_tag() {
     return 0
 }
 
+# Validate journal tag value (internal)
+# Checks for reasonable length and dangerous characters
+# Returns 0 if valid, 1 otherwise
+_validate_journal_tag() {
+    local tag="$1"
+    local max_tag_length=64
+
+    if [[ -z "$tag" ]]; then
+        echo "Warning: Empty journal tag" >&2
+        return 1
+    fi
+
+    if ! _validate_string "$tag" "$max_tag_length" "journal tag" "false" "true"; then
+        return 1
+    fi
+
+    # Check for shell metacharacters that could cause issues
+    # Character class includes: $ ` ; | & < > ( ) { } [ ] \
+    if [[ "$tag" =~ []$\`\;\|\&\<\>\(\)\{\}\[\\] ]]; then
+        echo "Warning: Journal tag contains shell metacharacters" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 # Validate syslog facility value (internal)
 # Returns 0 if valid, 1 otherwise
 _validate_syslog_facility() {
@@ -1454,6 +1480,10 @@ set_journal_logging() {
 
 # Function to set journal tag
 set_journal_tag() {
+    if ! _validate_journal_tag "$1"; then
+        return 1
+    fi
+
     local old_tag="$JOURNAL_TAG"
     JOURNAL_TAG="$1"
 
@@ -1768,40 +1798,40 @@ _log_message() {
 
 # Helper functions for different log levels
 log_debug() {
-    _log_message "DEBUG" $LOG_LEVEL_DEBUG "$1"
+    _log_message "DEBUG" "$LOG_LEVEL_DEBUG" "$1"
 }
 
 log_info() {
-    _log_message "INFO" $LOG_LEVEL_INFO "$1"
+    _log_message "INFO" "$LOG_LEVEL_INFO" "$1"
 }
 
 log_notice() {
-    _log_message "NOTICE" $LOG_LEVEL_NOTICE "$1"
+    _log_message "NOTICE" "$LOG_LEVEL_NOTICE" "$1"
 }
 
 log_warn() {
-    _log_message "WARN" $LOG_LEVEL_WARN "$1"
+    _log_message "WARN" "$LOG_LEVEL_WARN" "$1"
 }
 
 log_error() {
-    _log_message "ERROR" $LOG_LEVEL_ERROR "$1"
+    _log_message "ERROR" "$LOG_LEVEL_ERROR" "$1"
 }
 
 log_critical() {
-    _log_message "CRITICAL" $LOG_LEVEL_CRITICAL "$1"
+    _log_message "CRITICAL" "$LOG_LEVEL_CRITICAL" "$1"
 }
 
 log_alert() {
-    _log_message "ALERT" $LOG_LEVEL_ALERT "$1"
+    _log_message "ALERT" "$LOG_LEVEL_ALERT" "$1"
 }
 
 log_emergency() {
-    _log_message "EMERGENCY" $LOG_LEVEL_EMERGENCY "$1"
+    _log_message "EMERGENCY" "$LOG_LEVEL_EMERGENCY" "$1"
 }
 
 # Alias for backward compatibility
 log_fatal() {
-    _log_message "FATAL" $LOG_LEVEL_EMERGENCY "$1"
+    _log_message "FATAL" "$LOG_LEVEL_EMERGENCY" "$1"
 }
 
 log_init() {
@@ -1810,7 +1840,7 @@ log_init() {
 
 # Function for sensitive logging - console only, never to file or journal
 log_sensitive() {
-    _log_message "SENSITIVE" $LOG_LEVEL_INFO "$1" "true" "true"
+    _log_message "SENSITIVE" "$LOG_LEVEL_INFO" "$1" "true" "true"
 }
 
 # Log a single message directly to the system journal, regardless of USE_JOURNAL state.
