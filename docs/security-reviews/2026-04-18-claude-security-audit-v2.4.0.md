@@ -29,12 +29,12 @@ the init-message suppression option.
 | FEAT-01 | — | Enhancement | Validate boolean input in `set_unsafe_allow_*()` functions |
 | FEAT-02 | — | Enhancement | `set_color_mode()` should reject unrecognised mode values |
 
-- 0 Critical vulnerabilities
-- 0 High vulnerabilities
-- 0 Medium vulnerabilities
-- 4 Low vulnerabilities
-- 1 Informational / documentation item
-- 2 Enhancement recommendations
+* 0 Critical vulnerabilities
+* 0 High vulnerabilities
+* 0 Medium vulnerabilities
+* 4 Low vulnerabilities
+* 1 Informational / documentation item
+* 2 Enhancement recommendations
 
 **No findings block production use.**
 
@@ -44,20 +44,20 @@ the init-message suppression option.
 
 ### Changes reviewed since v2.1.2
 
-- `log_to_journal()` — selective journal dispatch (v2.2.1)
-- `set_syslog_facility()` / `--facility` option — syslog facility support (v2.3.0)
-- `LOG_INIT_MESSAGE` / `--no-init-message` option — init-message suppression (v2.4.0)
-- All runtime configuration setter functions
-- `_strip_ansi_codes()` — ANSI sanitisation completeness
-- Environment variable protection coverage
+* `log_to_journal()` — selective journal dispatch (v2.2.1)
+* `set_syslog_facility()` / `--facility` option — syslog facility support (v2.3.0)
+* `LOG_INIT_MESSAGE` / `--no-init-message` option — init-message suppression (v2.4.0)
+* All runtime configuration setter functions
+* `_strip_ansi_codes()` — ANSI sanitisation completeness
+* Environment variable protection coverage
 
 ### Methodology
 
-- Full static analysis of `logging.sh` source
-- Cross-referencing runtime setters against config-parser validation paths
-- Review of all public API functions for input validation consistency
-- Differential analysis against previous audit findings
-- Review of associated test coverage for new features
+* Full static analysis of `logging.sh` source
+* Cross-referencing runtime setters against config-parser validation paths
+* Review of all public API functions for input validation consistency
+* Differential analysis against previous audit findings
+* Review of associated test coverage for new features
 
 ---
 
@@ -93,11 +93,11 @@ With the default `LOG_STDERR_LEVEL=3` (ERROR): `[[ -1 -le 3 ]]` is always true. 
 
 **Impact:**
 
-- INIT messages always appear on stderr regardless of configuration
-- Users who configure strict stderr levels (e.g., only EMERGENCY) cannot prevent INIT
+* INIT messages always appear on stderr regardless of configuration
+* Users who configure strict stderr levels (e.g., only EMERGENCY) cannot prevent INIT
   messages from polluting stderr
-- Scripts that parse stderr for errors will receive false positives from INIT messages
-- Breaks the user's ability to separate informational init output from actual errors
+* Scripts that parse stderr for errors will receive false positives from INIT messages
+* Breaks the user's ability to separate informational init output from actual errors
 
 **Affected Versions:** All versions using the `-1` sentinel pattern (v1.x+)
 
@@ -169,11 +169,11 @@ silently bypasses both checks.
 The journal tag is passed to the `logger` executable with proper quoting
 (`"$LOGGER_PATH" ... -t "$tag"`), so shell command injection is not possible. However:
 
-- Tags longer than 64 characters exceed systemd-journal's limit and may be silently truncated
+* Tags longer than 64 characters exceed systemd-journal's limit and may be silently truncated
   or rejected, producing an unreliable audit trail
-- Tags containing control characters (including embedded NUL bytes) may corrupt journal indices
+* Tags containing control characters (including embedded NUL bytes) may corrupt journal indices
   or confuse log-analysis tooling
-- A value rejected by the config-file parser can be set unimpeded via the runtime API,
+* A value rejected by the config-file parser can be set unimpeded via the runtime API,
   undermining users' reasonable expectation of consistent validation across both paths
 
 **Impact:** Unreliable journal tagging when tags are set programmatically; misleading audit
@@ -221,9 +221,9 @@ This mirrors the pattern already established by `set_syslog_facility()` calling
 
 `_strip_ansi_codes()` uses a multi-pass sed approach:
 
-- **Step 1:** Removes CSI sequences (`\e[...letter`) — complete
-- **Step 2:** Removes OSC sequences (`\e]...BEL` and `\e]...\e\\`) — complete
-- **Step 3:** Removes two-character escape sequences (`\eX` where X ≠ `[`) — *partial*
+* **Step 1:** Removes CSI sequences (`\e[...letter`) — complete
+* **Step 2:** Removes OSC sequences (`\e]...BEL` and `\e]...\e\\`) — complete
+* **Step 3:** Removes two-character escape sequences (`\eX` where X ≠ `[`) — *partial*
 
 Step 3 correctly removes the two-byte introducer for Device Control String (`\eP`), Privacy
 Message (`\e^`), and Application Program Command (`\e_`) sequences, but the payload data and
@@ -232,13 +232,13 @@ ST terminator (`...data...\e\\`) that follows each opener is left in the output.
 
 **Impact:**
 
-- Payload bytes from DCS, PM, and APC sequences survive sanitisation and appear in console
+* Payload bytes from DCS, PM, and APC sequences survive sanitisation and appear in console
   output and log files
-- DCS sequences are used by terminals for sixel graphics and Tmux passthrough; malicious
+* DCS sequences are used by terminals for sixel graphics and Tmux passthrough; malicious
   payloads could affect terminal state
-- PM and APC sequences are used by terminal multiplexers; escaped payloads could exfiltrate
+* PM and APC sequences are used by terminal multiplexers; escaped payloads could exfiltrate
   data via terminal query responses in interactive sessions
-- Severity is LOW because exploitation requires attacker-controlled log input AND a terminal
+* Severity is LOW because exploitation requires attacker-controlled log input AND a terminal
   emulator that acts on these sequences in the specific way
 
 **Proof of Concept:**
@@ -331,9 +331,9 @@ hiding evidence of tampering with log destinations.
 
 **Impact:**
 
-- Write failures (disk full, permissions changed, file deleted) are silently swallowed
-- Operators lose the only in-band signal that logging has failed
-- Particularly relevant in security-sensitive scripts where the absence of log-delivery
+* Write failures (disk full, permissions changed, file deleted) are silently swallowed
+* Operators lose the only in-band signal that logging has failed
+* Particularly relevant in security-sensitive scripts where the absence of log-delivery
   errors is treated as confirmation of successful audit logging
 
 **Proof of Concept:**
@@ -449,13 +449,13 @@ be correctly implemented:
 
 The new selective-journal function correctly:
 
-- Validates the level name via an exhaustive `case` statement before any action
-- Short-circuits silently when the message is below the current log level (no discovery side-effects)
-- Uses the existing `_LOGGER_DISCOVERY_DONE` fast-path to avoid redundant path validation
-- Performs an explicit `LOGGER_PATH` executability check before calling `_log_message()`
-- Emits a single deduplication-guarded warning when `logger` is absent
-- Passes `force_journal=true` to `_log_message()` correctly; `skip_journal` in `log_sensitive()` still takes precedence
-- Prevents double-dispatch when `USE_JOURNAL=true` by passing the message through `_log_message` only once
+* Validates the level name via an exhaustive `case` statement before any action
+* Short-circuits silently when the message is below the current log level (no discovery side-effects)
+* Uses the existing `_LOGGER_DISCOVERY_DONE` fast-path to avoid redundant path validation
+* Performs an explicit `LOGGER_PATH` executability check before calling `_log_message()`
+* Emits a single deduplication-guarded warning when `logger` is absent
+* Passes `force_journal=true` to `_log_message()` correctly; `skip_journal` in `log_sensitive()` still takes precedence
+* Prevents double-dispatch when `USE_JOURNAL=true` by passing the message through `_log_message` only once
 
 ### Syslog Facility Support — Correct Validation
 
