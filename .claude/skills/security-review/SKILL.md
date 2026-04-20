@@ -199,7 +199,7 @@ value, and `SCRIPT_NAME` at the end of `init_logger` regardless of source.
 ## Security test suite map
 
 | Area | Test suite(s) |
-|---|---|
+| --- | --- |
 | ANSI injection | `test_ansi_injection` |
 | Log injection (newlines) | `test_unsafe_newlines` |
 | Path traversal | `test_path_traversal` |

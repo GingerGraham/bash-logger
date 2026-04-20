@@ -41,6 +41,7 @@ test_<feature>_<scenario>() {
 ```
 
 Rules:
+
 * Function name must start with `test_` and be unique within the file
 * `start_test` **must** be the first line — it re-sources `logging.sh` and creates `$TEST_DIR`
 * `pass_test` **must** be the last line of every passing path

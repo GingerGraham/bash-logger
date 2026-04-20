@@ -20,7 +20,7 @@ Commit history drives automated versioning via `semantic-release`. Incorrect for
 ## Type — required
 
 | Type | Version bump | Use for |
-|---|---|---|
+| --- | --- | --- |
 | `feat` | minor | New user-visible functionality |
 | `fix` | patch | Bug fixes |
 | `perf` | patch | Performance improvements |
@@ -37,7 +37,7 @@ A `BREAKING CHANGE` footer triggers a **major** bump regardless of type.
 ## Scope — optional but strongly preferred
 
 | Scope | Use for |
-|---|---|
+| --- | --- |
 | `logging` | Core `logging.sh` functions |
 | `config` | Configuration file handling |
 | `install` | `install.sh` and Makefile install targets |

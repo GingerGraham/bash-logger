@@ -20,7 +20,7 @@ This lists every runnable suite name. `test_example.sh` is a contributor templat
 Default to targeted. Only run the full suite for broad changes or as a pre-PR gate.
 
 | What changed | Run |
-|---|---|
+| --- | --- |
 | A specific functional area (e.g. format handling, log levels) | The matching suite(s) only |
 | `logging.sh` core logic (init, output routing, sanitization) | Full suite |
 | `install.sh` | `test_install` only |

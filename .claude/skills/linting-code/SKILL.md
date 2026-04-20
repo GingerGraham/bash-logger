@@ -8,7 +8,7 @@ description: Lints shell scripts and Markdown files in the bash-logger repositor
 ## Tools and where configuration lives
 
 | Tool | Checks | Config |
-|---|---|---|
+| --- | --- | --- |
 | ShellCheck | Shell syntax, quoting, portability, common bugs | `.pre-commit-config.yaml` (args: `--severity=warning --external-sources`) |
 | MarkdownLint | Markdown formatting, list style, line length | `.markdownlint.yaml` |
 
@@ -58,17 +58,22 @@ pre-commit run markdownlint --all-files
 * `$(...)` not backticks
 * `UPPERCASE` for constants/exported vars; `lowercase` for locals and functions
 * When suppressing a ShellCheck warning, add an explanation comment:
+
   ```bash
   # shellcheck disable=SC3010 -- bash-specific syntax required for performance here
   ```
 
 ### Markdown
 
-* Unordered list markers: `*` only — **never** `-`
-* 2-space list indentation
-* Maximum line length: 200 characters (code blocks and tables are exempt)
-* Blank line above and below every heading
-* Specify a language on all fenced code blocks where possible
+* Unordered list markers: `*` only — **never** `-` (MD004)
+* 2-space list indentation (MD007)
+* Maximum line length: 200 characters; code blocks and tables are exempt (MD013)
+* Blank line above and below every heading (MD022)
+* Ordered lists: use `1.` for every item, or true sequential numbers; never an arbitrary
+  starting number (MD029)
+* Table separator rows: always `| --- | --- |`, **never** `|---|---|` — MD060 compact style
+  requires a space to the left and right of every `---` cell (MD060)
+* Specify a language on all fenced code blocks where possible (optional but preferred)
 
 ## Interpreting failures
 
@@ -81,7 +86,7 @@ Look up unknown codes at `https://www.shellcheck.net/wiki/SCXXX`.
 Most common codes in this project:
 
 | Code | Cause | Fix |
-|---|---|---|
+| --- | --- | --- |
 | SC2086 | Unquoted variable | Wrap in `"$var"` |
 | SC2155 | Combined `local`/assign | Split: `local x; x=$(...)` |
 | SC2181 | Check `$?` instead of direct `if` | Use `if command; then` directly |

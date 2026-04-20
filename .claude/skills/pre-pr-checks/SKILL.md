@@ -89,7 +89,7 @@ Resolve conflicts, then re-run the full test suite.
 ## Quick-reference: common pre-PR failures
 
 | Symptom | Cause | Fix |
-|---|---|---|
+| --- | --- | --- |
 | ShellCheck SC2086 | Unquoted variable | `"$var"` |
 | ShellCheck SC2155 | Combined declare/assign | `local x; x=$(...)` |
 | MarkdownLint MD004 | List marker is `-` | Change to `*` |

@@ -227,10 +227,25 @@ When possible, write code compatible with multiple shells:
 
 ## Markdown Formatting Standards
 
-* **Unordered lists**: Always use `*` (asterisk), never `-` (dash)
-* **List indentation**: 2 spaces per level
-* **Line length**: Maximum 200 characters (configured in .markdownlint.yaml)
-* **Consistency**: Match existing documentation patterns
+All Markdown files must satisfy the rules in `.markdownlint.yaml`. The active rules are:
+
+* **MD004 — Unordered list markers**: Always use `*` (asterisk), never `-` (dash)
+* **MD007 — List indentation**: 2 spaces per level
+* **MD013 — Line length**: Maximum 200 characters; code blocks and tables are exempt
+* **MD022 — Headings**: Always one blank line above and one blank line below every heading
+* **MD029 — Ordered list style**: Use `1.` for every item (auto-increments) or true sequential
+  numbers; never start from an arbitrary number
+* **MD060 — Table separators**: Always use spaces around dashes — `| --- | --- |`, never `|---|---|`
+  (MD060 compact style requires a space to the left and right of every `---` cell)
+
+Rules explicitly disabled (allowed in this project):
+
+* Raw HTML (`MD033`): permitted
+* Duplicate headings across different sections (`MD024`): permitted (siblings-only check)
+* Emphasis used as a heading (`MD036`): permitted
+* Language tag on fenced code blocks (`MD040`): optional
+* Trailing punctuation in headings (`MD026`): permitted
+* First-line heading requirement (`MD041`): not enforced
 
 ### Guidance for Shell-Agnostic Code
 
