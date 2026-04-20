@@ -1,6 +1,10 @@
 ---
 name: writing-tests
-description: Adds new tests to the bash-logger test suite. Covers creating new test suites, adding tests to existing suites, correct use of assertions, isolation patterns, and the mandatory call registration pattern. Use this skill whenever writing, extending, or fixing tests in the tests/ directory.
+description: >
+  Adds new tests to the bash-logger test suite. Covers creating new test suites, adding tests to
+  existing suites, correct use of assertions, isolation patterns, and the mandatory call
+  registration pattern. Use this skill whenever writing, extending, or fixing tests in the tests/
+  directory.
 ---
 
 # Writing Tests
@@ -99,8 +103,8 @@ assert_file_not_contains "$TEST_DIR/stdout" "message" || return
 ### Exit codes
 
 ```bash
-assert_command_succeeds "some_function arg" || return
-assert_command_fails "some_function bad_arg" || return
+assert_success "some_function arg" || return
+assert_failure "some_function bad_arg" || return
 ```
 
 ### Skipping conditionally

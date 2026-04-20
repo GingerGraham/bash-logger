@@ -1,6 +1,10 @@
 ---
 name: pre-pr-checks
-description: Runs the full gate sequence before raising a pull request on bash-logger. Covers linting, targeted tests, full test suite, code review checklist, commit message audit, PR description requirements, and branch hygiene. Use this skill before pushing to a shared branch or opening a PR.
+description: >
+  Runs the full gate sequence before raising a pull request on bash-logger. Covers linting,
+  targeted tests, full test suite, code review checklist, commit message audit, PR description
+  requirements, and branch hygiene. Use this skill before pushing to a shared branch or opening
+  a PR.
 ---
 
 # Pre-PR Checks
@@ -13,7 +17,8 @@ Work through these steps in order. Each builds on the last.
 make lint
 ```
 
-Fix all ShellCheck and MarkdownLint failures. MarkdownLint auto-fixes most issues and re-stages files — review them before continuing.
+Fix all ShellCheck and MarkdownLint failures. MarkdownLint auto-fixes most issues in-place, but does not re-stage the files — run `git add` on any modified files and re-run `make lint` before
+continuing.
 
 ## 2. Targeted tests
 

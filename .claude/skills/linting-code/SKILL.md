@@ -1,6 +1,9 @@
 ---
 name: linting-code
-description: Lints shell scripts and Markdown files in the bash-logger repository using the project's configured toolchain. Use this skill whenever checking code quality, fixing linting errors, or running lint as part of a pre-commit or pre-PR workflow.
+description: >
+  Lints shell scripts and Markdown files in the bash-logger repository using the project's
+  configured toolchain. Use this skill whenever checking code quality, fixing linting errors,
+  or running lint as part of a pre-commit or pre-PR workflow.
 ---
 
 # Linting Code
@@ -93,4 +96,5 @@ Most common codes in this project:
 
 ### MarkdownLint
 
-MarkdownLint runs with `--fix` — most formatting issues auto-correct and the file is re-staged. Violations that cannot be auto-fixed (long lines, wrong list markers) require manual edits.
+MarkdownLint runs with `--fix` — most formatting issues auto-correct in-place. After auto-fix, pre-commit fails the hook and you must `git add` the modified files before re-running. Violations
+that cannot be auto-fixed (long lines, wrong list markers) require manual edits.

@@ -1,6 +1,10 @@
 ---
 name: running-tests
-description: Runs the bash-logger test suite — either the full suite or a targeted subset. Use this skill whenever running, selecting, or interpreting tests in this repository. Covers discovering available suites, choosing which to run after a change, correct invocation syntax, and reading test output.
+description: >
+  Runs the bash-logger test suite — either the full suite or a targeted subset. Use this skill
+  whenever running, selecting, or interpreting tests in this repository. Covers discovering
+  available suites, choosing which to run after a change, correct invocation syntax, and reading
+  test output.
 ---
 
 # Running Tests

@@ -1,6 +1,11 @@
 ---
 name: security-review
-description: Reviews code changes in bash-logger for security issues across all protected domains. Use this skill whenever adding new features that handle external input, changing sanitization behaviour, adding config options, or reviewing a PR for security. Covers input sanitization, file system safety, config injection, environment variable attacks, journal command validation, sensitive data handling, and unsafe flag governance.
+description: >
+  Reviews code changes in bash-logger for security issues across all protected domains. Use this
+  skill whenever adding new features that handle external input, changing sanitization behaviour,
+  adding config options, or reviewing a PR for security. Covers input sanitization, file system
+  safety, config injection, environment variable attacks, journal command validation, sensitive
+  data handling, and unsafe flag governance.
 ---
 
 # Security Review
@@ -56,8 +61,9 @@ immediate validation to minimize the TOCTOU window.
 
 * No existence check (`-f`, `-e`) before file creation — this re-opens the TOCTOU window.
   Always create first, then validate.
-* After any file creation: check `-L` (reject symlinks), `-f` (must be regular file), `-w`
-  (must be writable). These three checks are mandatory in that order.
+* After any file creation: check `-L` (reject symlinks), `-e` (must exist — clearer error
+  than the regular-file check alone), `-f` (must be regular file), `-w` (must be writable).
+  These four checks are mandatory in that order.
 * Path traversal: file paths from config must pass `_validate_config_file_path`, which
   enforces absolute paths and rejects injection patterns. CLI paths are not validated by
   `_validate_config_file_path` — if you add a new path-accepting CLI flag, apply the same
@@ -230,7 +236,7 @@ After any security-related change, always follow with the full suite:
 * [ ] No new code path bypasses `_sanitize_log_message`
 * [ ] No new constant is set without unset + readonly guard against env override
 * [ ] New mutable state is reset to safe default on source
-* [ ] New file path handling uses noclobber → symlink check → regular-file check → writable check
+* [ ] New file path handling uses noclobber → symlink check → existence check → regular-file check → writable check
 * [ ] New config key uses an appropriate typed validator; metacharacter injection is not possible
 * [ ] Journal command is always invoked via `$LOGGER_PATH`, not `logger` directly
 * [ ] `log_sensitive` still skips file and journal (parameters not reordered)

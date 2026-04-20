@@ -1,6 +1,9 @@
 ---
 name: writing-commits
-description: Generates correctly formatted commit messages and pull request descriptions for this repository. Uses Conventional Commits / semantic-release format with issue references. Use this skill whenever writing, reviewing, or amending a commit message or drafting a PR title and body.
+description: >
+  Generates correctly formatted commit messages and pull request descriptions for this repository.
+  Uses Conventional Commits / semantic-release format with issue references. Use this skill
+  whenever writing, reviewing, or amending a commit message or drafting a PR title and body.
 ---
 
 # Writing Commits and Pull Requests
