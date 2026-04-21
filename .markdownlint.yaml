@@ -46,5 +46,10 @@
   # Allow both ordered and unordered lists to start with 1
   "MD029": {
     "style": "one_or_ordered"
+  },
+
+  # Table pipe style - require spaces around cell content
+  "MD060": {
+    "style": "spaced"
   }
 }
