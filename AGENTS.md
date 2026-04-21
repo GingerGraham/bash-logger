@@ -71,18 +71,17 @@ The project targets Bash but aims for broad compatibility where possible.
 
 **DO:**
 
-* Use POSIX-compatible syntax whenever possible
-* Use `[ ]` instead of `[[ ]]` for maximum compatibility
+* Use `[[ ]]` in Bash-targeted files (like `logging.sh`); reserve `[ ]` for scripts where
+  POSIX portability is explicitly required
 * Use `$(...)` instead of backticks (works everywhere)
-* Use `.` or `source` for sourcing files (both POSIX)
-* Avoid bash-specific features like arrays and associative arrays unless necessary
+* Use `.` for POSIX sh; `source` is Bash/Zsh/Ksh-specific (but widely supported)
 * Document shell requirements in comments
 
 **DON'T:**
 
-* Use bash-only features like `[[ ]]`, `(( ))`, or `=~` unless necessary
+* Use `[[ ]]`, `(( ))`, or `=~` in scripts that must be POSIX-portable
 * Use bash arrays or associative arrays unless truly needed
-* Rely on bash-specific string manipulation
+* Rely on bash-specific string manipulation in portable scripts
 * Use `<<` heredocs without considering portability
 
 **Bash-specific exception:** when POSIX compatibility is not feasible, default to Bash,
