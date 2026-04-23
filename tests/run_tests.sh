@@ -26,6 +26,9 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 JUNIT_OUTPUT=false
 OUTPUT_DIR="$PROJECT_ROOT/test-reports"
 
+# Fail-fast: stop after the first suite that has failures
+FAIL_FAST=false
+
 # Parallel execution options
 # Auto-detect available cores as a baseline
 system_cores=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "1")
@@ -203,6 +206,11 @@ run_test_suite() {
             echo "SUITE_TESTCASES_START"
             echo "$CURRENT_SUITE_TESTCASES"
             echo "SUITE_TESTCASES_END"
+            echo "FAILED_DETAILS_START"
+            for _detail in "${FAILED_TEST_DETAILS[@]+"${FAILED_TEST_DETAILS[@]}"}"; do
+                printf '%s\n' "$_detail"
+            done
+            echo "FAILED_DETAILS_END"
         } > "$results_file"
 
         # Restore output
@@ -235,7 +243,7 @@ aggregate_parallel_results() {
         [[ -e "$result_file" ]] || continue
 
         local test_name suite_tests suite_passed suite_failed suite_skipped suite_duration
-        local in_testcases=false
+        local in_testcases=false in_failed_details=false
         local testcases_content=""
 
         while IFS= read -r line; do
@@ -245,10 +253,18 @@ aggregate_parallel_results() {
             elif [[ "$line" == "SUITE_TESTCASES_END" ]]; then
                 in_testcases=false
                 continue
+            elif [[ "$line" == "FAILED_DETAILS_START" ]]; then
+                in_failed_details=true
+                continue
+            elif [[ "$line" == "FAILED_DETAILS_END" ]]; then
+                in_failed_details=false
+                continue
             fi
 
             if [[ "$in_testcases" == "true" ]]; then
                 testcases_content+="$line"
+            elif [[ "$in_failed_details" == "true" ]]; then
+                [[ -n "$line" ]] && FAILED_TEST_DETAILS+=("$line")
             else
                 case "$line" in
                     TEST_NAME=*) test_name="${line#TEST_NAME=}" ;;
@@ -367,6 +383,10 @@ main() {
                 fi
                 shift 2
                 ;;
+            --fail-fast|-x)
+                FAIL_FAST=true
+                shift
+                ;;
             --help|-h)
                 echo "Usage: $0 [options] [test_suite...]"
                 echo ""
@@ -374,11 +394,13 @@ main() {
                 echo "  --junit          Generate JUnit XML report for CI/SonarQube"
                 echo "  --output-dir DIR Directory for reports (default: ../test-reports)"
                 echo "  -j, --parallel N Run N test suites in parallel (auto-detect cores by default, max 8)"
+                echo "  -x, --fail-fast  Stop after the first suite that contains a failure"
                 echo "  --help, -h       Show this help message"
                 echo ""
                 echo "Examples:"
-                echo "  $0                    # Run all tests sequentially"
+                echo "  $0                    # Run all tests"
                 echo "  $0 -j 4               # Run tests with 4 parallel jobs"
+                echo "  $0 --fail-fast        # Stop at first failure (useful for debugging)"
                 echo "  $0 --junit            # Run tests with JUnit XML output"
                 echo "  $0 test_log_levels    # Run specific test suite"
                 exit 0
@@ -403,6 +425,11 @@ main() {
 
     if [[ "$PARALLEL_JOBS" -gt 1 ]]; then
         echo -e "${COLOR_BLUE}Running tests with $PARALLEL_JOBS parallel jobs${COLOR_RESET}"
+        echo ""
+    fi
+
+    if [[ "$FAIL_FAST" == "true" ]]; then
+        echo -e "${COLOR_YELLOW}Fail-fast enabled: will stop after the first suite with failures${COLOR_RESET}"
         echo ""
     fi
 
@@ -485,13 +512,25 @@ main() {
 
         # Clean up results directory
         rm -rf "$RESULTS_DIR"
+
     else
         # Sequential execution
         for test_file in "${test_files[@]}"; do
             if [[ -f "$test_file" ]]; then
                 run_test_suite "$test_file"
+                if [[ "$FAIL_FAST" == "true" && $FAILED_TESTS -gt 0 ]]; then
+                    echo -e "${COLOR_RED}Fail-fast: stopping after first failed suite${COLOR_RESET}"
+                    echo ""
+                    break
+                fi
             fi
         done
+    fi
+
+    # In parallel mode, honour fail-fast after aggregation
+    if [[ "$PARALLEL_JOBS" -gt 1 && "$FAIL_FAST" == "true" && $FAILED_TESTS -gt 0 ]]; then
+        echo -e "${COLOR_RED}Fail-fast: failures detected, stopping before next step${COLOR_RESET}"
+        echo ""
     fi
 
     # Print summary

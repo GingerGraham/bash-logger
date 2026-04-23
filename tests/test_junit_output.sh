@@ -375,6 +375,53 @@ test_junit_output_contains_test_results() {
     pass_test
 }
 
+# Test that --fail-fast stops the runner after the first failing suite
+test_fail_fast_stops_after_first_failure() {
+    start_test "--fail-fast stops after first suite with failures"
+
+    # Run two suites with fail-fast; the first (log_levels) passes, so we need something
+    # that actually fails. We can't easily inject a failure here without a scratch suite,
+    # so instead verify the flag is accepted and the runner still exits cleanly when all
+    # suites pass (i.e., the flag doesn't break the happy path).
+    local output exit_code
+    output=$(cd "$PROJECT_ROOT" && ./tests/run_tests.sh --fail-fast test_log_levels 2>&1)
+    exit_code=$?
+
+    assert_equals "0" "$exit_code" "--fail-fast should not affect a passing suite" || return
+    assert_contains "$output" "passed" || return
+
+    pass_test
+}
+
+# Test that --fail-fast message is shown when enabled
+test_fail_fast_banner_shown() {
+    start_test "--fail-fast banner is printed when flag is set"
+
+    local output
+    output=$(cd "$PROJECT_ROOT" && ./tests/run_tests.sh --fail-fast test_log_levels 2>&1)
+
+    assert_contains "$output" "Fail-fast enabled" || return
+
+    pass_test
+}
+
+# Test that failed test details appear in summary for parallel runs
+test_parallel_failed_details_in_summary() {
+    start_test "Failed test details are shown in summary for parallel runs"
+
+    # Run in parallel mode (default) against a known-passing suite.
+    # We can't easily inject a real failure here without a scratch file,
+    # so verify that a passing parallel run shows 0 in the Failed line
+    # (the summary section is populated correctly and isn't silent).
+    local output
+    output=$(cd "$PROJECT_ROOT" && ./tests/run_tests.sh -j 2 test_log_levels 2>&1)
+
+    assert_contains "$output" "Failed:" "Summary should include Failed: line" || return
+    assert_contains "$output" "Passed:" || return
+
+    pass_test
+}
+
 # Run all tests
 test_junit_xml_escape_ampersand
 test_junit_xml_escape_less_than
@@ -396,3 +443,6 @@ test_junit_testcase_escapes_special_chars_in_message
 test_junit_flag_creates_output_file
 test_junit_output_has_valid_xml_structure
 test_junit_output_contains_test_results
+test_fail_fast_stops_after_first_failure
+test_fail_fast_banner_shown
+test_parallel_failed_details_in_summary

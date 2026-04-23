@@ -119,12 +119,14 @@ Please be respectful and professional in all interactions. Treat others with kin
 
 The project supports additional code quality tools for local development:
 
-| Command               | Description                     | Requirements                                  |
-| --------------------- | ------------------------------- | --------------------------------------------- |
-| `make test`           | Run test suite                  | Bash 4.0+                                     |
-| `make test-junit`     | Run tests with JUnit XML output | Bash 4.0+                                     |
-| `make coverage`       | Run tests with code coverage    | [kcov](https://github.com/SimonKagstrom/kcov) |
-| `make sonar-analysis` | Full coverage + SonarQube scan  | kcov, sonar-scanner, secret-tool              |
+| Command               | Description                                   | Requirements                                  |
+| --------------------- | --------------------------------------------- | --------------------------------------------- |
+| `make test`           | Run test suite                                | Bash 4.0+                                     |
+| `make test-junit`     | Run tests with JUnit XML output               | Bash 4.0+                                     |
+| `make test-fail-fast` | Run tests, stop at first failure              | Bash 4.0+                                     |
+| `make coverage`       | Run tests with code coverage                  | [kcov](https://github.com/SimonKagstrom/kcov) |
+| `make coverage-debug` | Run kcov coverage, stop at first failure      | kcov                                          |
+| `make sonar-analysis` | Full coverage + SonarQube scan                | kcov, sonar-scanner, secret-tool              |
 
 > **Note:** The `sonar` and `sonar-analysis` targets are configured for the maintainer's
 > private SonarQube instance. See [Testing Documentation](docs/testing.md#code-coverage-and-static-analysis)

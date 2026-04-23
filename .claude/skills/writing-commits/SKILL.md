@@ -22,33 +22,33 @@ Commit history drives automated versioning via `semantic-release`. Incorrect for
 
 ## Type — required
 
-| Type | Version bump | Use for |
-| --- | --- | --- |
-| `feat` | minor | New user-visible functionality |
-| `fix` | patch | Bug fixes |
-| `perf` | patch | Performance improvements |
-| `revert` | patch | Reverting a prior commit |
-| `refactor` | patch | Internal restructuring, no behaviour change |
-| `docs` | none | Documentation-only changes |
-| `style` | none | Whitespace/formatting, no logic change |
-| `test` | none | Adding or updating tests |
-| `chore` | none | Build, tooling, dependency changes |
-| `ci` | none | GitHub Actions or CI config changes |
+| Type       | Version bump | Use for                                     |
+| ---------- | ------------ | ------------------------------------------- |
+| `feat`     | minor        | New user-visible functionality              |
+| `fix`      | patch        | Bug fixes                                   |
+| `perf`     | patch        | Performance improvements                    |
+| `revert`   | patch        | Reverting a prior commit                    |
+| `refactor` | patch        | Internal restructuring, no behaviour change |
+| `docs`     | none         | Documentation-only changes                  |
+| `style`    | none         | Whitespace/formatting, no logic change      |
+| `test`     | none         | Adding or updating tests                    |
+| `chore`    | none         | Build, tooling, dependency changes          |
+| `ci`       | none         | GitHub Actions or CI config changes         |
 
 A `BREAKING CHANGE` footer triggers a **major** bump regardless of type.
 
 ## Scope — optional but strongly preferred
 
-| Scope | Use for |
-| --- | --- |
-| `logging` | Core `logging.sh` functions |
-| `config` | Configuration file handling |
+| Scope     | Use for                                   |
+| --------- | ----------------------------------------- |
+| `logging` | Core `logging.sh` functions               |
+| `config`  | Configuration file handling               |
 | `install` | `install.sh` and Makefile install targets |
-| `tests` | Test files or test infrastructure |
-| `docs` | Documentation files |
-| `scripts` | Utility or demo scripts |
-| `ci` | GitHub Actions workflows |
-| `deps` | Dependency / Dependabot changes |
+| `tests`   | Test files or test infrastructure         |
+| `docs`    | Documentation files                       |
+| `scripts` | Utility or demo scripts                   |
+| `ci`      | GitHub Actions workflows                  |
+| `deps`    | Dependency / Dependabot changes           |
 
 ## Subject — required
 

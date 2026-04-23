@@ -204,16 +204,16 @@ value, and `SCRIPT_NAME` at the end of `init_logger` regardless of source.
 
 ## Security test suite map
 
-| Area | Test suite(s) |
-| --- | --- |
-| ANSI injection | `test_ansi_injection` |
-| Log injection (newlines) | `test_unsafe_newlines` |
-| Path traversal | `test_path_traversal` |
-| TOCTOU / symlink attacks | `test_toctou_protection` |
-| Config file injection | `test_config_security` |
-| Environment variable attacks | `test_environment_security` |
-| Sensitive data isolation | `test_sensitive_data` |
-| Script name sanitization | `test_script_name_sanitization` |
+| Area                         | Test suite(s)                   |
+| ---------------------------- | ------------------------------- |
+| ANSI injection               | `test_ansi_injection`           |
+| Log injection (newlines)     | `test_unsafe_newlines`          |
+| Path traversal               | `test_path_traversal`           |
+| TOCTOU / symlink attacks     | `test_toctou_protection`        |
+| Config file injection        | `test_config_security`          |
+| Environment variable attacks | `test_environment_security`     |
+| Sensitive data isolation     | `test_sensitive_data`           |
+| Script name sanitization     | `test_script_name_sanitization` |
 
 Run all security suites together:
 
