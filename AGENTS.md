@@ -131,7 +131,7 @@ Before proposing or generating code, verify:
 * [ ] New tests added for new functionality — see `writing-tests` skill
 * [ ] Commit message follows Conventional Commits format — see `writing-commits` skill
 * [ ] Security implications reviewed for changes touching input, files, config, or external
-      commands — see `security-review` skill
+  commands — see `security-review` skill
 * [ ] Code is shell-agnostic where possible, with Bash as fallback
 * [ ] Lines are under 100 characters where reasonable
 * [ ] 4-space indentation throughout

@@ -423,6 +423,13 @@ main() {
         echo ""
     fi
 
+    # Fail-fast requires sequential execution to guarantee stopping at the first failure
+    if [[ "$FAIL_FAST" == "true" && "$PARALLEL_JOBS" -gt 1 ]]; then
+        echo -e "${COLOR_YELLOW}Fail-fast mode: forcing sequential execution (overrides -j $PARALLEL_JOBS)${COLOR_RESET}"
+        echo ""
+        PARALLEL_JOBS=1
+    fi
+
     if [[ "$PARALLEL_JOBS" -gt 1 ]]; then
         echo -e "${COLOR_BLUE}Running tests with $PARALLEL_JOBS parallel jobs${COLOR_RESET}"
         echo ""
@@ -525,12 +532,6 @@ main() {
                 fi
             fi
         done
-    fi
-
-    # In parallel mode, honour fail-fast after aggregation
-    if [[ "$PARALLEL_JOBS" -gt 1 && "$FAIL_FAST" == "true" && $FAILED_TESTS -gt 0 ]]; then
-        echo -e "${COLOR_RED}Fail-fast: failures detected, stopping before next step${COLOR_RESET}"
-        echo ""
     fi
 
     # Print summary

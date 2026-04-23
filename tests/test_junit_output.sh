@@ -379,16 +379,44 @@ test_junit_output_contains_test_results() {
 test_fail_fast_stops_after_first_failure() {
     start_test "--fail-fast stops after first suite with failures"
 
-    # Run two suites with fail-fast; the first (log_levels) passes, so we need something
-    # that actually fails. We can't easily inject a failure here without a scratch suite,
-    # so instead verify the flag is accepted and the runner still exits cleanly when all
-    # suites pass (i.e., the flag doesn't break the happy path).
-    local output exit_code
-    output=$(cd "$PROJECT_ROOT" && ./tests/run_tests.sh --fail-fast test_log_levels 2>&1)
+    local unique_suffix failing_suite_name second_suite_name
+    local failing_suite_path second_suite_path
+    local failing_marker second_marker
+    local output exit_code second_marker_count
+
+    unique_suffix="fail_fast_$$"
+    failing_suite_name="test_${unique_suffix}_failing"
+    second_suite_name="test_${unique_suffix}_second"
+    failing_suite_path="$PROJECT_ROOT/tests/${failing_suite_name}.sh"
+    second_suite_path="$PROJECT_ROOT/tests/${second_suite_name}.sh"
+    failing_marker="FAIL_FAST_TEMP_FAILURE_MARKER_${unique_suffix}"
+    second_marker="FAIL_FAST_TEMP_SECOND_MARKER_${unique_suffix}"
+
+    cat >"$failing_suite_path" <<EOF
+#!/usr/bin/env bash
+echo "${failing_marker}"
+current_test="temp failing test"
+suite_tests=\$((suite_tests + 1))
+fail_test "intentional failure for fail-fast test"
+EOF
+
+    cat >"$second_suite_path" <<EOF
+#!/usr/bin/env bash
+echo "${second_marker}"
+EOF
+
+    chmod +x "$failing_suite_path" "$second_suite_path"
+
+    output=$(cd "$PROJECT_ROOT" && ./tests/run_tests.sh --fail-fast "$failing_suite_name" "$second_suite_name" 2>&1)
     exit_code=$?
 
-    assert_equals "0" "$exit_code" "--fail-fast should not affect a passing suite" || return
-    assert_contains "$output" "passed" || return
+    rm -f "$failing_suite_path" "$second_suite_path"
+
+    assert_equals "1" "$exit_code" "--fail-fast should exit non-zero after the first failing suite" || return
+    assert_contains "$output" "$failing_marker" "The failing suite should run before execution stops" || return
+
+    second_marker_count=$(printf '%s\n' "$output" | grep -F -c "$second_marker" || true)
+    assert_equals "0" "$second_marker_count" "The second suite should not run when --fail-fast is enabled" || return
 
     pass_test
 }
@@ -409,15 +437,28 @@ test_fail_fast_banner_shown() {
 test_parallel_failed_details_in_summary() {
     start_test "Failed test details are shown in summary for parallel runs"
 
-    # Run in parallel mode (default) against a known-passing suite.
-    # We can't easily inject a real failure here without a scratch file,
-    # so verify that a passing parallel run shows 0 in the Failed line
-    # (the summary section is populated correctly and isn't silent).
-    local output
-    output=$(cd "$PROJECT_ROOT" && ./tests/run_tests.sh -j 2 test_log_levels 2>&1)
+    local suite_file suite_name output
+    suite_file=$(mktemp "$PROJECT_ROOT/tests/test_parallel_failed_details_XXXXXX.sh") || {
+        fail_test "Failed to create temp suite file"
+        return
+    }
+    suite_name=$(basename "${suite_file%.sh}")
 
-    assert_contains "$output" "Failed:" "Summary should include Failed: line" || return
-    assert_contains "$output" "Passed:" || return
+    cat > "$suite_file" <<'SUITE_EOF'
+#!/usr/bin/env bash
+current_test="Intentional parallel failure"
+suite_tests=$((suite_tests + 1))
+fail_test "expected parallel failure details"
+SUITE_EOF
+    chmod +x "$suite_file"
+
+    output=$(cd "$PROJECT_ROOT" && ./tests/run_tests.sh -j 2 "$suite_name" 2>&1 || true)
+
+    rm -f "$suite_file"
+
+    assert_contains "$output" "Failed Tests" "Summary should include Failed Tests section" || return
+    assert_contains "$output" "Intentional parallel failure" "Summary should include the failed test name" || return
+    assert_contains "$output" "expected parallel failure details" "Summary should include the propagated failure details" || return
 
     pass_test
 }

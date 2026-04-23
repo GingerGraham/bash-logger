@@ -111,10 +111,10 @@ or when diagnosing `make sonar-analysis` failures:
 make test-fail-fast
 ```
 
-In sequential mode (including `make coverage` which sets `TEST_PARALLEL_JOBS=1`), the
-runner stops right after the failing suite and prints the "Failed Tests" summary immediately.
-In parallel mode, the runner waits for all already-dispatched jobs to finish before printing
-the summary and exiting.
+In sequential mode the runner stops right after the failing suite and prints the "Failed Tests"
+summary immediately. `--fail-fast` always runs sequentially: if parallel jobs are configured
+(via `-j N` or `TEST_PARALLEL_JOBS`), the flag overrides them to ensure the run truly stops
+at the first failure.
 
 **Performance Impact:**
 
