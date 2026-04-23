@@ -97,6 +97,25 @@ export TEST_PARALLEL_JOBS=4
 TEST_PARALLEL_JOBS=4 ./run_tests.sh
 ```
 
+**Stopping at the first failure:**
+
+Use `--fail-fast` (or `-x`) to stop the runner immediately after the first suite that
+contains failures. This is the fastest way to isolate a broken test during development
+or when diagnosing `make sonar-analysis` failures:
+
+```bash
+# Stop at first failing suite
+./tests/run_tests.sh --fail-fast
+
+# Or via Make
+make test-fail-fast
+```
+
+In sequential mode the runner stops right after the failing suite and prints the "Failed Tests"
+summary immediately. `--fail-fast` always runs sequentially: if parallel jobs are configured
+(via `-j N` or `TEST_PARALLEL_JOBS`), the flag overrides them to ensure the run truly stops
+at the first failure.
+
 **Performance Impact:**
 
 * **Sequential** (`-j 1`): ~5+ minutes for full suite
@@ -321,6 +340,24 @@ This runs the following targets in order:
 1. `coverage` - Generates coverage report via kcov
 2. `test-junit` - Generates JUnit XML test report
 3. `sonar` - Uploads everything to SonarQube
+
+**Debugging a failing `sonar-analysis`:**
+
+When `make sonar-analysis` fails it can be hard to spot the failing test in 500+ lines.
+Use `make coverage-debug` to run the kcov pass in fail-fast mode — it stops at the first
+failure and prints the test name immediately:
+
+```bash
+make coverage-debug
+```
+
+Once the failing test is identified, run that suite alone without kcov to confirm whether
+the failure is kcov-specific (e.g. due to kcov setting `BASH_ENV` or the DEBUG trap
+slowing execution):
+
+```bash
+./tests/run_tests.sh <suite_name>
+```
 
 **Cleaning up reports:**
 
@@ -676,26 +713,35 @@ test_custom_log_level  # Add your new test
 
 When a test fails:
 
-1. **Review the failure message** - includes test name and reason:
+1. **Use fail-fast to isolate the suite** - re-run with `--fail-fast` so the runner stops
+   immediately after the first failure, keeping it at the top of the output:
+
+   ```bash
+   make test-fail-fast
+   # or
+   ./tests/run_tests.sh --fail-fast
+   ```
+
+2. **Review the failure message** - includes test name and reason:
 
    ```
    ✗ test_feature
      Reason: Expected 'value1' but got 'value2'
    ```
 
-2. **Check test artifacts** - failed tests preserve temporary directories:
+3. **Check test artifacts** - failed tests preserve temporary directories:
 
    ```
    Test artifacts in: /tmp/bash-logger-tests.XXXXXX/timestamp
    ```
 
-3. **Run specific test** for faster iteration:
+4. **Run specific test** for faster iteration:
 
    ```bash
    ./run_tests.sh test_specific_suite
    ```
 
-4. **Add debug output** temporarily:
+5. **Add debug output** temporarily:
 
    ```bash
    test_feature() {
@@ -711,7 +757,7 @@ When a test fails:
    }
    ```
 
-5. **Check the logging module** - source it interactively:
+6. **Check the logging module** - source it interactively:
 
    ```bash
    source logging.sh

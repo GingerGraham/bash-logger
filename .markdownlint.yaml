@@ -50,6 +50,6 @@
 
   # Table pipe style - require spaces around cell content
   "MD060": {
-    "style": "spaced"
+    "style": "aligned"
   }
 }

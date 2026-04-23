@@ -103,7 +103,8 @@ All Markdown files must satisfy the rules in `.markdownlint.yaml`:
 * **MD013** — line length: maximum 200 characters; code blocks and tables are exempt
 * **MD022** — headings: one blank line above and below every heading
 * **MD029** — ordered list style: use `1.` for every item, or true sequential numbers
-* **MD060** — table separators: `| --- | --- |` with spaces, never `|---|---|`
+* **MD060** — table column style: `"aligned"` — all column widths must be padded uniformly so
+  every pipe is vertically aligned; separator dashes must span the full column width
 
 Rules explicitly disabled (permitted in this project): raw HTML (MD033), duplicate headings
 across sections (MD024), emphasis as heading (MD036), language tag on fenced blocks (MD040),

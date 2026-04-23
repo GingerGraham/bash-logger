@@ -18,7 +18,7 @@ DOCS = README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURIT
 # Shell for execution
 SHELL := /bin/bash
 
-.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit coverage sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
+.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit test-fail-fast coverage coverage-debug sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
 
 all: help
 
@@ -34,7 +34,9 @@ help:
 	@echo "Development targets:"
 	@echo "  make test            Run test suite"
 	@echo "  make test-junit      Run tests with JUnit XML output"
+	@echo "  make test-fail-fast  Run tests, stop at first failure"
 	@echo "  make coverage        Run tests with kcov coverage"
+	@echo "  make coverage-debug  Run tests with kcov, stop at first failure"
 	@echo "  make sonar           Run SonarQube scanner (syncs version from logging.sh)"
 	@echo "  make sonar-analysis  Run coverage, JUnit tests, and SonarQube scan"
 	@echo "  make demo            Run all demo scripts"
@@ -133,6 +135,13 @@ test:
 test-quiet:
 	@output=$$(./tests/run_tests.sh 2>&1) || { echo "$$output"; exit 1; }
 
+test-fail-fast:
+	@echo "Running tests (fail-fast mode)..."
+	@if [ ! -x tests/run_tests.sh ]; then \
+		chmod +x tests/run_tests.sh || { echo "Error: Cannot make test runner executable"; exit 1; }; \
+	fi
+	@./tests/run_tests.sh --fail-fast
+
 test-junit:
 	@echo "Running tests with JUnit XML output..."
 	@if [ ! -x tests/run_tests.sh ]; then \
@@ -153,6 +162,18 @@ coverage:
 	@TEST_PARALLEL_JOBS=1 kcov --include-path=./logging.sh coverage-report ./tests/run_tests.sh
 	@echo ""
 	@echo "✓ Coverage report generated in coverage-report/"
+
+coverage-debug:
+	@if ! command -v kcov >/dev/null 2>&1; then \
+		echo "Error: kcov not found."; \
+		echo "Install with: sudo dnf install kcov (Fedora) or sudo apt install kcov (Debian/Ubuntu)"; \
+		exit 1; \
+	fi
+	@echo "Running tests with kcov coverage (fail-fast mode)..."
+	@if [ ! -x tests/run_tests.sh ]; then \
+		chmod +x tests/run_tests.sh || { echo "Error: Cannot make test runner executable"; exit 1; }; \
+	fi
+	@TEST_PARALLEL_JOBS=1 kcov --include-path=./logging.sh coverage-report ./tests/run_tests.sh --fail-fast
 
 sonar:
 	@if ! command -v sonar-scanner >/dev/null 2>&1; then \

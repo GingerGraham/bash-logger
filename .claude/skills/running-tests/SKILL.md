@@ -23,15 +23,15 @@ This lists every runnable suite name. `test_example.sh` is a contributor templat
 
 Default to targeted. Only run the full suite for broad changes or as a pre-PR gate.
 
-| What changed | Run |
-| --- | --- |
-| A specific functional area (e.g. format handling, log levels) | The matching suite(s) only |
-| `logging.sh` core logic (init, output routing, sanitization) | Full suite |
-| `install.sh` | `test_install` only |
-| Config file parsing | `test_config` and `test_config_security` |
-| Security-related code | Relevant security suites + full suite |
-| New test file added | New suite only, then full suite |
-| Pre-PR / CI gate | Full suite |
+| What changed                                                  | Run                                      |
+| ------------------------------------------------------------- | ---------------------------------------- |
+| A specific functional area (e.g. format handling, log levels) | The matching suite(s) only               |
+| `logging.sh` core logic (init, output routing, sanitization)  | Full suite                               |
+| `install.sh`                                                  | `test_install` only                      |
+| Config file parsing                                           | `test_config` and `test_config_security` |
+| Security-related code                                         | Relevant security suites + full suite    |
+| New test file added                                           | New suite only, then full suite          |
+| Pre-PR / CI gate                                              | Full suite                               |
 
 ### Mapping changed code to suites
 
@@ -92,6 +92,42 @@ make test
 
 ```bash
 make test-junit
+```
+
+### Stop at first failure (fail-fast)
+
+Use this when a test run is failing and you want to isolate the broken suite quickly,
+especially during `make sonar-analysis` debugging:
+
+```bash
+# Via Make
+make test-fail-fast
+
+# Or directly
+./tests/run_tests.sh --fail-fast
+
+# Short form
+./tests/run_tests.sh -x
+```
+
+In sequential mode the runner stops immediately after the first failing suite.
+In parallel mode it stops before any subsequent pipeline step.
+
+### Debug a failing `make sonar-analysis`
+
+kcov (used by `make coverage`) changes the execution environment — it sets `BASH_ENV`
+and installs a `DEBUG` trap, which can cause tests to fail that pass normally. To isolate
+the kcov-specific failure quickly, use `coverage-debug` which runs kcov in sequential
+fail-fast mode:
+
+```bash
+make coverage-debug
+```
+
+Once the failing suite is identified, re-run it without kcov to confirm:
+
+```bash
+./tests/run_tests.sh <suite_name>
 ```
 
 ## Reading output

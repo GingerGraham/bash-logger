@@ -10,10 +10,10 @@ description: >
 
 ## Tools and where configuration lives
 
-| Tool | Checks | Config |
-| --- | --- | --- |
-| ShellCheck | Shell syntax, quoting, portability, common bugs | `.pre-commit-config.yaml` (args: `--severity=warning --external-sources`) |
-| MarkdownLint | Markdown formatting, list style, line length | `.markdownlint.yaml` |
+| Tool         | Checks                                          | Config                                                                    |
+| ------------ | ----------------------------------------------- | ------------------------------------------------------------------------- |
+| ShellCheck   | Shell syntax, quoting, portability, common bugs | `.pre-commit-config.yaml` (args: `--severity=warning --external-sources`) |
+| MarkdownLint | Markdown formatting, list style, line length    | `.markdownlint.yaml`                                                      |
 
 Both run through `pre-commit` so versions are pinned. Always use the Make targets or `pre-commit` directly — do not invoke `shellcheck` or `markdownlint` as standalone commands.
 
@@ -74,8 +74,8 @@ pre-commit run markdownlint --all-files
 * Blank line above and below every heading (MD022)
 * Ordered lists: use `1.` for every item, or true sequential numbers; never an arbitrary
   starting number (MD029)
-* Table separator rows: always `| --- | --- |`, **never** `|---|---|` — MD060 compact style
-  requires a space to the left and right of every `---` cell (MD060)
+* Table column style: `"aligned"` (MD060) — all column widths must be padded uniformly so every
+  pipe is vertically aligned; the separator row dashes must span the full column width
 * Specify a language on all fenced code blocks where possible (optional but preferred)
 
 ## Interpreting failures
@@ -88,10 +88,10 @@ Look up unknown codes at `https://www.shellcheck.net/wiki/SCXXX`.
 
 Most common codes in this project:
 
-| Code | Cause | Fix |
-| --- | --- | --- |
-| SC2086 | Unquoted variable | Wrap in `"$var"` |
-| SC2155 | Combined `local`/assign | Split: `local x; x=$(...)` |
+| Code   | Cause                             | Fix                             |
+| ------ | --------------------------------- | ------------------------------- |
+| SC2086 | Unquoted variable                 | Wrap in `"$var"`                |
+| SC2155 | Combined `local`/assign           | Split: `local x; x=$(...)`      |
 | SC2181 | Check `$?` instead of direct `if` | Use `if command; then` directly |
 
 ### MarkdownLint
