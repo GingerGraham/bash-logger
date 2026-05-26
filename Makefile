@@ -18,7 +18,7 @@ DOCS = README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURIT
 # Shell for execution
 SHELL := /bin/bash
 
-.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit test-fail-fast coverage coverage-debug sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
+.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit test-fail-fast coverage coverage-junit coverage-debug sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
 
 all: help
 
@@ -36,6 +36,7 @@ help:
 	@echo "  make test-junit      Run tests with JUnit XML output"
 	@echo "  make test-fail-fast  Run tests, stop at first failure"
 	@echo "  make coverage        Run tests with kcov coverage"
+	@echo "  make coverage-junit  Run tests with kcov coverage and JUnit XML output"
 	@echo "  make coverage-debug  Run tests with kcov, stop at first failure"
 	@echo "  make sonar           Run SonarQube scanner (syncs version from logging.sh)"
 	@echo "  make sonar-analysis  Run coverage, JUnit tests, and SonarQube scan"
@@ -163,6 +164,21 @@ coverage:
 	@echo ""
 	@echo "✓ Coverage report generated in coverage-report/"
 
+coverage-junit:
+	@if ! command -v kcov >/dev/null 2>&1; then \
+		echo "Error: kcov not found."; \
+		echo "Install with: sudo dnf install kcov (Fedora) or sudo apt install kcov (Debian/Ubuntu)"; \
+		exit 1; \
+	fi
+	@echo "Running tests with kcov coverage and JUnit XML output..."
+	@if [ ! -x tests/run_tests.sh ]; then \
+		chmod +x tests/run_tests.sh || { echo "Error: Cannot make test runner executable"; exit 1; }; \
+	fi
+	@TEST_PARALLEL_JOBS=1 kcov --include-path=./logging.sh coverage-report ./tests/run_tests.sh --junit
+	@echo ""
+	@echo "✓ Coverage report generated in coverage-report/"
+	@echo "✓ JUnit report generated in test-reports/junit.xml"
+
 coverage-debug:
 	@if ! command -v kcov >/dev/null 2>&1; then \
 		echo "Error: kcov not found."; \
@@ -193,7 +209,7 @@ sonar:
 	@echo "Running SonarQube scanner..."
 	@SONAR_TOKEN=$$(secret-tool lookup service sonarqube account scanner) sonar-scanner
 
-sonar-analysis: coverage test-junit sonar
+sonar-analysis: coverage-junit sonar
 	@echo ""
 	@echo "✓ Full SonarQube analysis complete!"
 

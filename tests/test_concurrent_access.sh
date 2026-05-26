@@ -475,7 +475,12 @@ test_no_deadlock() {
     start_test "Concurrent processes don't deadlock"
 
     local log_file="$TEST_TMP_DIR/deadlock_test.log"
+    # kcov instruments every subshell via BASH_ENV, adding significant overhead per fork.
+    # Allow a longer timeout when running under kcov to avoid false deadlock failures.
     local timeout=5
+    if [[ -n "${BASH_ENV:-}" ]]; then
+        timeout=30
+    fi
 
     # Start processes in background
     for i in {1..5}; do
