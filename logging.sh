@@ -769,7 +769,8 @@ _parse_config_file() {
 
 # Convert log level name to numeric value (internal)
 _get_log_level_value() {
-    local level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+    local level_name
+    level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
     local line_num="${2:-}"
     case "${level_name}" in
         "DEBUG")
@@ -1898,7 +1899,8 @@ log_to_journal() {
         return 1
     fi
 
-    local level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+    local level_name
+    level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
     shift
     local message="$*"
 
