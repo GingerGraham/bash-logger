@@ -54,7 +54,7 @@
 # Guard against re-initialization when sourced multiple times
 # Use readonly status instead of emptiness to avoid environment bypass
 if ! readonly -p 2>/dev/null | grep -qE '(declare|typeset) -[^ ]*r[^ ]* BASH_LOGGER_VERSION='; then
-    readonly BASH_LOGGER_VERSION="2.5.2"
+    readonly BASH_LOGGER_VERSION="2.5.3"
 
     # Unset potentially malicious environment variables before setting internal constants
     # Only unset if not already readonly (which would indicate re-sourcing)
