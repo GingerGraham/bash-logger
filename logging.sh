@@ -53,8 +53,8 @@
 # Version (updated by release workflow)
 # Guard against re-initialization when sourced multiple times
 # Use readonly status instead of emptiness to avoid environment bypass
-if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* BASH_LOGGER_VERSION="; then
-    readonly BASH_LOGGER_VERSION="2.5.1"
+if ! readonly -p 2>/dev/null | grep -qE '(declare|typeset) -[^ ]*r[^ ]* BASH_LOGGER_VERSION='; then
+    readonly BASH_LOGGER_VERSION="2.5.3"
 
     # Unset potentially malicious environment variables before setting internal constants
     # Only unset if not already readonly (which would indicate re-sourcing)
@@ -769,9 +769,10 @@ _parse_config_file() {
 
 # Convert log level name to numeric value (internal)
 _get_log_level_value() {
-    local level_name="$1"
+    local level_name
+    level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
     local line_num="${2:-}"
-    case "${level_name^^}" in
+    case "${level_name}" in
         "DEBUG")
             echo "$LOG_LEVEL_DEBUG"
             ;;
@@ -1898,13 +1899,14 @@ log_to_journal() {
         return 1
     fi
 
-    local level_name="$1"
+    local level_name
+    level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
     shift
     local message="$*"
 
     # Validate and normalise the level name to the canonical form used by _log_message
     local canonical_level
-    case "${level_name^^}" in
+    case "${level_name}" in
         DEBUG)                  canonical_level="DEBUG" ;;
         INFO)                   canonical_level="INFO" ;;
         NOTICE)                 canonical_level="NOTICE" ;;

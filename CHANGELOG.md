@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.3](https://github.com/GingerGraham/bash-logger/compare/2.5.2...2.5.3) (2026-05-27)
+
+### Bug Fixes
+
+* replace bash-only ${name^^} with portable tr for zsh compatibility ([#116](https://github.com/GingerGraham/bash-logger/issues/116))
+
+## [2.5.2](https://github.com/GingerGraham/bash-logger/compare/2.5.1...2.5.2) (2026-05-27)
+
+### Bug Fixes
+
+* match typeset in readonly guard for zsh compatibility ([#115](https://github.com/GingerGraham/bash-logger/issues/115))
+
+### Documentation
+
+* add claude skills for linting, pre-PR checks, running tests, se… ([#109](https://github.com/GingerGraham/bash-logger/issues/109))
+* establish AGENTS.md as canonical agent instruction file ([#110](https://github.com/GingerGraham/bash-logger/issues/110))
+
 ## [2.5.1](https://github.com/GingerGraham/bash-logger/compare/2.5.0...2.5.1) (2026-04-18)
 
 ### Bug Fixes
