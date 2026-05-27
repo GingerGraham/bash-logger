@@ -202,6 +202,10 @@ init_logger --script-name "my-app"
 
 The script name appears in log messages where `%s` is used in the format string.
 
+If you need the name to change while the script is running, use
+[Runtime Configuration](runtime-configuration.md#set_script_name) and pass a caller-built
+identifier to `set_script_name`.
+
 ### Stderr Level Configuration
 
 ```bash
