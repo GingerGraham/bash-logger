@@ -483,6 +483,7 @@ test_no_deadlock() {
     fi
 
     # Start processes in background
+    local pids=()
     for i in {1..5}; do
         (
             source "$PROJECT_ROOT/logging.sh"
@@ -491,18 +492,39 @@ test_no_deadlock() {
                 log_info "Deadlock test $i-$j"
             done
         ) &
+        pids+=("$!")
     done
 
-    # Wait with timeout
-    local wait_start=$SECONDS
-    wait
-    local wait_duration=$((SECONDS - wait_start))
+    # Wait with timeout and enforce deadline while jobs are still running
+    local deadline=$((SECONDS + timeout))
+    while [[ ${#pids[@]} -gt 0 ]]; do
+        local remaining_pids=()
+        local pid
+        for pid in "${pids[@]}"; do
+            if kill -0 "$pid" 2> /dev/null; then
+                remaining_pids+=("$pid")
+            else
+                wait "$pid" 2>/dev/null || true
+            fi
+        done
 
-    if [[ $wait_duration -lt $timeout ]]; then
-        pass_test
-    else
-        fail_test "Processes took too long, possible deadlock"
-    fi
+        if [[ ${#remaining_pids[@]} -eq 0 ]]; then
+            pass_test
+            return
+        fi
+
+        if [[ $SECONDS -ge $deadline ]]; then
+            for pid in "${remaining_pids[@]}"; do
+                kill "$pid" 2>/dev/null || true
+            done
+            wait "${remaining_pids[@]}" 2>/dev/null || true
+            fail_test "Timed out waiting for concurrent processes; possible deadlock"
+            return
+        fi
+
+        pids=("${remaining_pids[@]}")
+        sleep 0.1
+    done
 }
 
 # Run all tests
