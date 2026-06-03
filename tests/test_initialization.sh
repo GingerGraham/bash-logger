@@ -432,6 +432,33 @@ EOF
     pass_test
 }
 
+# Test: --verbose overrides --level when both are supplied; last writer wins for --level
+test_quiet_and_level_together() {
+    start_test "--quiet and --level DEBUG together: level is set, console is suppressed"
+
+    init_logger --quiet --level DEBUG
+
+    assert_equals "$LOG_LEVEL_DEBUG" "$CURRENT_LOG_LEVEL" \
+        "--level DEBUG should be applied" || return
+    assert_equals "false" "$CONSOLE_LOG" \
+        "--quiet should suppress console" || return
+
+    pass_test
+}
+
+# Test: --verbose and an explicit --level: --verbose wins and forces DEBUG
+test_verbose_overrides_level() {
+    start_test "--verbose overrides explicit --level and forces DEBUG"
+
+    init_logger --level ERROR --verbose
+
+    assert_equals "$LOG_LEVEL_DEBUG" "$CURRENT_LOG_LEVEL" \
+        "--verbose should force level to DEBUG regardless of --level" || return
+    assert_equals "true" "$VERBOSE" || return
+
+    pass_test
+}
+
 # Run all tests
 test_default_initialization
 test_quiet_option
@@ -464,3 +491,5 @@ test_script_name_cli_overrides_config
 test_init_message_default
 test_no_init_message_flag
 test_no_init_message_config
+test_quiet_and_level_together
+test_verbose_overrides_level

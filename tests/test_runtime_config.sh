@@ -814,6 +814,23 @@ test_set_unsafe_allow_ansi_codes_invalid_input() {
     pass_test
 }
 
+# Test: set_syslog_facility emits a descriptive error for an invalid value
+test_set_syslog_facility_invalid_emits_error() {
+    start_test "set_syslog_facility emits a warning for an invalid facility name"
+
+    init_logger --quiet
+
+    local stderr_output
+    stderr_output=$(set_syslog_facility "not_a_real_facility" 2>&1)
+
+    assert_contains "$stderr_output" "Invalid" \
+        "Should emit a warning mentioning the value is invalid" || return
+    assert_contains "$stderr_output" "not_a_real_facility" \
+        "Warning should echo back the rejected value" || return
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -858,3 +875,4 @@ test_set_unsafe_allow_ansi_codes
 test_set_unsafe_allow_ansi_codes_truthy_variants
 test_set_unsafe_allow_ansi_codes_falsy_variants
 test_set_unsafe_allow_ansi_codes_invalid_input
+test_set_syslog_facility_invalid_emits_error
