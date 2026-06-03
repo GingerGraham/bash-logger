@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.4](https://github.com/GingerGraham/bash-logger/compare/2.5.3...2.5.4) (2026-06-03)
+
+### Bug Fixes
+
+* updating tests to reduce testing load and time and bom char handling ([#118](https://github.com/GingerGraham/bash-logger/issues/118))
+
+### Documentation
+
+* enhance script name handling in logging documentation ([#117](https://github.com/GingerGraham/bash-logger/issues/117))
+
 ## [2.5.3](https://github.com/GingerGraham/bash-logger/compare/2.5.2...2.5.3) (2026-05-27)
 
 ### Bug Fixes
