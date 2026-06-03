@@ -317,6 +317,64 @@ test_format_empty() {
     pass_test
 }
 
+# Test: Custom format does not affect journal message content
+# Journal output is the raw message; format templates are file/console-only.
+test_format_does_not_affect_journal_output() {
+    start_test "Custom format does not bleed into journal message content"
+
+    local stub_capture="$TEST_DIR/journal_capture.txt"
+    local stub_logger="$TEST_DIR/stub_logger.sh"
+    cat > "$stub_logger" << 'STUB'
+#!/bin/bash
+echo "$*" >> "$STUB_CAPTURE_FILE"
+STUB
+    chmod +x "$stub_logger"
+
+    local result
+    # shellcheck disable=SC2034
+    result=$(bash -c "
+        export STUB_CAPTURE_FILE='$stub_capture'
+        source '$PROJECT_ROOT/logging.sh'
+        LOGGER_PATH='$stub_logger'
+        _find_and_validate_logger() { return 0; }
+        check_logger_available() { return 0; }
+        init_logger --no-color --quiet --format 'PREFIX: %l :: %m' --journal
+        USE_JOURNAL='false'
+        log_to_journal INFO 'journal_format_test_marker'
+    " 2>&1)
+
+    assert_file_exists "$stub_capture" \
+        "Stub logger was not called" || return
+    assert_file_contains "$stub_capture" "journal_format_test_marker" \
+        "Journal message body not found in stub output" || return
+    assert_file_not_contains "$stub_capture" "PREFIX:" \
+        "Format template prefix should not appear in journal output" || return
+
+    pass_test
+}
+
+# Test: %s token when script name sanitisation replaces all characters with underscores
+test_format_script_name_token_sanitised_to_underscores() {
+    start_test "Format %s token shows sanitised name when all chars are replaced with underscores"
+
+    local log_file="$TEST_DIR/sanitised_name_format.log"
+    init_logger --quiet --format "[%s] %m" --name $'$$$'
+
+    # shellcheck disable=SC2034
+    LOG_FILE="$log_file"
+    log_info "sanitised name test"
+
+    # The entry must still be written — the logger must not crash or skip the line
+    assert_file_exists "$log_file" || return
+    assert_file_contains "$log_file" "sanitised name test" || return
+
+    # The %s token must expand to the sanitised script name ($$$ -> ___)
+    assert_file_contains "$log_file" "[___]" \
+        "%s token should show sanitised script name '___'" || return
+
+    pass_test
+}
+
 # Run all tests
 test_default_format
 test_format_message_only
@@ -334,3 +392,5 @@ test_format_variable_order
 test_format_duplicate_variables
 test_format_special_chars
 test_format_empty
+test_format_does_not_affect_journal_output
+test_format_script_name_token_sanitised_to_underscores

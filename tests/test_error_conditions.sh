@@ -396,6 +396,30 @@ EOF
     pass_test
 }
 
+# Test: Calling a log function before init_logger does not crash the shell
+# and either auto-inits or returns gracefully with a non-zero exit
+test_log_before_init_does_not_crash() {
+    start_test "log_info before init_logger does not crash the shell"
+
+    local exit_code=0
+    local output
+    output=$(bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        # Deliberately do NOT call init_logger
+        log_info 'pre-init message'
+        echo exit_code:\$?
+    " 2>&1) || exit_code=$?
+
+    # The subshell must complete without crashing (exit 0 or clean non-zero;
+    # what must NOT happen is bash itself exiting with a signal or unbound variable error)
+    assert_not_contains "$output" "unbound variable" \
+        "Should not raise unbound variable error" || return
+    assert_not_contains "$output" "bad substitution" \
+        "Should not raise bad substitution error" || return
+
+    pass_test
+}
+
 # Run all tests
 test_config_path_too_long
 test_config_empty_log_file
@@ -419,3 +443,4 @@ test_log_file_write_failure_on_init
 test_log_file_unwritable_during_runtime
 test_config_journal_no_logger
 test_config_empty_journal_tag
+test_log_before_init_does_not_crash

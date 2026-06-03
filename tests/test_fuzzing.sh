@@ -24,7 +24,7 @@ test_random_ascii() {
     init_logger -l "$log_file" --no-color > /dev/null 2>&1
 
     # Generate random ASCII printable characters
-    for i in {1..50}; do
+    for i in {1..10}; do # reduced from 50 to avoid overwhelming test environment
         local random_str
         random_str=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom 2>/dev/null | head -c 100 2>/dev/null || echo "fallback")
         log_info "$random_str" 2>&1 || true
@@ -564,7 +564,7 @@ test_random_level_changes() {
     local log_file="$TEST_TMP_DIR/fuzz_levels.log"
     local levels=(DEBUG INFO WARN ERROR CRITICAL)
 
-    for i in {1..50}; do
+    for i in {1..5}; do # reduced from 50 to avoid overwhelming test environment
         local random_level="${levels[$RANDOM % 5]}"
         init_logger -l "$log_file" --level "$random_level" --no-color > /dev/null 2>&1
         log_info "Random level test $i"

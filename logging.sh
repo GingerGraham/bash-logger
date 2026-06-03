@@ -54,7 +54,7 @@
 # Guard against re-initialization when sourced multiple times
 # Use readonly status instead of emptiness to avoid environment bypass
 if ! readonly -p 2>/dev/null | grep -qE '(declare|typeset) -[^ ]*r[^ ]* BASH_LOGGER_VERSION='; then
-    readonly BASH_LOGGER_VERSION="2.5.3"
+    readonly BASH_LOGGER_VERSION="2.5.4"
 
     # Unset potentially malicious environment variables before setting internal constants
     # Only unset if not already readonly (which would indicate re-sourcing)
@@ -533,6 +533,11 @@ _parse_config_file() {
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         ((line_num++))
+
+        # Strip UTF-8 BOM (EF BB BF) from the first line if present
+        if [[ $line_num -eq 1 ]]; then
+            line="${line#$'\xef\xbb\xbf'}"
+        fi
 
         # Remove leading/trailing whitespace
         line="${line#"${line%%[![:space:]]*}"}"

@@ -300,6 +300,11 @@ Use `%s` when multiple scripts log to the same file:
 init_logger --log "/var/log/shared.log" --format "%d [%l] [%s] %m"
 ```
 
+The `%s` value reflects the current script name set during initialization or later via
+[set_script_name](runtime-configuration.md#set_script_name). If you want `%s` to show a
+function name or other runtime context, build that identifier in your own code and pass it
+to `set_script_name` before logging.
+
 ### 3. Include Timezone for Distributed Systems
 
 Use `%z` for systems spanning multiple timezones:

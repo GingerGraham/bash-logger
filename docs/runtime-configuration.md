@@ -8,9 +8,9 @@ different phases of operation.
 * [Overview](#overview)
 * [Available Functions](#available-functions)
   * [set_log_level](#set_log_level)
+  * [set_timezone_utc](#set_timezone_utc)
   * [set_log_format](#set_log_format)
   * [set_script_name](#set_script_name)
-  * [set_timezone_utc](#set_timezone_utc)
   * [set_journal_logging](#set_journal_logging)
   * [set_journal_tag](#set_journal_tag)
   * [set_syslog_facility](#set_syslog_facility)
@@ -171,6 +171,33 @@ This is particularly useful when:
 * The logger was sourced from a shell RC file (where auto-detection returns "unknown")
 * Different phases of a script should be logged with different identifiers
 * Multiple components in a script need distinct log identifiers
+
+When you want the log output to show a function name, user name, request ID, or other
+runtime context, build that identifier in your own shell code and pass the resulting string
+to `set_script_name`.
+
+```bash
+process_item() {
+    local function_name="process_item"
+    set_script_name "my-app:${function_name}"
+
+    log_info "Processing item"
+}
+
+log_as_user() {
+    local user_name=${USER:-unknown}
+    set_script_name "my-app:${user_name}"
+
+    log_info "Writing audit entry"
+}
+
+# Restore the default application name when you are done with the scoped identifier.
+set_script_name "my-app"
+```
+
+Use this pattern when the identifier needs to reflect the current caller or execution
+context. The logger does not infer function names automatically; it only displays the value
+you provide.
 
 ### set_journal_logging
 
