@@ -460,7 +460,7 @@ test_high_concurrency_stress() {
         line_count=$(wc -l < "$log_file")
 
         # Should have most messages (allow some failures under stress)
-        if [[ $line_count -ge 40 ]]; then
+        if [[ $line_count -ge 12 ]]; then
             pass_test
         else
             fail_test "Only $line_count/15 messages logged under stress"

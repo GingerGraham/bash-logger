@@ -495,6 +495,46 @@ EOF
     pass_test
 }
 
+# Test: Config file with a leading UTF-8 BOM is parsed correctly
+test_config_file_with_bom() {
+    start_test "Config file with UTF-8 BOM is parsed correctly"
+
+    local config_file="$TEST_DIR/bom.conf"
+    # Write UTF-8 BOM (EF BB BF) followed by a normal INI section
+    printf '\xef\xbb\xbf[logging]\nlevel = ERROR\n' > "$config_file"
+
+    init_logger --config "$config_file" --quiet
+
+    assert_equals "$LOG_LEVEL_ERROR" "$CURRENT_LOG_LEVEL" \
+        "Level should be ERROR even when config has a BOM prefix" || return
+
+    pass_test
+}
+
+# Test: Unknown configuration key emits warning but does not abort init
+test_config_unknown_key_ignored() {
+    start_test "Unknown config key produces a warning and does not abort initialisation"
+
+    local config_file="$TEST_DIR/unknown_key.conf"
+    cat > "$config_file" << 'EOF'
+[logging]
+level = WARN
+completely_unknown_option = foobar
+EOF
+
+    # Run init_logger directly so variable assignments propagate to the current shell,
+    # capturing only stderr separately
+    init_logger --config "$config_file" 2>"$TEST_DIR/stderr.txt"
+
+    assert_equals "$LOG_LEVEL_WARN" "$CURRENT_LOG_LEVEL" \
+        "Level should still be set despite unknown key" || return
+
+    assert_file_contains "$TEST_DIR/stderr.txt" "Unknown" \
+        "Should warn about unrecognised config key" || return
+
+    pass_test
+}
+
 # Run all tests
 test_basic_config_load
 test_multiple_config_options
@@ -521,3 +561,5 @@ test_config_unreadable_file_no_path_disclosure
 test_cli_overrides_config
 test_config_unknown_key
 test_config_alternative_keys
+test_config_file_with_bom
+test_config_unknown_key_ignored
