@@ -218,7 +218,7 @@ test_high_volume_special_chars() {
     init_logger -l "$log_file" --no-color > /dev/null 2>&1
 
     # Log many messages with special characters
-    for i in {1..50}; do # reduced from 1000
+    for i in {1..50}; do # reduced from 100
         log_info "Special: \$\`\$()\{\}[]<>|&;*?" || break
     done
 
@@ -230,31 +230,36 @@ test_high_volume_special_chars() {
 }
 
 # Test: Disk space handling (simulated)
-# test_disk_space_handling() {
-#     start_test "Disk space limitations are handled gracefully"
+test_disk_space_handling() {
+    start_test "Disk space limitations are handled gracefully"
 
-#     local log_file="$TEST_TMP_DIR/disk_space.log"
+    if [[ "${BASH_LOGGER_TEST_DISK_STRESS:-false}" != "true" ]]; then
+        skip_test "disk stress test disabled by default (set BASH_LOGGER_TEST_DISK_STRESS=true to enable)"
+        return
+    fi
 
-#     init_logger -l "$log_file" --no-color > /dev/null 2>&1
+    local log_file="$TEST_TMP_DIR/disk_space.log"
 
-#     # Try to write a large amount of data
-#     local success_count=0
-#     for i in {1..1000}; do
-#         if log_info "$(printf 'Data%.0s' {1..1000})"; then
-#             ((success_count++))
-#         else
-#             # If it starts failing, that's expected with disk limits
-#             break
-#         fi
-#     done
+    init_logger -l "$log_file" --no-color > /dev/null 2>&1
 
-#     # Should have logged at least some messages
-#     if [[ $success_count -gt 0 ]]; then
-#         pass_test
-#     else
-#         fail_test "Could not log any messages"
-#     fi
-# }
+    # Try to write a large amount of data
+    local success_count=0
+    for i in {1..1000}; do
+        if log_info "$(printf 'Data%.0s' {1..1000})"; then
+            ((success_count++))
+        else
+            # If it starts failing, that's expected with disk limits
+            break
+        fi
+    done
+
+    # Should have logged at least some messages
+    if [[ $success_count -gt 0 ]]; then
+        pass_test
+    else
+        fail_test "Could not log any messages"
+    fi
+}
 
 # Test: File descriptor exhaustion resistance
 test_file_descriptor_limit() {
@@ -326,7 +331,7 @@ test_high_volume_unicode() {
     init_logger -l "$log_file" --no-color > /dev/null 2>&1
 
     # Log many Unicode messages
-    for i in {1..50}; do # reduced from 1000
+    for i in {1..50}; do # reduced from 100
         log_info "Unicode: 日本語 🔒 中文 Ελληνικά €£¥" || break
     done
 
@@ -367,7 +372,7 @@ test_mixed_levels_high_volume() {
     init_logger -l "$log_file" --no-color > /dev/null 2>&1
 
     # Log with all levels
-    for i in {1..50}; do # reduced from 1000
+    for i in {1..50}; do # reduced from 200
         case $((i % 5)) in
             0) log_debug "Debug $i" ;;
             1) log_info "Info $i" ;;
@@ -457,7 +462,7 @@ test_multiple_log_files
 test_very_long_single_line
 test_binary_data_handling
 test_high_volume_special_chars
-# test_disk_space_handling
+test_disk_space_handling
 test_file_descriptor_limit
 test_repeated_initialization
 test_dual_output_stress

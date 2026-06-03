@@ -322,11 +322,6 @@ test_format_empty() {
 test_format_does_not_affect_journal_output() {
     start_test "Custom format does not bleed into journal message content"
 
-    if ! command -v logger >/dev/null 2>&1; then
-        skip_test "logger command not available"
-        return
-    fi
-
     local stub_capture="$TEST_DIR/journal_capture.txt"
     local stub_logger="$TEST_DIR/stub_logger.sh"
     cat > "$stub_logger" << 'STUB'
@@ -358,20 +353,24 @@ STUB
     pass_test
 }
 
-# Test: %s token when script name sanitisation strips all characters
-test_format_script_name_token_empty_after_sanitisation() {
-    start_test "Format %s token is empty when sanitised script name has no valid chars"
+# Test: %s token when script name sanitisation replaces all characters with underscores
+test_format_script_name_token_sanitised_to_underscores() {
+    start_test "Format %s token shows sanitised name when all chars are replaced with underscores"
 
-    local log_file="$TEST_DIR/empty_name_format.log"
+    local log_file="$TEST_DIR/sanitised_name_format.log"
     init_logger --quiet --format "[%s] %m" --name $'$$$'
 
     # shellcheck disable=SC2034
     LOG_FILE="$log_file"
-    log_info "empty name test"
+    log_info "sanitised name test"
 
     # The entry must still be written — the logger must not crash or skip the line
     assert_file_exists "$log_file" || return
-    assert_file_contains "$log_file" "empty name test" || return
+    assert_file_contains "$log_file" "sanitised name test" || return
+
+    # The %s token must expand to the sanitised script name ($$$ -> ___)
+    assert_file_contains "$log_file" "[___]" \
+        "%s token should show sanitised script name '___'" || return
 
     pass_test
 }
@@ -394,4 +393,4 @@ test_format_duplicate_variables
 test_format_special_chars
 test_format_empty
 test_format_does_not_affect_journal_output
-test_format_script_name_token_empty_after_sanitisation
+test_format_script_name_token_sanitised_to_underscores

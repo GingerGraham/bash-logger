@@ -534,6 +534,11 @@ _parse_config_file() {
     while IFS= read -r line || [[ -n "$line" ]]; do
         ((line_num++))
 
+        # Strip UTF-8 BOM (EF BB BF) from the first line if present
+        if [[ $line_num -eq 1 ]]; then
+            line="${line#$'\xef\xbb\xbf'}"
+        fi
+
         # Remove leading/trailing whitespace
         line="${line#"${line%%[![:space:]]*}"}"
         line="${line%"${line##*[![:space:]]}"}"
