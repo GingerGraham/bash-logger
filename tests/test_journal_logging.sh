@@ -10,6 +10,7 @@
 #   - Message below current log level is silently suppressed
 #   - logger not available emits warning to stderr and returns 1
 #   - log_sensitive is unaffected — still skips journal after this change
+#   - _write_to_journal passes -- before the message to prevent option injection
 
 # shellcheck source=tests/test_helpers.sh disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
@@ -560,6 +561,37 @@ test_log_to_journal_retries_on_second_call_after_first_failure() {
     pass_test
 }
 
+# ---------------------------------------------------------------------------
+# Test: _write_to_journal passes -- before the message to prevent option injection
+# ---------------------------------------------------------------------------
+test_write_to_journal_passes_double_dash_before_message() {
+    start_test "_write_to_journal includes -- before hyphen-prefixed message"
+
+    _create_stub_logger "$TEST_DIR"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+
+        LOGGER_PATH='$STUB_LOGGER'
+        _find_and_validate_logger() { return 0; }
+        check_logger_available() { return 0; }
+
+        init_logger --no-color --quiet
+        USE_JOURNAL='false'
+
+        log_to_journal INFO '-n not-an-option'
+    " 2>/dev/null
+
+    local captured
+    captured=$(cat "$STUB_CAPTURE" 2>/dev/null || true)
+    assert_contains "$captured" "-- -n" \
+        "Stub logger should receive -- before the hyphen-prefixed message" || return
+    assert_contains "$captured" "not-an-option" \
+        "Stub logger should capture the full message text" || return
+
+    pass_test
+}
+
 # Run all tests
 test_journal_option
 test_no_journal_via_runtime
@@ -577,3 +609,4 @@ test_log_to_journal_level_aliases
 test_log_to_journal_numeric_levels
 test_log_to_journal_retries_discovery_after_failed_init
 test_log_to_journal_retries_on_second_call_after_first_failure
+test_write_to_journal_passes_double_dash_before_message
