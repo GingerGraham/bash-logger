@@ -949,7 +949,7 @@ _write_to_journal() {
         return 1
     fi
 
-    "$LOGGER_PATH" -p "${SYSLOG_FACILITY}.${priority}" -t "$tag" "$message" 2>/dev/null || {
+    "$LOGGER_PATH" -p "${SYSLOG_FACILITY}.${priority}" -t "$tag" -- "$message" 2>/dev/null || {
         if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
             echo "Warning: logger command failed; disabling journal logging" >&2
             LOGGER_JOURNAL_ERROR_REPORTED="yes"
