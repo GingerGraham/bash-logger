@@ -565,7 +565,7 @@ test_log_to_journal_retries_on_second_call_after_first_failure() {
 # Test: _write_to_journal passes -- before the message to prevent option injection
 # ---------------------------------------------------------------------------
 test_write_to_journal_passes_double_dash_before_message() {
-    start_test "_write_to_journal includes -- before hyphen-prefixed message"
+    start_test "write_to_journal includes -- before hyphen-prefixed message"
 
     _create_stub_logger "$TEST_DIR"
 
