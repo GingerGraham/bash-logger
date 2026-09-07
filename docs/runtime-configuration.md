@@ -786,7 +786,7 @@ ERROR_COUNT=0
 
 function process_item() {
     if ! operation; then
-        ((ERROR_COUNT++))
+        ERROR_COUNT=$((ERROR_COUNT + 1))
 
         # After 5 errors, enable debug mode
         if [[ $ERROR_COUNT -eq 5 ]]; then
