@@ -497,6 +497,47 @@ test_readonly_variable_conflicts() {
     fi
 }
 
+# Test: init_logger's internal counters don't trip `set -e` in a consuming script
+#
+# Regression test for the bug fixed by PR #126: `((var++))`-style post-increment
+# arithmetic commands return the *pre*-increment value as their exit status, so
+# when the counter is 0 the command itself exits 1 even though the increment
+# happened. Because logging.sh is sourced, that spurious 1 propagates under
+# `set -e` and silently kills the caller the first time a counter is at 0.
+#
+# The calls run in an unprotected `bash -c` subshell (no `if`/`||` around them)
+# so that errexit, if tripped internally, is free to kill the subshell exactly
+# as it would a real consuming script — an `if`/`||` guard here in the test
+# itself would suppress errexit for the whole call and mask the bug.
+test_init_logger_survives_errexit() {
+    start_test "init_logger counters don't trigger errexit on their first iteration"
+
+    local log_file="$TEST_DIR/errexit.log"
+    local config_file="$TEST_DIR/errexit.conf"
+    local marker_file="$TEST_DIR/errexit.marker"
+    cat > "$config_file" << 'EOF'
+[logging]
+level = INFO
+EOF
+
+    bash -c "
+        set -e
+        source '$PROJECT_ROOT/logging.sh'
+        # Exercises the CLI-arg loop from i=0 in init_logger
+        init_logger -l '$log_file' --no-color
+        # Exercises _parse_config_file's line_num counter from 0
+        init_logger -c '$config_file' -l '$log_file' --no-color
+        touch '$marker_file'
+    " >/dev/null 2>&1
+    local subshell_exit=$?
+
+    if [[ "$subshell_exit" -eq 0 ]] && [[ -f "$marker_file" ]]; then
+        pass_test
+    else
+        fail_test "init_logger tripped errexit under set -e (subshell exit: $subshell_exit)"
+    fi
+}
+
 # Test: Pre-set LOGGER_FILE_ERROR_REPORTED is cleared at source time
 test_preset_file_error_reported_flag_cleared() {
     start_test "Pre-set LOGGER_FILE_ERROR_REPORTED is cleared at source time"
@@ -564,5 +605,6 @@ test_cdpath_variable
 test_globignore_variable
 test_prompt_command_injection
 test_readonly_variable_conflicts
+test_init_logger_survives_errexit
 test_preset_file_error_reported_flag_cleared
 test_preset_journal_error_reported_flag_cleared
