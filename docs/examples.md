@@ -501,7 +501,7 @@ CURRENT=0
 log_info "Starting batch processing of $TOTAL files"
 
 for file in "${FILES[@]}"; do
-  ((CURRENT++))
+  CURRENT=$((CURRENT + 1))
   PERCENT=$((CURRENT * 100 / TOTAL))
 
   log_info "Processing [$CURRENT/$TOTAL - ${PERCENT}%]: $file"
@@ -592,9 +592,9 @@ run_test() {
 
 FAILURES=0
 
-run_test "test_database_connection" || ((FAILURES++))
-run_test "test_api_endpoint" || ((FAILURES++))
-run_test "test_data_validation" || ((FAILURES++))
+run_test "test_database_connection" || FAILURES=$((FAILURES + 1))
+run_test "test_api_endpoint" || FAILURES=$((FAILURES + 1))
+run_test "test_data_validation" || FAILURES=$((FAILURES + 1))
 
 if [[ $FAILURES -eq 0 ]]; then
   log_info "All tests passed"
@@ -717,7 +717,7 @@ process_data() {
 
   local line_count=0
   while IFS= read -r line; do
-    ((line_count++))
+    line_count=$((line_count + 1))
 
     if [[ $((line_count % 1000)) -eq 0 ]]; then
       log_info "Processed $line_count lines"

@@ -157,7 +157,7 @@ trap 'rm -f "$TMPBODY"' EXIT
 for file in "${FILES[@]}"; do
     if [[ ! -f "$file" ]]; then
         warn "File not found, skipping: $file"
-        ((SKIPPED++)) || true
+        SKIPPED=$((SKIPPED + 1))
         continue
     fi
 
@@ -169,7 +169,7 @@ for file in "${FILES[@]}"; do
 
     if [[ -z "$title" ]]; then
         warn "No 'title' found in frontmatter of $file — skipping"
-        ((SKIPPED++)) || true
+        SKIPPED=$((SKIPPED + 1))
         continue
     fi
 
@@ -197,18 +197,18 @@ for file in "${FILES[@]}"; do
         warn "  [DRY RUN] Would run: gh ${gh_args[*]}"
         warn "  [DRY RUN] Title:  $title"
         warn "  [DRY RUN] Labels: ${labels:-none}"
-        ((CREATED++)) || true
+        CREATED=$((CREATED + 1))
         continue
     fi
 
     # Create the issue
     if issue_url=$(gh "${gh_args[@]}" 2>&1); then
         ok "  Created: $issue_url"
-        ((CREATED++)) || true
+        CREATED=$((CREATED + 1))
     else
         err "  Failed to create issue for: $file"
         err "  gh output: $issue_url"
-        ((FAILED++)) || true
+        FAILED=$((FAILED + 1))
     fi
 done
 

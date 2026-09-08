@@ -97,7 +97,7 @@ test_parallel_file_creation() {
     # Verify all files were created
     local created_count=0
     for i in {1..10}; do
-        [[ -f "$TEST_TMP_DIR/parallel_$i.log" ]] && ((created_count++))
+        [[ -f "$TEST_TMP_DIR/parallel_$i.log" ]] && created_count=$((created_count + 1))
     done
 
     if [[ $created_count -eq 10 ]]; then
@@ -176,7 +176,7 @@ test_directory_creation_race() {
     if [[ -d "$base_dir/subdir" ]]; then
         local file_count=0
         for i in {1..5}; do
-            [[ -f "$base_dir/subdir/test_$i.log" ]] && ((file_count++))
+            [[ -f "$base_dir/subdir/test_$i.log" ]] && file_count=$((file_count + 1))
         done
 
         if [[ $file_count -eq 5 ]]; then
@@ -380,7 +380,7 @@ test_concurrent_different_files() {
         if [[ -f "$TEST_TMP_DIR/different_$i.log" ]]; then
             local line_count
             line_count=$(wc -l < "$TEST_TMP_DIR/different_$i.log")
-            [[ $line_count -ge 9 ]] && ((success_count++))
+            [[ $line_count -ge 9 ]] && success_count=$((success_count + 1))
         fi
     done
 

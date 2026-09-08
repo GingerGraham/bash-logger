@@ -107,7 +107,7 @@ run_all_demos() {
 
     for key in $(echo "${!DEMOS[@]}" | tr ' ' '\n' | sort); do
         if run_demo "$key"; then
-            ((success_count++))
+            success_count=$((success_count + 1))
         else
             failed_demos+=("$key")
         fi
@@ -141,7 +141,7 @@ show_menu() {
         IFS='|' read -r script title description <<< "${DEMOS[$key]}"
         printf "%2d) %-15s - %s\n" "$i" "$title" "$description"
         keys+=("$key")
-        ((i++))
+        i=$((i + 1))
     done
 
     echo

@@ -74,7 +74,7 @@ test_rapid_logging_rate() {
     # Log many messages quickly
     local count=0
     for i in {1..100}; do # reduced from 1000
-        log_info "Message $i" && ((count++))
+        log_info "Message $i" && count=$((count + 1))
     done
 
     # Verify most messages were logged
@@ -246,7 +246,7 @@ test_disk_space_handling() {
     local success_count=0
     for i in {1..1000}; do
         if log_info "$(printf 'Data%.0s' {1..1000})"; then
-            ((success_count++))
+            success_count=$((success_count + 1))
         else
             # If it starts failing, that's expected with disk limits
             break

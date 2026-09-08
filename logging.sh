@@ -532,7 +532,7 @@ _parse_config_file() {
     local current_section=""
 
     while IFS= read -r line || [[ -n "$line" ]]; do
-        ((line_num++))
+        line_num=$((line_num + 1))
 
         # Strip UTF-8 BOM (EF BB BF) from the first line if present
         if [[ $line_num -eq 1 ]]; then
@@ -1164,7 +1164,7 @@ init_logger() {
                 break
                 ;;
         esac
-        ((i++))
+        i=$((i + 1))
     done
 
     # Second pass: parse all command line arguments (overrides config file)
