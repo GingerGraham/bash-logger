@@ -515,6 +515,8 @@ test_init_logger_survives_errexit() {
     local log_file="$TEST_DIR/errexit.log"
     local config_file="$TEST_DIR/errexit.conf"
     local marker_file="$TEST_DIR/errexit.marker"
+    local subshell_stdout="$TEST_DIR/errexit.stdout"
+    local subshell_stderr="$TEST_DIR/errexit.stderr"
     cat > "$config_file" << 'EOF'
 [logging]
 level = INFO
@@ -528,7 +530,7 @@ EOF
         # Exercises _parse_config_file's line_num counter from 0
         init_logger -c '$config_file' -l '$log_file' --no-color
         touch '$marker_file'
-    " >/dev/null 2>&1
+    " >"$subshell_stdout" 2>"$subshell_stderr"
     local subshell_exit=$?
 
     if [[ "$subshell_exit" -eq 0 ]] && [[ -f "$marker_file" ]]; then
