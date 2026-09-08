@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.6](https://github.com/GingerGraham/bash-logger/compare/2.5.5...2.5.6) (2026-09-08)
+
+### Bug Fixes
+
+* add regression test for init_logger errexit bug (PR [#126](https://github.com/GingerGraham/bash-logger/issues/126)) ([#128](https://github.com/GingerGraham/bash-logger/issues/128))
+
 ## [2.5.5](https://github.com/GingerGraham/bash-logger/compare/2.5.4...2.5.5) (2026-06-06)
 
 ### Bug Fixes
