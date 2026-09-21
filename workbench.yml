@@ -1,0 +1,10 @@
+version: 2
+branch: main
+
+deploy:
+  - src: logging.sh
+    dest: ~/.local/lib/bash-logger/logging.sh
+    mode: copy
+
+info:
+  description: "Structured Bash/POSIX-tolerant logging library — console, file, and systemd journal targets"
