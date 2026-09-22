@@ -93,6 +93,11 @@ ensures proper version bumping and release notes generation.
 
 **Scope** - Optional. The area affected (e.g., `logging`, `config`, `tests`)
 
+> **Note:** The release workflow only evaluates commits for a release when they touch
+> `logging.sh` or `workbench.yml`. A `fix:`/`feat:` commit touching either file triggers a
+> release; a `chore:` commit touching either still produces none — the type decides whether a
+> release happens, not the file.
+
 **Subject** - Required. Brief description in present tense:
 
 * Use imperative mood: "add" not "adds" or "added"

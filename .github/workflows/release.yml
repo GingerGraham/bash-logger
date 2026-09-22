@@ -5,6 +5,18 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump level"
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major]
+      force:
+        description: "Override even if pending commits would already produce a higher bump"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -18,6 +30,14 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
+      - name: Restrict manual trigger to repo admin
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ github.actor }}" != "GingerGraham" ]; then
+            echo "::error::Manual releases are restricted to the repo admin (GingerGraham). Triggered by: ${{ github.actor }}"
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -25,7 +45,7 @@ jobs:
           persist-credentials: false
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Detect logging.sh changes since last tag
+      - name: Detect release-worthy changes / prepare manual bump
         id: logging_change
         run: |
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
@@ -36,12 +56,48 @@ jobs:
               exit 0
           fi
 
-          # Manual workflow_dispatch: create patch bump commit
+          # Manual workflow_dispatch: create bump commit for the requested level
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              echo "Manual trigger detected; creating patch bump commit"
+              BUMP="${{ inputs.bump }}"
+              FORCE="${{ inputs.force }}"
+
+              # Replicate .releaserc.json's releaseRules in plain bash to see what
+              # the *existing* unreleased commits would already produce, so a
+              # requested "patch" can't silently become a "minor" without warning.
+              PENDING_LOG=$(git log "$LAST_TAG"..HEAD --pretty=%B)
+              if echo "$PENDING_LOG" | grep -qE '^[a-z]+(\([^)]*\))?!:|BREAKING[ -]CHANGE:'; then
+                  PENDING="major"
+              elif echo "$PENDING_LOG" | grep -qE '^feat(\([^)]*\))?:'; then
+                  PENDING="minor"
+              elif echo "$PENDING_LOG" | grep -qE '^(fix|perf|revert|refactor)(\([^)]*\))?:'; then
+                  PENDING="patch"
+              else
+                  PENDING="none"
+              fi
+
+              rank() { case "$1" in none) echo 0 ;; patch) echo 1 ;; minor) echo 2 ;; major) echo 3 ;; esac; }
+
+              if [ "$(rank "$PENDING")" -gt "$(rank "$BUMP")" ] && [ "$FORCE" != "true" ]; then
+                  echo "::error::Pending commits since $LAST_TAG would already produce a '$PENDING' release, higher than the requested '$BUMP'. Re-run with force=true to override, or check: git log $LAST_TAG..HEAD --oneline"
+                  exit 1
+              fi
+
+              case "$BUMP" in
+                patch)
+                  MSG="fix: trigger manual patch release [skip ci]"
+                  ;;
+                minor)
+                  MSG="feat: trigger manual minor release [skip ci]"
+                  ;;
+                major)
+                  MSG=$'feat!: trigger manual major release [skip ci]\n\nBREAKING CHANGE: manual major release requested via workflow_dispatch'
+                  ;;
+              esac
+
+              echo "Manual trigger detected (bump=$BUMP, pending=$PENDING); creating release commit"
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
-              git commit --allow-empty -m "fix: trigger manual patch release [skip ci]"
+              git commit --allow-empty -m "$MSG"
 
               # Set up credentials for push
               git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
@@ -51,12 +107,12 @@ jobs:
               exit 0
           fi
 
-          # Auto push: only release if logging.sh changed
-          if git diff --name-only "$LAST_TAG"..HEAD -- logging.sh | grep -q .; then
-              echo "logging.sh changed since $LAST_TAG"
+          # Auto push: release if logging.sh OR workbench.yml changed
+          if git diff --name-only "$LAST_TAG"..HEAD -- logging.sh workbench.yml | grep -q .; then
+              echo "Release-worthy file changed since $LAST_TAG"
               echo "changed=true" >> "$GITHUB_OUTPUT"
           else
-              echo "No logging.sh changes since $LAST_TAG; skipping release."
+              echo "No logging.sh/workbench.yml changes since $LAST_TAG; skipping release."
               echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 

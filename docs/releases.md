@@ -204,9 +204,37 @@ cd demo-scripts
 ./run_demos.sh
 ```
 
-## Manual Release (If Needed)
+## Manual Release via workflow_dispatch
 
-If you need to create a release manually (not recommended):
+The release workflow can also be triggered manually from the
+[Actions tab](../../actions/workflows/release.yml) with a chosen bump level, instead of waiting
+for a qualifying push to `main`.
+
+**Restricted to the repo admin** (`GingerGraham`) — any other actor triggering it fails
+immediately, before checkout.
+
+**Inputs:**
+
+* `bump` — `patch`, `minor`, or `major`. Required, defaults to `patch`.
+* `force` — override the pending-commit safety check below. Optional, defaults to `false`.
+
+**How it works:**
+
+The workflow creates an empty, `[skip ci]`-tagged commit typed to match the requested bump
+(`fix:` for patch, `feat:` for minor, `feat!:` with a `BREAKING CHANGE` footer for major), pushes
+it to `main` using `secrets.PAT_TOKEN`, then runs `semantic-release` in the same job run.
+
+**Safety check:** before creating that commit, the workflow scans commits since the last tag
+against `.releaserc.json`'s release rules to see what bump they would already produce. If that
+pending bump is higher than the one you requested (e.g. an unreleased `feat:` commit is pending
+but you requested `patch`), the run fails with the pending level named, rather than silently
+under-releasing. Re-run with `force: true` to override.
+
+### Manual Release Without semantic-release (Last Resort Only)
+
+This bypasses `semantic-release` entirely and is **not** the preferred manual path — prefer
+`workflow_dispatch` above, which keeps `logging.sh`, `bpkg.json`, and `CHANGELOG.md` in sync.
+Only fall back to this if the `workflow_dispatch` path itself is broken:
 
 ```bash
 # Create and push a tag

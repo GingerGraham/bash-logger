@@ -37,6 +37,11 @@ Commit history drives automated versioning via `semantic-release`. Incorrect for
 
 A `BREAKING CHANGE` footer triggers a **major** bump regardless of type.
 
+The release workflow only evaluates commits for a release when they touch `logging.sh` or
+`workbench.yml`. A `fix:`/`feat:` commit that only touches `workbench.yml` releases the same
+way a `logging.sh` change does; a `chore:` commit touching either file still produces no
+release, since the type — not the file — decides whether a release happens.
+
 ## Scope — optional but strongly preferred
 
 | Scope     | Use for                                   |
