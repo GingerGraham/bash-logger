@@ -290,9 +290,28 @@ The release behavior is controlled by [.releaserc.json](../.releaserc.json).
 
 * `branches: ["main"]` - Only releases from main branch
 * `tagFormat` - Version tag format (no 'v' prefix)
-* Release rules mapping commit types to version bumps
+* `analyzeCommitsCmd` - runs [scripts/analyze-release-commits.sh](../scripts/analyze-release-commits.sh),
+  which maps commit types to version bumps the same way `@semantic-release/commit-analyzer`'s
+  `releaseRules` used to, but restricted to commits that themselves touch `logging.sh` or
+  `workbench.yml` (the deployable payload) — see [Scoping releases to the payload](#scoping-releases-to-the-payload)
 * Files to update on release
 * GitHub release asset configuration
+
+### Scoping releases to the payload
+
+`semantic-release`'s default commit analysis considers every commit since the last tag,
+regardless of what files it touched — so a `feat:`-typed commit that only changes CI config or
+docs would still bump the published version, even though nothing consumers install actually
+changed. `scripts/analyze-release-commits.sh` closes that gap: on an automatic push-triggered
+run, a commit's type only counts toward the release if that same commit's diff also touches
+`logging.sh` or `workbench.yml`.
+
+The one exception is a `workflow_dispatch` manual release: its synthetic `--allow-empty` commit
+is created specifically to force a chosen bump level regardless of what changed, so it is
+intentionally exempt from the payload-path restriction (detected via the `GITHUB_EVENT_NAME`
+environment variable GitHub Actions sets automatically). The manual-dispatch pending-bump safety
+check in `release.yml` calls the same script, so what it warns about always matches what the
+actual release run will decide.
 
 ## Resources
 

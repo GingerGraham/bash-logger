@@ -3,26 +3,6 @@
   "tagFormat": "${version}",
   "plugins": [
     [
-      "@semantic-release/commit-analyzer",
-      {
-        "preset": "conventionalcommits",
-        "releaseRules": [
-          { "breaking": true, "release": "major" },
-          { "type": "feat", "release": "minor" },
-          { "type": "fix", "release": "patch" },
-          { "type": "perf", "release": "patch" },
-          { "type": "revert", "release": "patch" },
-          { "type": "docs", "release": false },
-          { "type": "style", "release": false },
-          { "type": "refactor", "release": "patch" },
-          { "type": "test", "release": false },
-          { "type": "build", "release": false },
-          { "type": "ci", "release": false },
-          { "type": "chore", "release": false }
-        ]
-      }
-    ],
-    [
       "@semantic-release/release-notes-generator",
       {
         "preset": "conventionalcommits",
@@ -60,6 +40,7 @@
     [
       "@semantic-release/exec",
       {
+        "analyzeCommitsCmd": "scripts/analyze-release-commits.sh '${lastRelease.gitTag}'",
         "prepareCmd": "sed -i 's/readonly BASH_LOGGER_VERSION=\".*\"/readonly BASH_LOGGER_VERSION=\"${nextRelease.version}\"/' logging.sh && sed -i 's/\"version\": \".*\"/\"version\": \"${nextRelease.version}\"/' bpkg.json && ./scripts/package-release.sh ${nextRelease.version}"
       }
     ],
