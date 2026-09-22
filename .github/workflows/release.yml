@@ -65,7 +65,7 @@ jobs:
               # the *existing* unreleased commits would already produce, so a
               # requested "patch" can't silently become a "minor" without warning.
               PENDING_LOG=$(git log "$LAST_TAG"..HEAD --pretty=%B)
-              if echo "$PENDING_LOG" | grep -qE '^feat(\([^)]*\))?!:|BREAKING CHANGE:'; then
+              if echo "$PENDING_LOG" | grep -qE '^[a-z]+(\([^)]*\))?!:|BREAKING[ -]CHANGE:'; then
                   PENDING="major"
               elif echo "$PENDING_LOG" | grep -qE '^feat(\([^)]*\))?:'; then
                   PENDING="minor"
