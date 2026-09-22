@@ -26,13 +26,13 @@ set -euo pipefail
 LAST_TAG="${1:-}"
 RELEASE_PATHS=(logging.sh workbench.yml)
 
-if [ -n "$LAST_TAG" ]; then
+if [[ -n "$LAST_TAG" ]]; then
     RANGE="$LAST_TAG..HEAD"
 else
     RANGE="HEAD"
 fi
 
-if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
+if [[ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]]; then
     PENDING_LOG=$(git log "$RANGE" --pretty=%B)
 else
     # A pathspec on git log filters the commit list itself, so only commits
