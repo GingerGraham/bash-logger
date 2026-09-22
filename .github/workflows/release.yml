@@ -61,19 +61,13 @@ jobs:
               BUMP="${{ inputs.bump }}"
               FORCE="${{ inputs.force }}"
 
-              # Replicate .releaserc.json's releaseRules in plain bash to see what
-              # the *existing* unreleased commits would already produce, so a
-              # requested "patch" can't silently become a "minor" without warning.
-              PENDING_LOG=$(git log "$LAST_TAG"..HEAD --pretty=%B)
-              if echo "$PENDING_LOG" | grep -qE '^[a-z]+(\([^)]*\))?!:|^BREAKING[ -]CHANGE:'; then
-                  PENDING="major"
-              elif echo "$PENDING_LOG" | grep -qE '^feat(\([^)]*\))?:'; then
-                  PENDING="minor"
-              elif echo "$PENDING_LOG" | grep -qE '^(fix|perf|revert|refactor)(\([^)]*\))?:'; then
-                  PENDING="patch"
-              else
-                  PENDING="none"
-              fi
+              # scripts/analyze-release-commits.sh sees GITHUB_EVENT_NAME=workflow_dispatch
+              # here, so it reports what ALL pending commits would already produce
+              # (unfiltered by path) — the same analysis analyzeCommitsCmd applies
+              # again once semantic-release actually runs, so a requested "patch"
+              # can't silently become a "minor" without warning.
+              PENDING=$(scripts/analyze-release-commits.sh "$LAST_TAG")
+              PENDING="${PENDING:-none}"
 
               rank() { case "$1" in none) echo 0 ;; patch) echo 1 ;; minor) echo 2 ;; major) echo 3 ;; esac; }
 
@@ -107,12 +101,16 @@ jobs:
               exit 0
           fi
 
-          # Auto push: release if logging.sh OR workbench.yml changed
-          if git diff --name-only "$LAST_TAG"..HEAD -- logging.sh workbench.yml | grep -q .; then
-              echo "Release-worthy file changed since $LAST_TAG"
+          # Auto push: only release if a commit that itself touched logging.sh or
+          # workbench.yml is also release-worthy by type (feat:/fix:/etc.) — a
+          # feat:-typed commit that only touches CI config or docs must not bump
+          # the deployable payload's version.
+          NEXT_TYPE=$(scripts/analyze-release-commits.sh "$LAST_TAG")
+          if [ -n "$NEXT_TYPE" ]; then
+              echo "Release-worthy ($NEXT_TYPE) commit touching logging.sh/workbench.yml since $LAST_TAG"
               echo "changed=true" >> "$GITHUB_OUTPUT"
           else
-              echo "No logging.sh/workbench.yml changes since $LAST_TAG; skipping release."
+              echo "No release-worthy logging.sh/workbench.yml commit since $LAST_TAG; skipping release."
               echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
