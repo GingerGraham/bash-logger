@@ -9,6 +9,7 @@
 # - set_journal_logging function
 # - set_journal_tag function
 # - set_color_mode function
+# - CONFIG notice output stream and line endings
 
 # Test: set_log_level changes level at runtime
 test_set_log_level() {
@@ -831,6 +832,144 @@ test_set_syslog_facility_invalid_emits_error() {
     pass_test
 }
 
+# Test: CONFIG notices go to stdout with the default stderr level
+test_config_notice_stdout_by_default() {
+    start_test "CONFIG notice goes to stdout with the default stderr level (ERROR)"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stdout" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/stderr" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: CONFIG notices go to stderr when NOTICE messages do
+test_config_notice_stderr_at_notice_level() {
+    start_test "CONFIG notice goes to stderr when stderr level is NOTICE"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --stderr-level NOTICE
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stderr" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/stdout" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: CONFIG notices stay on stdout when NOTICE messages do
+test_config_notice_stdout_at_warn_level() {
+    start_test "CONFIG notice goes to stdout when stderr level is WARN"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --stderr-level WARN
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stdout" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/stderr" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: the CONFIG notice stream depends on the stderr level, not the log level
+test_config_notice_stream_ignores_log_level() {
+    start_test "CONFIG notice stream does not depend on the log level"
+
+    # With --level DEBUG and --stderr-level INFO, NOTICE goes to stderr. Both
+    # notices must follow, including the one printed after set_log_level
+    # changes the log level.
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --level DEBUG --stderr-level INFO
+        set_log_format '[%l] %m'
+        set_log_level ERROR
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stderr" "Log format changed" || return
+    assert_file_contains "$TEST_DIR/stderr" "Log level changed" || return
+    # stdout still gets init_logger's DEBUG line, so check only for notices.
+    assert_file_not_contains "$TEST_DIR/stdout" "[CONFIG]" || return
+
+    pass_test
+}
+
+# Test: every set_* function routes its CONFIG notice by the stderr level
+test_config_notice_all_setters_use_stderr() {
+    start_test "Every set_* function sends its CONFIG notice to stderr at stderr level DEBUG"
+
+    # set_log_format runs first so every later notice keeps its [CONFIG] tag.
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --stderr-level DEBUG
+        set_log_format '[%l] %m'
+        set_log_level INFO
+        set_timezone_utc true
+        set_journal_logging false
+        set_journal_tag mytag
+        set_syslog_facility local0
+        set_color_mode never
+        set_script_name myscript
+        set_unsafe_allow_newlines false
+        set_unsafe_allow_ansi_codes false
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_empty "$TEST_DIR/stdout" || return
+    assert_equals "10" "$(grep -cF '[CONFIG]' "$TEST_DIR/stderr")" \
+        "Each of the 10 set_* functions should print one CONFIG line to stderr" || return
+
+    pass_test
+}
+
+# Test: CONFIG notices end with a newline without colors
+test_config_notice_ends_with_newline() {
+    start_test "CONFIG notices end with a newline without colors"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color
+        set_log_format '[%l] %m'
+        set_log_level INFO
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    # Two notices must be two lines; without newlines they run together.
+    assert_equals "2" "$(grep -cF '[CONFIG]' "$TEST_DIR/stdout")" \
+        "Each CONFIG notice should be on its own line" || return
+    # $(...) strips a trailing newline, so an empty result means the last byte was one.
+    [[ -z "$(tail -c 1 "$TEST_DIR/stdout")" ]] \
+        || { fail_test "Last CONFIG notice does not end with a newline"; return; }
+
+    pass_test
+}
+
+# Test: CONFIG notices end with a newline with colors
+test_config_notice_ends_with_newline_colored() {
+    start_test "CONFIG notices end with a newline with colors"
+
+    # --color forces colors even though stdout is redirected to a file.
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --color
+        set_log_format '[%l] %m'
+        set_log_level INFO
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_equals "2" "$(grep -cF '[CONFIG]' "$TEST_DIR/stdout")" \
+        "Each colored CONFIG notice should be on its own line" || return
+    [[ -z "$(tail -c 1 "$TEST_DIR/stdout")" ]] \
+        || { fail_test "Last colored CONFIG notice does not end with a newline"; return; }
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -876,3 +1015,10 @@ test_set_unsafe_allow_ansi_codes_truthy_variants
 test_set_unsafe_allow_ansi_codes_falsy_variants
 test_set_unsafe_allow_ansi_codes_invalid_input
 test_set_syslog_facility_invalid_emits_error
+test_config_notice_stdout_by_default
+test_config_notice_stderr_at_notice_level
+test_config_notice_stdout_at_warn_level
+test_config_notice_stream_ignores_log_level
+test_config_notice_all_setters_use_stderr
+test_config_notice_ends_with_newline
+test_config_notice_ends_with_newline_colored
