@@ -135,8 +135,19 @@ result=$(
 ```
 
 Unlike log messages, `CONFIG` notices aren't filtered by the log level (`--level`). They print whenever console output
-is enabled (not with `--quiet`). The log file and journal also receive every notice when they are enabled, whatever the
-stderr level is.
+is enabled (not with `--quiet`).
+
+When a log file is set, every notice is also appended to it as one line, without color codes. The log file copy doesn't
+depend on the console: it is written with `--quiet`, at any log level, and whichever stream the console copy uses. The
+journal also receives every notice when journal logging is enabled.
+
+```bash
+init_logger --quiet --log /tmp/app.log
+
+set_log_format "[%l] %m"
+# Console: nothing (--quiet)
+# File: [CONFIG] Log format changed from "%d [%l] [%s] %m" to "[%l] %m"
+```
 
 See [Runtime Configuration](runtime-configuration.md) for the `set_*` functions.
 
@@ -456,6 +467,9 @@ log_debug "Debug message"
 # Console: Goes to stdout (DEBUG < ERROR)
 # File: Written to /tmp/app.log (DEBUG >= DEBUG)
 ```
+
+`CONFIG` notices from the `set_*` functions are the exception to the log level rule: the log file receives every one of
+them. See [Runtime Configuration Notices](#runtime-configuration-notices).
 
 ## Related Documentation
 
