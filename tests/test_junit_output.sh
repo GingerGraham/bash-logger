@@ -92,6 +92,29 @@ test_junit_xml_escape_preserves_normal_text() {
 }
 
 # Test duration calculation
+test_junit_xml_escape_strips_control_characters() {
+    start_test "XML escape strips control characters illegal in XML 1.0"
+
+    local result
+    result=$(_junit_xml_escape "$(printf 'red: \033[31mtext\033[0m bell:\007 end')")
+
+    assert_equals "red: [31mtext[0m bell: end" "$result" || return
+
+    pass_test
+}
+
+test_junit_xml_escape_keeps_tab_and_newline() {
+    start_test "XML escape keeps tab and newline"
+
+    local result expected
+    result=$(_junit_xml_escape "$(printf 'a\tb\nc')")
+    expected=$(printf 'a\tb\nc')
+
+    assert_equals "$expected" "$result" || return
+
+    pass_test
+}
+
 test_get_test_duration_returns_number() {
     start_test "Test duration returns a number"
 
@@ -471,6 +494,8 @@ test_junit_xml_escape_single_quote
 test_junit_xml_escape_double_quote
 test_junit_xml_escape_multiple_special_chars
 test_junit_xml_escape_preserves_normal_text
+test_junit_xml_escape_strips_control_characters
+test_junit_xml_escape_keeps_tab_and_newline
 test_get_test_duration_returns_number
 test_get_test_duration_fallback_without_bc
 test_junit_testcase_accumulation_first_entry

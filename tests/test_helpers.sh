@@ -72,9 +72,14 @@ start_test() {
 # XML escape helper for JUnit output
 _junit_xml_escape() {
     local str="$1"
+    # XML 1.0 forbids control characters other than tab (\011), newline (\012) and
+    # carriage return (\015). Failure messages can contain raw ANSI escape bytes (\033),
+    # which make SonarQube reject the whole report, so strip them before escaping.
     # Use sed for reliable XML entity escaping
     # Order matters: & must be escaped first
-    printf '%s' "$str" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e "s/'/\&apos;/g" -e 's/"/\&quot;/g'
+    printf '%s' "$str" \
+        | LC_ALL=C tr -d '\000-\010\013\014\016-\037' \
+        | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e "s/'/\&apos;/g" -e 's/"/\&quot;/g'
 }
 
 # Calculate test duration
