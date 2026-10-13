@@ -92,6 +92,29 @@ test_junit_xml_escape_preserves_normal_text() {
 }
 
 # Test duration calculation
+test_junit_xml_escape_strips_control_characters() {
+    start_test "XML escape strips control characters illegal in XML 1.0"
+
+    local result
+    result=$(_junit_xml_escape "$(printf 'red: \033[31mtext\033[0m bell:\007 end')")
+
+    assert_equals "red: [31mtext[0m bell: end" "$result" || return
+
+    pass_test
+}
+
+test_junit_xml_escape_keeps_tab_and_newline() {
+    start_test "XML escape keeps tab and newline"
+
+    local result expected
+    result=$(_junit_xml_escape "$(printf 'a\tb\nc')")
+    expected=$(printf 'a\tb\nc')
+
+    assert_equals "$expected" "$result" || return
+
+    pass_test
+}
+
 test_get_test_duration_returns_number() {
     start_test "Test duration returns a number"
 
@@ -131,26 +154,39 @@ test_get_test_duration_fallback_without_bc() {
     pass_test
 }
 
+# Build a single testCase element in a subshell and print it.
+#
+# These tests exercise _add_junit_testcase, which reads and writes the runner's globals
+# (JUNIT_OUTPUT, CURRENT_SUITE_TESTCASES, current_test). When the suites run sequentially
+# (-j 1, which "make coverage-junit" forces) they are sourced into the runner's own shell,
+# so changing those globals here would switch off the runner's --junit report. The subshell
+# keeps every change local.
+_junit_testcase_xml() {
+    local name="$1"
+    local status="$2"
+    local message="${3:-}"
+
+    (
+        JUNIT_OUTPUT=true
+        CURRENT_SUITE_TESTCASES=""
+        current_test="$name"
+        TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+        _add_junit_testcase "$status" "$message"
+        printf '%s' "$CURRENT_SUITE_TESTCASES"
+    )
+}
+
 # Test testcase accumulation
 test_junit_testcase_accumulation_first_entry() {
     start_test "First testcase sets CURRENT_SUITE_TESTCASES"
 
-    # Enable JUnit and reset accumulator
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    current_test="test_one"
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    local testcases
+    testcases=$(_junit_testcase_xml "test_one" "pass")
 
-    _add_junit_testcase "pass"
-
-    assert_contains "$CURRENT_SUITE_TESTCASES" "testCase" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "test_one" || return
+    assert_contains "$testcases" "testCase" || return
+    assert_contains "$testcases" "test_one" || return
     # Should not start with pipe delimiter
-    assert_matches "$CURRENT_SUITE_TESTCASES" "^<testCase" || return
-
-    # Cleanup
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+    assert_matches "$testcases" "^<testCase" || return
 
     pass_test
 }
@@ -158,25 +194,25 @@ test_junit_testcase_accumulation_first_entry() {
 test_junit_testcase_accumulation_multiple_entries() {
     start_test "Multiple testcases are pipe-delimited"
 
-    # Enable JUnit and reset accumulator
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    local testcases
+    testcases=$(
+        JUNIT_OUTPUT=true
+        CURRENT_SUITE_TESTCASES=""
+        TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
 
-    current_test="test_one"
-    _add_junit_testcase "pass"
+        current_test="test_one"
+        _add_junit_testcase "pass"
 
-    current_test="test_two"
-    _add_junit_testcase "pass"
+        current_test="test_two"
+        _add_junit_testcase "pass"
+
+        printf '%s' "$CURRENT_SUITE_TESTCASES"
+    )
 
     # Should contain pipe delimiter between entries
-    assert_contains "$CURRENT_SUITE_TESTCASES" "|" "Should have pipe delimiter" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "test_one" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "test_two" || return
-
-    # Cleanup
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+    assert_contains "$testcases" "|" "Should have pipe delimiter" || return
+    assert_contains "$testcases" "test_one" || return
+    assert_contains "$testcases" "test_two" || return
 
     pass_test
 }
@@ -185,18 +221,11 @@ test_junit_testcase_accumulation_multiple_entries() {
 test_junit_testcase_pass_format() {
     start_test "Pass testcase has correct XML format"
 
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    current_test="passing_test"
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
-
-    _add_junit_testcase "pass"
+    local testcases
+    testcases=$(_junit_testcase_xml "passing_test" "pass")
 
     # Should be self-closing testCase element
-    assert_matches "$CURRENT_SUITE_TESTCASES" '<testCase name="passing_test" duration="[0-9]+"/>' || return
-
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+    assert_matches "$testcases" '<testCase name="passing_test" duration="[0-9]+"/>' || return
 
     pass_test
 }
@@ -204,19 +233,12 @@ test_junit_testcase_pass_format() {
 test_junit_testcase_fail_format() {
     start_test "Fail testcase includes failure element"
 
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    current_test="failing_test"
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    local testcases
+    testcases=$(_junit_testcase_xml "failing_test" "fail" "Test failed because of X")
 
-    _add_junit_testcase "fail" "Test failed because of X"
-
-    assert_contains "$CURRENT_SUITE_TESTCASES" "<failure" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "Test failed because of X" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "</testCase>" || return
-
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+    assert_contains "$testcases" "<failure" || return
+    assert_contains "$testcases" "Test failed because of X" || return
+    assert_contains "$testcases" "</testCase>" || return
 
     pass_test
 }
@@ -224,19 +246,12 @@ test_junit_testcase_fail_format() {
 test_junit_testcase_skip_format() {
     start_test "Skip testcase includes skipped element"
 
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    current_test="skipped_test"
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    local testcases
+    testcases=$(_junit_testcase_xml "skipped_test" "skip" "Missing dependency")
 
-    _add_junit_testcase "skip" "Missing dependency"
-
-    assert_contains "$CURRENT_SUITE_TESTCASES" "<skipped" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "Missing dependency" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "</testCase>" || return
-
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+    assert_contains "$testcases" "<skipped" || return
+    assert_contains "$testcases" "Missing dependency" || return
+    assert_contains "$testcases" "</testCase>" || return
 
     pass_test
 }
@@ -244,18 +259,11 @@ test_junit_testcase_skip_format() {
 test_junit_testcase_unknown_status() {
     start_test "Unknown status produces error element"
 
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    current_test="unknown_status_test"
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    local testcases
+    testcases=$(_junit_testcase_xml "unknown_status_test" "invalid_status")
 
-    _add_junit_testcase "invalid_status"
-
-    assert_contains "$CURRENT_SUITE_TESTCASES" "<error" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "Unknown status" || return
-
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+    assert_contains "$testcases" "<error" || return
+    assert_contains "$testcases" "Unknown status" || return
 
     pass_test
 }
@@ -264,19 +272,12 @@ test_junit_testcase_unknown_status() {
 test_junit_testcase_escapes_special_chars_in_name() {
     start_test "Testcase escapes special characters in name"
 
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    current_test="test with <special> & \"chars\""
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    local testcases
+    testcases=$(_junit_testcase_xml "test with <special> & \"chars\"" "pass")
 
-    _add_junit_testcase "pass"
-
-    assert_contains "$CURRENT_SUITE_TESTCASES" "&lt;special&gt;" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "&amp;" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "&quot;chars&quot;" || return
-
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+    assert_contains "$testcases" "&lt;special&gt;" || return
+    assert_contains "$testcases" "&amp;" || return
+    assert_contains "$testcases" "&quot;chars&quot;" || return
 
     pass_test
 }
@@ -284,19 +285,40 @@ test_junit_testcase_escapes_special_chars_in_name() {
 test_junit_testcase_escapes_special_chars_in_message() {
     start_test "Testcase escapes special characters in failure message"
 
-    JUNIT_OUTPUT=true
-    CURRENT_SUITE_TESTCASES=""
-    current_test="test_failure"
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    local testcases
+    testcases=$(_junit_testcase_xml "test_failure" "fail" "Expected <foo> & got \"bar\"")
 
-    _add_junit_testcase "fail" "Expected <foo> & got \"bar\""
+    assert_contains "$testcases" "&lt;foo&gt;" || return
+    assert_contains "$testcases" "&amp;" || return
+    assert_contains "$testcases" "&quot;bar&quot;" || return
 
-    assert_contains "$CURRENT_SUITE_TESTCASES" "&lt;foo&gt;" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "&amp;" || return
-    assert_contains "$CURRENT_SUITE_TESTCASES" "&quot;bar&quot;" || return
+    pass_test
+}
 
-    JUNIT_OUTPUT=false
-    CURRENT_SUITE_TESTCASES=""
+# Regression: sequential runs source suites into the runner's shell, so a test that leaves
+# JUNIT_OUTPUT or CURRENT_SUITE_TESTCASES changed silently disables the --junit report.
+test_junit_testcase_helper_preserves_runner_state() {
+    start_test "Testcase helper leaves runner JUnit state untouched"
+
+    local original_flag="${JUNIT_OUTPUT:-}"
+    local original_cases="${CURRENT_SUITE_TESTCASES:-}"
+    local original_name="$current_test"
+
+    JUNIT_OUTPUT="sentinel-flag"
+    CURRENT_SUITE_TESTCASES="sentinel-cases"
+    _junit_testcase_xml "other_test" "pass" >/dev/null
+
+    local observed_flag="$JUNIT_OUTPUT"
+    local observed_cases="$CURRENT_SUITE_TESTCASES"
+    local observed_name="$current_test"
+
+    # Restore before asserting so a failed assertion cannot leak the sentinels
+    JUNIT_OUTPUT="$original_flag"
+    CURRENT_SUITE_TESTCASES="$original_cases"
+
+    assert_equals "sentinel-flag" "$observed_flag" "JUNIT_OUTPUT should be unchanged" || return
+    assert_equals "sentinel-cases" "$observed_cases" "CURRENT_SUITE_TESTCASES should be unchanged" || return
+    assert_equals "$original_name" "$observed_name" "current_test should be unchanged" || return
 
     pass_test
 }
@@ -471,6 +493,8 @@ test_junit_xml_escape_single_quote
 test_junit_xml_escape_double_quote
 test_junit_xml_escape_multiple_special_chars
 test_junit_xml_escape_preserves_normal_text
+test_junit_xml_escape_strips_control_characters
+test_junit_xml_escape_keeps_tab_and_newline
 test_get_test_duration_returns_number
 test_get_test_duration_fallback_without_bc
 test_junit_testcase_accumulation_first_entry
@@ -481,6 +505,7 @@ test_junit_testcase_skip_format
 test_junit_testcase_unknown_status
 test_junit_testcase_escapes_special_chars_in_name
 test_junit_testcase_escapes_special_chars_in_message
+test_junit_testcase_helper_preserves_runner_state
 test_junit_flag_creates_output_file
 test_junit_output_has_valid_xml_structure
 test_junit_output_contains_test_results
