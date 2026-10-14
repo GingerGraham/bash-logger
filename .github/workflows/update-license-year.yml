@@ -1,0 +1,80 @@
+name: Update License Year
+
+# Extends the copyright notice in LICENSE each year, e.g.
+#   Copyright © 2026 ...       ->  Copyright © 2026-2027 ...
+#   Copyright © 2026-2027 ...  ->  Copyright © 2026-2028 ...
+# and opens a pull request with the change. See scripts/update-license-year.sh.
+
+on:
+  schedule:
+    # 03:00 UTC on 1 January.
+    - cron: '0 3 1 1 *'
+  workflow_dispatch:
+
+jobs:
+  update-license-year:
+    name: Update copyright year
+    runs-on: ubuntu-latest
+    if: github.repository == 'GingerGraham/bash-logger'
+    # Pushing and opening the pull request use PAT_TOKEN, as in release.yml. A PR opened
+    # with the default GITHUB_TOKEN would not trigger the lint and test workflows.
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Update copyright year
+        id: update
+        run: |
+          CURRENT_YEAR=$(date -u +%Y)
+          scripts/update-license-year.sh LICENSE "$CURRENT_YEAR"
+
+          if git diff --quiet -- LICENSE; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              echo "year=$CURRENT_YEAR" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open pull request
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          CURRENT_YEAR: ${{ steps.update.outputs.year }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          BRANCH="chore/license-year-${CURRENT_YEAR}"
+          TITLE="chore: update license copyright year to ${CURRENT_YEAR}"
+
+          # A re-run after the branch was already pushed must not fail or open a duplicate.
+          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
+              echo "::notice::Branch $BRANCH already exists; skipping."
+              exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git switch -c "$BRANCH"
+          git add LICENSE
+          git commit -m "$TITLE"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$BRANCH" \
+              --title "$TITLE" \
+              --body "## Summary
+
+          Extends the copyright notice in \`LICENSE\` to cover ${CURRENT_YEAR}.
+
+          Opened automatically by the Update License Year workflow.
+
+          ## Changes
+
+          * \`LICENSE\`: end year of the copyright notice set to ${CURRENT_YEAR}"

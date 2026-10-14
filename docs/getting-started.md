@@ -36,6 +36,12 @@ The repository includes GitHub Actions workflows to ensure code quality and cons
 
 * **Lint Bash Scripts**: Applies ShellCheck linting for all bash scripts in pull requests destined for the main branch.
 * **Lint Markdown Files**: Applies MarkdownLint for all markdown files in pull requests destined for the main branch.
+
+### Maintenance Workflows
+
+* **Update License Year**: Runs at 03:00 UTC on 1 January and can be started manually. It extends the copyright notice in `LICENSE`
+  (`2026` becomes `2026-2027`, then `2026-2028`, and so on) and opens a pull request with the change.
+  The logic lives in `scripts/update-license-year.sh`.
 * [Next Steps](#next-steps)
 
 ## Installation

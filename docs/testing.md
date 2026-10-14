@@ -156,6 +156,7 @@ Available test suites:
 * `test_install` - Installation and setup scripts
 * `test_journal_logging` - Journal-specific behavior and forced journal logging
 * `test_junit_output` - JUnit XML report generation
+* `test_license_year` - Copyright year update script for the LICENSE file
 * `test_log_levels` - Log level functionality
 * `test_mixed_sanitization_modes` - Combined sanitization mode behavior
 * `test_output` - Output routing and stream behavior
@@ -398,6 +399,7 @@ Current runnable suite files include:
 * `test_install.sh`
 * `test_journal_logging.sh`
 * `test_junit_output.sh`
+* `test_license_year.sh`
 * `test_log_levels.sh`
 * `test_mixed_sanitization_modes.sh`
 * `test_output.sh`
