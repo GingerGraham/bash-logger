@@ -11,6 +11,7 @@ following Unix conventions.
   * [Example Benefit](#example-benefit)
 * [Configuring the Stderr Threshold](#configuring-the-stderr-threshold)
   * [Stderr Level Reference](#stderr-level-reference)
+* [Runtime Configuration Notices](#runtime-configuration-notices)
 * [Practical Use Cases](#practical-use-cases)
   * [Separating Normal Output from Errors](#separating-normal-output-from-errors)
   * [Suppressing Errors](#suppressing-errors)
@@ -106,6 +107,49 @@ init_logger --stderr-level EMERGENCY
 | CRITICAL        | CRITICAL and above | DEBUG through ERROR       |
 | ALERT           | ALERT and above    | DEBUG through CRITICAL    |
 | EMERGENCY       | EMERGENCY only     | DEBUG through ALERT       |
+
+## Runtime Configuration Notices
+
+The runtime configuration functions (`set_log_level`, `set_log_format`, `set_color_mode`, and the other `set_*`
+functions) announce each change with a `CONFIG` notice:
+
+```text
+[CONFIG] Log format changed from "%d [%l] [%s] %m" to "[%l] %m"
+```
+
+On the console, a `CONFIG` notice goes to the same stream as a NOTICE message, so it follows the stderr level:
+
+* **stderr** when the stderr level is `NOTICE`, `INFO`, or `DEBUG`
+* **stdout** when the stderr level is `WARN` or less verbose, including the default `ERROR`
+
+This keeps stdout clean in the CLI tool pattern, even when a script changes settings while it runs:
+
+```bash
+init_logger --stderr-level DEBUG
+
+result=$(
+    set_log_format "[%l] %m"   # The CONFIG notice goes to stderr
+    echo "data"
+)
+# result contains only "data"
+```
+
+Unlike log messages, `CONFIG` notices aren't filtered by the log level (`--level`). They print whenever console output
+is enabled (not with `--quiet`).
+
+When a log file is set, every notice is also appended to it as one line, without color codes. The log file copy doesn't
+depend on the console: it is written with `--quiet`, at any log level, and whichever stream the console copy uses. The
+journal also receives every notice when journal logging is enabled.
+
+```bash
+init_logger --quiet --log /tmp/app.log
+
+set_log_format "[%l] %m"
+# Console: nothing (--quiet)
+# File: [CONFIG] Log format changed from "%d [%l] [%s] %m" to "[%l] %m"
+```
+
+See [Runtime Configuration](runtime-configuration.md) for the `set_*` functions.
 
 ## Practical Use Cases
 
@@ -424,9 +468,13 @@ log_debug "Debug message"
 # File: Written to /tmp/app.log (DEBUG >= DEBUG)
 ```
 
+`CONFIG` notices from the `set_*` functions are the exception to the log level rule: the log file receives every one of
+them. See [Runtime Configuration Notices](#runtime-configuration-notices).
+
 ## Related Documentation
 
 * [Initialization](initialization.md) - Setting stderr-level at startup
 * [Configuration](configuration.md) - Stderr-level in config files
+* [Runtime Configuration](runtime-configuration.md) - Changing settings with the `set_*` functions
 * [Log Levels](log-levels.md) - Understanding log severity
 * [Examples](examples.md) - Complete examples with stream redirection

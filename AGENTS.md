@@ -121,6 +121,23 @@ trailing punctuation in headings (MD026), first-line heading (MD041).
   * Functions: `lowercase_with_underscores`
   * Local variables: `lowercase_with_underscores`
 
+## Runtime Configuration Functions
+
+Every `set_*` function in `logging.sh` reports its change as a `CONFIG` notice. Build the entry
+with `_format_log_message "CONFIG" "$message"`, then send it through the shared helpers instead
+of writing `printf` blocks in the function:
+
+* `_log_set_config_to_console "$log_entry" [color]` — console copy, routed like a NOTICE message
+  so it follows `LOG_STDERR_LEVEL`. The color defaults to purple; pass `$COLOR_RED` to warn when
+  enabling an unsafe mode.
+* `_log_set_config_to_file "$log_entry"` — log file copy, without colors. Does nothing when
+  `LOG_FILE` is empty.
+* `_write_to_journal "notice" ...` — journal copy, when journal logging is enabled.
+
+Pass the entry to both helpers; a missing argument fails under `set -u`, which the test runner
+uses. When adding a `set_*` function, add it to the `CONFIG` notice tests in
+`tests/test_runtime_config.sh`, which check every function's console stream and log file line.
+
 ## Pre-PR Checklist
 
 Before proposing or generating code, verify:

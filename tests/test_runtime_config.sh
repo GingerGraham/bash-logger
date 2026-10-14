@@ -9,6 +9,8 @@
 # - set_journal_logging function
 # - set_journal_tag function
 # - set_color_mode function
+# - CONFIG notice output stream and line endings
+# - CONFIG notice log file writes
 
 # Test: set_log_level changes level at runtime
 test_set_log_level() {
@@ -831,6 +833,279 @@ test_set_syslog_facility_invalid_emits_error() {
     pass_test
 }
 
+# Test: CONFIG notices go to stdout with the default stderr level
+test_config_notice_stdout_by_default() {
+    start_test "CONFIG notice goes to stdout with the default stderr level (ERROR)"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stdout" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/stderr" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: CONFIG notices go to stderr when NOTICE messages do
+test_config_notice_stderr_at_notice_level() {
+    start_test "CONFIG notice goes to stderr when stderr level is NOTICE"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --stderr-level NOTICE
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stderr" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/stdout" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: CONFIG notices stay on stdout when NOTICE messages do
+test_config_notice_stdout_at_warn_level() {
+    start_test "CONFIG notice goes to stdout when stderr level is WARN"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --stderr-level WARN
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stdout" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/stderr" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: the CONFIG notice stream depends on the stderr level, not the log level
+test_config_notice_stream_ignores_log_level() {
+    start_test "CONFIG notice stream does not depend on the log level"
+
+    # With --level DEBUG and --stderr-level INFO, NOTICE goes to stderr. Both
+    # notices must follow, including the one printed after set_log_level
+    # changes the log level.
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --level DEBUG --stderr-level INFO
+        set_log_format '[%l] %m'
+        set_log_level ERROR
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stderr" "Log format changed" || return
+    assert_file_contains "$TEST_DIR/stderr" "Log level changed" || return
+    # stdout still gets init_logger's DEBUG line, so check only for notices.
+    assert_file_not_contains "$TEST_DIR/stdout" "[CONFIG]" || return
+
+    pass_test
+}
+
+# Test: every set_* function routes its CONFIG notice by the stderr level
+test_config_notice_all_setters_use_stderr() {
+    start_test "Every set_* function sends its CONFIG notice to stderr at stderr level DEBUG"
+
+    # set_log_format runs first so every later notice keeps its [CONFIG] tag.
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --stderr-level DEBUG
+        set_log_format '[%l] %m'
+        set_log_level INFO
+        set_timezone_utc true
+        set_journal_logging false
+        set_journal_tag mytag
+        set_syslog_facility local0
+        set_color_mode never
+        set_script_name myscript
+        set_unsafe_allow_newlines false
+        set_unsafe_allow_ansi_codes false
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_empty "$TEST_DIR/stdout" || return
+    assert_equals "10" "$(grep -cF '[CONFIG]' "$TEST_DIR/stderr")" \
+        "Each of the 10 set_* functions should print one CONFIG line to stderr" || return
+
+    pass_test
+}
+
+# Test: CONFIG notices end with a newline without colors
+test_config_notice_ends_with_newline() {
+    start_test "CONFIG notices end with a newline without colors"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color
+        set_log_format '[%l] %m'
+        set_log_level INFO
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    # Two notices must be two lines; without newlines they run together.
+    assert_equals "2" "$(grep -cF '[CONFIG]' "$TEST_DIR/stdout")" \
+        "Each CONFIG notice should be on its own line" || return
+    # $(...) strips a trailing newline, so an empty result means the last byte was one.
+    [[ -z "$(tail -c 1 "$TEST_DIR/stdout")" ]] \
+        || { fail_test "Last CONFIG notice does not end with a newline"; return; }
+
+    pass_test
+}
+
+# Test: CONFIG notices end with a newline with colors
+test_config_notice_ends_with_newline_colored() {
+    start_test "CONFIG notices end with a newline with colors"
+
+    # --color forces colors even though stdout is redirected to a file.
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --color
+        set_log_format '[%l] %m'
+        set_log_level INFO
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_equals "2" "$(grep -cF '[CONFIG]' "$TEST_DIR/stdout")" \
+        "Each colored CONFIG notice should be on its own line" || return
+    [[ -z "$(tail -c 1 "$TEST_DIR/stdout")" ]] \
+        || { fail_test "Last colored CONFIG notice does not end with a newline"; return; }
+
+    pass_test
+}
+
+# Test: every set_* function appends exactly one CONFIG notice line to the log file
+test_config_notice_all_setters_write_log_file() {
+    start_test "Every set_* function appends one CONFIG notice line to the log file"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/test.log"
+    LOG_FILE="$log_file"
+
+    # set_log_format runs first so every later notice keeps its [CONFIG] tag.
+    set_log_format "[%l] %m"
+    set_log_level INFO
+    set_timezone_utc true
+    set_journal_logging false
+    set_journal_tag mytag
+    set_syslog_facility local0
+    set_color_mode never
+    set_script_name myscript
+    set_unsafe_allow_newlines false
+    set_unsafe_allow_ansi_codes false
+
+    local expected
+    for expected in \
+        "Log format changed" \
+        "Log level changed" \
+        "Timezone setting changed" \
+        "Journal logging changed" \
+        "Journal tag changed" \
+        "Syslog facility changed" \
+        "Color mode changed" \
+        "Script name changed" \
+        "Unsafe newline mode changed" \
+        "Unsafe ANSI codes mode changed"; do
+        assert_file_contains "$log_file" "$expected" || return
+    done
+
+    assert_equals "10" "$(grep -cF '[CONFIG]' "$log_file")" \
+        "Each of the 10 set_* functions should append one CONFIG line" || return
+    assert_equals "0" "$(grep -c '^$' "$log_file")" \
+        "The log file should contain no empty lines" || return
+    # $(...) strips a trailing newline, so an empty result means the last byte was one.
+    [[ -z "$(tail -c 1 "$log_file")" ]] \
+        || { fail_test "Last CONFIG notice in the log file does not end with a newline"; return; }
+
+    pass_test
+}
+
+# Test: the log file copy of a CONFIG notice never has color codes
+test_config_notice_log_file_has_no_colors() {
+    start_test "CONFIG notice in the log file has no color codes when console colors are on"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --color
+        LOG_FILE='$TEST_DIR/test.log'
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    # The console copy is colored, so colors were on for this notice.
+    assert_file_contains "$TEST_DIR/stdout" $'\e[' "Console notice should be colored" || return
+    assert_file_contains "$TEST_DIR/test.log" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/test.log" $'\e[' || return
+
+    pass_test
+}
+
+# Test: a CONFIG notice reaches both the console and the log file
+test_config_notice_console_and_log_file() {
+    start_test "CONFIG notice is written to both the console stream and the log file"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color --stderr-level DEBUG
+        LOG_FILE='$TEST_DIR/test.log'
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stderr" "Log format changed" || return
+    assert_file_contains "$TEST_DIR/test.log" "Log format changed" || return
+    assert_file_not_contains "$TEST_DIR/stdout" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: --quiet turns off the console copy but not the log file copy
+test_config_notice_log_file_with_quiet() {
+    start_test "CONFIG notice is written to the log file with --quiet"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --quiet
+        LOG_FILE='$TEST_DIR/test.log'
+        set_log_format '[%l] %m'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/test.log" "Log format changed" || return
+    assert_file_empty "$TEST_DIR/stdout" || return
+    assert_file_empty "$TEST_DIR/stderr" || return
+
+    pass_test
+}
+
+# Test: the log level does not filter CONFIG notices in the log file
+test_config_notice_log_file_ignores_log_level() {
+    start_test "CONFIG notice is written to the log file at any log level"
+
+    init_logger --quiet --level EMERGENCY
+    local log_file="$TEST_DIR/test.log"
+    LOG_FILE="$log_file"
+
+    log_error "filtered error"
+    set_log_format "[%l] %m"
+
+    # ERROR is below the EMERGENCY threshold, but the notice is not filtered.
+    assert_file_not_contains "$log_file" "filtered error" || return
+    assert_file_contains "$log_file" "Log format changed" || return
+
+    pass_test
+}
+
+# Test: with no log file set, a CONFIG notice writes nothing and succeeds
+test_config_notice_without_log_file() {
+    start_test "CONFIG notice with no log file set succeeds without errors"
+
+    # Sourcing logging.sh resets LOG_FILE, and init_logger without --log leaves it empty.
+    init_logger --quiet
+    [[ -z "$LOG_FILE" ]] || { fail_test "LOG_FILE should be empty without --log"; return; }
+
+    local stderr_file="$TEST_DIR/stderr.txt"
+    set_log_format "[%l] %m" 2>"$stderr_file"
+    assert_equals 0 "$?" "set_log_format should succeed without a log file" || return
+    assert_file_empty "$stderr_file" || return
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -876,3 +1151,16 @@ test_set_unsafe_allow_ansi_codes_truthy_variants
 test_set_unsafe_allow_ansi_codes_falsy_variants
 test_set_unsafe_allow_ansi_codes_invalid_input
 test_set_syslog_facility_invalid_emits_error
+test_config_notice_stdout_by_default
+test_config_notice_stderr_at_notice_level
+test_config_notice_stdout_at_warn_level
+test_config_notice_stream_ignores_log_level
+test_config_notice_all_setters_use_stderr
+test_config_notice_ends_with_newline
+test_config_notice_ends_with_newline_colored
+test_config_notice_all_setters_write_log_file
+test_config_notice_log_file_has_no_colors
+test_config_notice_console_and_log_file
+test_config_notice_log_file_with_quiet
+test_config_notice_log_file_ignores_log_level
+test_config_notice_without_log_file
