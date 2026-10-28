@@ -294,7 +294,8 @@ wb remove bash-logger
 
 ### Choosing one installation method
 
-Use one installation method per user on each machine. The install script, `bpkg` and workbench all write to `${HOME}/.local/lib/bash-logger/logging.sh` for user-level installs, and each manages that path independently.
+Use one installation method per user on each machine. The install script, `bpkg` and workbench all write to `${HOME}/.local/lib/bash-logger/logging.sh` for user-level installs,
+and each manages that path independently.
 
 If you use more than one, they replace each other's copy:
 
@@ -304,7 +305,8 @@ If you use more than one, they replace each other's copy:
 
 Scripts that source the library keep working, but the installed version can change unexpectedly and backups accumulate.
 
-To switch from workbench to another method, run `wb remove bash-logger` first, then install with the other method. To switch to workbench, run `wb add` and it will back up the existing file and take over the path.
+To switch from workbench to another method, run `wb remove bash-logger` first, then install with the other method. To switch to workbench, run `wb add` and it will back up the
+existing file and take over the path.
 
 ## Basic Usage
 
