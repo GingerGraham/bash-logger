@@ -15,6 +15,8 @@ This guide will help you get started with the Bash Logging Module quickly.
       * [Verifying the Download with SHA256](#verifying-the-download-with-sha256)
   * [Install with bpkg](#install-with-bpkg)
     * [Update an existing installation:](#update-an-existing-installation)
+  * [Install with workbench](#install-with-workbench)
+  * [Choosing one installation method](#choosing-one-installation-method)
 * [Basic Usage](#basic-usage)
 * [Your First Script](#your-first-script)
 * [Common Options](#common-options)
@@ -265,6 +267,46 @@ bpkg update bash-logger
 `bpkg` does not support true, system-wide, global installations (i.e. `/usr/local/lib`), so the recommendation
 for these scenarios is to use the standard installation method described above, allowing users to determine the
 best location for their system.
+
+### Install with workbench
+
+[workbench](https://github.com/GingerGraham/workbench-core) (`wb`) can install bash-logger and keep it up to date. workbench-core must already be installed on the machine.
+bash-logger is not in workbench's built-in module catalog, so pass the repository URL:
+
+```bash
+wb add bash-logger https://github.com/GingerGraham/bash-logger.git
+```
+
+This installs `logging.sh` to `${HOME}/.local/lib/bash-logger/logging.sh`, the same path used by the user-level install script and `bpkg`.
+
+workbench always keeps this file in step with the tracked version. Do not edit it in place: a locally edited copy is backed up to `~/.local/share/workbench/backups/` and replaced on the next sync.
+
+```bash
+# Follow tagged releases only
+wb track bash-logger --latest
+
+# Update now
+wb update bash-logger
+
+# Stop managing bash-logger (the installed file is left in place)
+wb remove bash-logger
+```
+
+### Choosing one installation method
+
+Use one installation method per user on each machine. The install script, `bpkg` and workbench all write to `${HOME}/.local/lib/bash-logger/logging.sh` for user-level installs,
+and each manages that path independently.
+
+If you use more than one, they replace each other's copy:
+
+* workbench treats a file it did not install as foreign, backs it up, and replaces it with the tracked version.
+* `install.sh` and `bpkg update` overwrite whatever is at that path with their own copy.
+* The next workbench sync sees that the file has changed, backs it up again, and replaces it again.
+
+Scripts that source the library keep working, but the installed version can change unexpectedly and backups accumulate.
+
+To switch from workbench to another method, run `wb remove bash-logger` first, then install with the other method. To switch to workbench, run `wb add` and it will back up the
+existing file and take over the path.
 
 ## Basic Usage
 

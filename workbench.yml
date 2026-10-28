@@ -5,6 +5,8 @@ deploy:
   - src: logging.sh
     dest: ~/.local/lib/bash-logger/logging.sh
     mode: copy
+    lifecycle: generated
+      
 
 info:
-  description: "Structured Bash/POSIX-tolerant logging library — console, file, and systemd journal targets"
+  description: "Structured Bash/zsh logging library — console, file, and systemd journal targets"
