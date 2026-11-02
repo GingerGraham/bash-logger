@@ -56,7 +56,7 @@ fi
 if [[ $PARALLEL_JOBS -gt $max_jobs ]]; then
     PARALLEL_JOBS=$max_jobs
 fi
-RESULTS_DIR=""   # Temporary directory for parallel results
+RESULTS_DIR=""   # Temporary directory for isolated suite results
 
 # Arrays to store test results for JUnit XML
 declare -a SUITE_NAMES
@@ -64,6 +64,7 @@ declare -a SUITE_TESTS_COUNT
 declare -a SUITE_FAILURES_COUNT
 declare -a SUITE_TIMES
 declare -a SUITE_TESTCASES
+declare -a SUITE_ERRORS
 
 # Colors for output
 if [[ -t 1 ]]; then
@@ -102,6 +103,14 @@ print_banner() {
     echo ""
 }
 
+# Escape runner-generated paths and errors without the testcase pipe delimiter.
+runner_xml_escape() {
+    printf '%s' "$1" \
+        | LC_ALL=C tr -d '\000-\010\013\014\016-\037' \
+        | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' \
+            -e "s/'/\&apos;/g" -e 's/"/\&quot;/g'
+}
+
 # Generate SonarQube Generic Test Execution report
 generate_junit_xml() {
     local output_file="$1"
@@ -115,7 +124,8 @@ generate_junit_xml() {
         local suite_idx=0
         for suite_name in "${SUITE_NAMES[@]+"${SUITE_NAMES[@]}"}"; do
             # Path relative to project root for the test file
-            local test_file_path="tests/${suite_name}.sh"
+            local test_file_path
+            test_file_path=$(runner_xml_escape "tests/${suite_name}.sh")
 
             echo "  <file path=\"$test_file_path\">"
 
@@ -126,6 +136,14 @@ generate_junit_xml() {
                     echo "    $testcase"
                 fi
             done
+
+            if [[ -n "${SUITE_ERRORS[$suite_idx]}" ]]; then
+                local escaped_name escaped_error
+                escaped_name=$(runner_xml_escape "$suite_name: suite error")
+                escaped_error=$(runner_xml_escape "${SUITE_ERRORS[$suite_idx]}")
+                printf '    <testCase name="%s" duration="0"><error message="%s"/></testCase>\n' \
+                    "$escaped_name" "$escaped_error"
+            fi
 
             echo "  </file>"
             suite_idx=$((suite_idx + 1))
@@ -138,114 +156,85 @@ generate_junit_xml() {
     echo -e "${COLOR_BLUE}Test execution report written to: $output_file${COLOR_RESET}"
 }
 
-# Run a single test suite (possibly in parallel)
-run_test_suite() {
-    local test_file="$1"
-    local results_file="${2:-}"
-    local test_name
-    test_name="$(basename "$test_file" .sh)"
-
-    # Redirect output if running in parallel
-    local output_file=""
-    if [[ -n "$results_file" ]]; then
-        output_file="${results_file}.output"
-        exec 3>&1 4>&2
-        exec 1>"$output_file" 2>&1
-    fi
-
-    echo -e "${COLOR_BLUE}Running $test_name...${COLOR_RESET}"
-
-    # Source the test helpers in current shell
-    # shellcheck source=tests/test_helpers.sh
-    # shellcheck disable=SC1091
-    source "$SCRIPT_DIR/test_helpers.sh"
-
-    # Reset test counters for this suite
-    suite_tests=0
-    suite_passed=0
-    suite_failed=0
-    suite_skipped=0
-
-    # Reset JUnit testcase collection for this suite
-    CURRENT_SUITE_TESTCASES=""
-    export JUNIT_OUTPUT
-
-    # Record start time for suite
-    local suite_start_time
-    suite_start_time=$(date +%s.%N 2>/dev/null || date +%s)
-
-    # Source and run the test suite
-    # shellcheck source=/dev/null
-    source "$test_file"
-
-    # Record end time and calculate duration
+# Snapshot completed test results even when a sourced suite exits or hits nounset.
+# Called by the worker's EXIT trap; worker locals remain in scope in its subshell.
+write_suite_results() {
+    local suite_status="$1"
+    set +e
     local suite_end_time suite_duration
     suite_end_time=$(date +%s.%N 2>/dev/null || date +%s)
     suite_duration=$(echo "$suite_end_time - $suite_start_time" | bc 2>/dev/null || echo "0")
 
-    # Clean up test suite temporary directory
     cleanup_test_suite
 
-    # Print suite summary
-    if [[ $suite_failed -eq 0 ]]; then
-        echo -e "${COLOR_GREEN}✓ $test_name: $suite_passed passed${COLOR_RESET}"
-    else
-        echo -e "${COLOR_RED}✗ $test_name: $suite_passed passed, $suite_failed failed${COLOR_RESET}"
+    if [[ "$suite_completed" == "true" && "$suite_status" -eq 0 && "$suite_tests" -gt 0 ]]; then
+        if [[ "$suite_failed" -eq 0 ]]; then
+            echo -e "${COLOR_GREEN}✓ $test_name: $suite_passed passed${COLOR_RESET}"
+        else
+            echo -e "${COLOR_RED}✗ $test_name: $suite_passed passed, $suite_failed failed${COLOR_RESET}"
+        fi
     fi
     echo ""
 
-    # Write results to file if running in parallel
-    if [[ -n "$results_file" ]]; then
-        {
-            echo "TEST_NAME=$test_name"
-            echo "SUITE_TESTS=$suite_tests"
-            echo "SUITE_PASSED=$suite_passed"
-            echo "SUITE_FAILED=$suite_failed"
-            echo "SUITE_SKIPPED=$suite_skipped"
-            echo "SUITE_DURATION=$suite_duration"
-            echo "SUITE_TESTCASES_START"
-            echo "$CURRENT_SUITE_TESTCASES"
-            echo "SUITE_TESTCASES_END"
-            echo "FAILED_DETAILS_START"
-            for _detail in "${FAILED_TEST_DETAILS[@]+"${FAILED_TEST_DETAILS[@]}"}"; do
-                printf '%s\n' "$_detail"
-            done
-            echo "FAILED_DETAILS_END"
-        } > "$results_file"
-
-        # Restore output
-        exec 1>&3 2>&4
-        exec 3>&- 4>&-
-    else
-        # Update totals directly (sequential mode)
-        TOTAL_TESTS=$((TOTAL_TESTS + suite_tests))
-        PASSED_TESTS=$((PASSED_TESTS + suite_passed))
-        FAILED_TESTS=$((FAILED_TESTS + suite_failed))
-        SKIPPED_TESTS=$((SKIPPED_TESTS + suite_skipped))
-
-        # Store suite results for JUnit XML
-        if [[ "$JUNIT_OUTPUT" == "true" ]]; then
-            SUITE_NAMES+=("$test_name")
-            SUITE_TESTS_COUNT+=("$suite_tests")
-            SUITE_FAILURES_COUNT+=("$suite_failed")
-            SUITE_TIMES+=("$suite_duration")
-            SUITE_TESTCASES+=("$CURRENT_SUITE_TESTCASES")
-        fi
-    fi
+    {
+        echo "SUITE_TESTS=$suite_tests"
+        echo "SUITE_PASSED=$suite_passed"
+        echo "SUITE_FAILED=$suite_failed"
+        echo "SUITE_SKIPPED=$suite_skipped"
+        echo "SUITE_DURATION=$suite_duration"
+        echo "SUITE_COMPLETED=$suite_completed"
+        echo "SUITE_TESTCASES_START"
+        echo "$CURRENT_SUITE_TESTCASES"
+        echo "SUITE_TESTCASES_END"
+        echo "FAILED_DETAILS_START"
+        for _detail in "${FAILED_TEST_DETAILS[@]+"${FAILED_TEST_DETAILS[@]}"}"; do
+            printf '%s\n' "$_detail"
+        done
+        echo "FAILED_DETAILS_END"
+        echo "RESULTS_COMPLETE"
+    } > "$results_file"
 }
 
-# Aggregate results from parallel test runs
-aggregate_parallel_results() {
-    local results_dir="$1"
+# Isolate both sequential and parallel suites, including shell options and exits.
+run_test_suite() (
+    local test_file="$1"
+    local results_file="$2"
+    local test_name
+    test_name="$(basename "$test_file" .sh)"
 
-    # Read each result file
-    for result_file in "$results_dir"/result_*.txt; do
-        [[ -e "$result_file" ]] || continue
+    echo -e "${COLOR_BLUE}Running $test_name...${COLOR_RESET}"
 
-        local test_name suite_tests suite_passed suite_failed suite_skipped suite_duration
-        local in_testcases=false in_failed_details=false
-        local testcases_content=""
+    # shellcheck source=tests/test_helpers.sh disable=SC1091
+    source "$SCRIPT_DIR/test_helpers.sh"
+    FAILED_TEST_DETAILS=()
+    CURRENT_SUITE_TESTCASES=""
+    export JUNIT_OUTPUT
 
+    local suite_completed=false
+    local suite_start_time
+    suite_start_time=$(date +%s.%N 2>/dev/null || date +%s)
+    trap 'write_suite_results "$?"' EXIT
+
+    # Do not put source or this worker in an if/||: that disables suite errexit.
+    # shellcheck source=/dev/null
+    source "$test_file"
+    local suite_status=$?
+    suite_completed=true
+    exit "$suite_status"
+)
+
+# Account for one dispatched suite using its identity and collected exit status.
+aggregate_suite_result() {
+    local test_file="$1" result_file="$2" suite_status="$3"
+    local test_name
+    test_name="$(basename "$test_file" .sh)"
+    local suite_tests=0 suite_passed=0 suite_failed=0 suite_skipped=0 suite_duration=0
+    local suite_completed=false results_complete=false
+    local in_testcases=false in_failed_details=false
+    local testcases_content="" suite_error="" output_tail=""
+    local suite_failed_details=()
+
+    if [[ -f "$result_file" ]]; then
         while IFS= read -r line; do
             if [[ "$line" == "SUITE_TESTCASES_START" ]]; then
                 in_testcases=true
@@ -264,40 +253,72 @@ aggregate_parallel_results() {
             if [[ "$in_testcases" == "true" ]]; then
                 testcases_content+="$line"
             elif [[ "$in_failed_details" == "true" ]]; then
-                [[ -n "$line" ]] && FAILED_TEST_DETAILS+=("$line")
+                [[ -n "$line" ]] && suite_failed_details+=("$line")
             else
                 case "$line" in
-                    TEST_NAME=*) test_name="${line#TEST_NAME=}" ;;
                     SUITE_TESTS=*) suite_tests="${line#SUITE_TESTS=}" ;;
                     SUITE_PASSED=*) suite_passed="${line#SUITE_PASSED=}" ;;
                     SUITE_FAILED=*) suite_failed="${line#SUITE_FAILED=}" ;;
                     SUITE_SKIPPED=*) suite_skipped="${line#SUITE_SKIPPED=}" ;;
                     SUITE_DURATION=*) suite_duration="${line#SUITE_DURATION=}" ;;
+                    SUITE_COMPLETED=*) suite_completed="${line#SUITE_COMPLETED=}" ;;
+                    RESULTS_COMPLETE) results_complete=true ;;
                 esac
             fi
         done < "$result_file"
+    fi
 
-        # Update totals
-        TOTAL_TESTS=$((TOTAL_TESTS + suite_tests))
-        PASSED_TESTS=$((PASSED_TESTS + suite_passed))
-        FAILED_TESTS=$((FAILED_TESTS + suite_failed))
-        SKIPPED_TESTS=$((SKIPPED_TESTS + suite_skipped))
+    # An interrupted write is not a reliable snapshot; do not report partial
+    # passes or XML as if the complete set of results had been received.
+    if [[ "$results_complete" != "true" ]]; then
+        suite_tests=0 suite_passed=0 suite_failed=0 suite_skipped=0 suite_duration=0
+        testcases_content=""
+    else
+        for detail in "${suite_failed_details[@]+"${suite_failed_details[@]}"}"; do
+            FAILED_TEST_DETAILS+=("$detail")
+        done
+    fi
 
-        # Store suite results for JUnit XML
-        if [[ "$JUNIT_OUTPUT" == "true" ]]; then
-            SUITE_NAMES+=("$test_name")
-            SUITE_TESTS_COUNT+=("$suite_tests")
-            SUITE_FAILURES_COUNT+=("$suite_failed")
-            SUITE_TIMES+=("$suite_duration")
-            SUITE_TESTCASES+=("$testcases_content")
-        fi
+    if [[ "$results_complete" != "true" ]]; then
+        suite_error="$test_name: suite exited with status $suite_status before reporting results"
+    elif [[ "$suite_completed" != "true" ]]; then
+        suite_error="$test_name: suite exited with status $suite_status before completing"
+    elif [[ "$suite_status" -ne 0 ]]; then
+        suite_error="$test_name: suite exited with status $suite_status"
+    elif [[ "$suite_tests" -eq 0 ]]; then
+        suite_error="$test_name: reported 0 tests (exit status $suite_status)"
+    fi
 
-        # Display output from this test suite
-        local output_file="${result_file}.output"
+    local output_file="${result_file}.output"
+    if [[ -n "$suite_error" ]]; then
+        FAILED_TEST_DETAILS+=("$suite_error")
+        # Keep completed results, and represent an interrupted test (or the suite
+        # itself) as one synthetic error rather than silently losing the suite.
+        suite_failed=$((suite_failed + 1))
+        suite_tests=$((suite_passed + suite_failed + suite_skipped))
+        printf '%s\n' "$suite_error"
         if [[ -f "$output_file" ]]; then
-            cat "$output_file"
+            output_tail=$(tail -n 20 "$output_file")
+            printf 'Last 20 lines of %s output:\n%s\n\n' "$test_name" "$output_tail"
+            suite_error+=$'\n'"$output_tail"
         fi
-    done
+    elif [[ -f "$output_file" ]]; then
+        cat "$output_file"
+    fi
+
+    TOTAL_TESTS=$((TOTAL_TESTS + suite_tests))
+    PASSED_TESTS=$((PASSED_TESTS + suite_passed))
+    FAILED_TESTS=$((FAILED_TESTS + suite_failed))
+    SKIPPED_TESTS=$((SKIPPED_TESTS + suite_skipped))
+
+    if [[ "$JUNIT_OUTPUT" == "true" ]]; then
+        SUITE_NAMES+=("$test_name")
+        SUITE_TESTS_COUNT+=("$suite_tests")
+        SUITE_FAILURES_COUNT+=("$suite_failed")
+        SUITE_TIMES+=("$suite_duration")
+        SUITE_TESTCASES+=("$testcases_content")
+        SUITE_ERRORS+=("$suite_error")
+    fi
 }
 
 # Job control for parallel execution
@@ -484,55 +505,61 @@ main() {
         exit 1
     fi
 
-    # Run test suites (parallel or sequential)
-    if [[ "$PARALLEL_JOBS" -gt 1 ]]; then
-        # Parallel execution
-        RESULTS_DIR="$(mktemp -d -t bash-logger-results.XXXXXX)"
-        local job_count=0
-        local total_suites=${#test_files[@]}
+    # Every dispatched suite gets a result path, PID and exit status in either mode.
+    RESULTS_DIR="$(mktemp -d -t bash-logger-results.XXXXXX)" || return 1
+    trap 'rm -rf "$RESULTS_DIR"' EXIT
+    local suite_pids=() suite_statuses=()
+    local suite_idx=0 result_file suite_status
 
+    if [[ "$PARALLEL_JOBS" -gt 1 ]]; then
+        local total_suites=${#test_files[@]}
         echo -e "${COLOR_BLUE}Dispatching $total_suites test suites...${COLOR_RESET}"
         echo ""
 
         for test_file in "${test_files[@]}"; do
-            if [[ -f "$test_file" ]]; then
-                wait_for_job_slot "$PARALLEL_JOBS"
-                local test_name
-                test_name="$(basename "$test_file" .sh)"
-                local result_file="$RESULTS_DIR/result_${job_count}.txt"
-                echo -e "${COLOR_BLUE}→${COLOR_RESET} Dispatching $test_name [$(( job_count + 1 ))/$total_suites]"
-                (
-                    run_test_suite "$test_file" "$result_file"
-                ) &
-                job_count=$((job_count + 1))
-            fi
+            wait_for_job_slot "$PARALLEL_JOBS"
+            local test_name
+            test_name="$(basename "$test_file" .sh)"
+            result_file="$RESULTS_DIR/result_${suite_idx}.txt"
+            echo -e "${COLOR_BLUE}→${COLOR_RESET} Dispatching $test_name [$((suite_idx + 1))/$total_suites]"
+            run_test_suite "$test_file" "$result_file" >"${result_file}.output" 2>&1 &
+            suite_pids+=("$!")
+            suite_idx=$((suite_idx + 1))
         done
 
-        # Wait for all background jobs to complete
         echo ""
         echo -e "${COLOR_BLUE}All test suites dispatched. Waiting for completion...${COLOR_RESET}"
-        wait
+        for suite_pid in "${suite_pids[@]}"; do
+            wait "$suite_pid"
+            suite_statuses+=("$?")
+        done
         echo ""
 
-        # Aggregate results
-        aggregate_parallel_results "$RESULTS_DIR"
-
-        # Clean up results directory
-        rm -rf "$RESULTS_DIR"
-
+        for ((suite_idx=0; suite_idx<${#test_files[@]}; suite_idx++)); do
+            aggregate_suite_result "${test_files[$suite_idx]}" \
+                "$RESULTS_DIR/result_${suite_idx}.txt" "${suite_statuses[$suite_idx]}"
+        done
     else
-        # Sequential execution
         for test_file in "${test_files[@]}"; do
-            if [[ -f "$test_file" ]]; then
-                run_test_suite "$test_file"
-                if [[ "$FAIL_FAST" == "true" && $FAILED_TESTS -gt 0 ]]; then
-                    echo -e "${COLOR_RED}Fail-fast: stopping after first failed suite${COLOR_RESET}"
-                    echo ""
-                    break
-                fi
+            result_file="$RESULTS_DIR/result_${suite_idx}.txt"
+            # Launch and wait explicitly so errexit is preserved inside the suite.
+            run_test_suite "$test_file" "$result_file" >"${result_file}.output" 2>&1 &
+            suite_pids+=("$!")
+            wait "${suite_pids[$suite_idx]}"
+            suite_status=$?
+            suite_statuses+=("$suite_status")
+            aggregate_suite_result "$test_file" "$result_file" "$suite_status"
+            suite_idx=$((suite_idx + 1))
+            if [[ "$FAIL_FAST" == "true" && $FAILED_TESTS -gt 0 ]]; then
+                echo -e "${COLOR_RED}Fail-fast: stopping after first failed suite${COLOR_RESET}"
+                echo ""
+                break
             fi
         done
     fi
+
+    rm -rf "$RESULTS_DIR"
+    trap - EXIT
 
     # Print summary
     print_summary

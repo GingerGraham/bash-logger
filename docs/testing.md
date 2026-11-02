@@ -116,6 +116,22 @@ summary immediately. `--fail-fast` always runs sequentially: if parallel jobs ar
 (via `-j N` or `TEST_PARALLEL_JOBS`), the flag overrides them to ensure the run truly stops
 at the first failure.
 
+**Crashed and empty suites:**
+
+Every dispatched suite is isolated in a subshell in both parallel and sequential modes.
+The runner waits for each suite's PID and checks its exit status and result file.
+A nonzero exit, an early exit before completion (even `exit 0`), missing or incomplete
+results, or a completed suite reporting zero tests makes the runner exit with status 1.
+The final summary names the suite and its exit status; empty suites report `reported 0 tests`.
+The last 20 lines of a crashed or empty suite's combined stdout/stderr are printed for diagnosis.
+
+Completed passes, assertion failures and skips are preserved when the worker can write its
+exit snapshot. A suite error adds one failed test to those completed results; an interrupted
+test is represented by that error rather than counted twice. If the worker cannot write a complete
+result snapshot (for example, its exit trap was replaced), the suite contributes one error; partial results are discarded.
+A suite that skips every test has a nonzero test count and continues to pass.
+Sequential mode continues with the next suite after a crash unless `--fail-fast` is enabled.
+
 **Performance Impact:**
 
 * **Sequential** (`-j 1`): ~5+ minutes for full suite
@@ -162,6 +178,7 @@ Available test suites:
 * `test_output` - Output routing and stream behavior
 * `test_path_traversal` - Path traversal protections
 * `test_resource_limits` - Resource and size limit behavior
+* `test_runner` - Crash containment, suite accounting, empty suites and runner diagnostics
 * `test_runtime_config` - Runtime configuration changes
 * `test_script_name_sanitization` - Script and tag name sanitization
 * `test_sensitive_data` - Sensitive data handling protections
@@ -274,6 +291,9 @@ Or directly:
 
 * JUnit XML report: `test-reports/junit.xml`
 * The report follows the SonarQube Generic Test Execution format
+* Crashed or empty suites add a synthetic `<testCase>` with an `<error>` element,
+  including the suite name, exit status and output tail. Completed assertion failures
+  retain their `<failure>` elements, and skipped tests retain `<skipped>` elements.
 
 ### SonarQube Integration
 
