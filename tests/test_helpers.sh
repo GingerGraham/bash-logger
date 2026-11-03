@@ -17,6 +17,21 @@ current_test=""
 # Temporary directory for test files
 TEST_TMP_DIR=""
 
+# Create a unique empty file whose name ends in a suffix, and print its path.
+# Arguments: name prefix (including directory), suffix such as .sh
+# BSD mktemp (macOS) only randomizes Xs at the very end of the template, so a template
+# like name_XXXXXX.sh would create a file with that literal name and fail on the second
+# call. Create the file without the suffix, then rename it.
+make_temp_file_with_suffix() {
+    local name_prefix="$1" suffix="$2" base_file
+    base_file=$(mktemp "${name_prefix}XXXXXX") || return 1
+    if ! mv "$base_file" "${base_file}${suffix}"; then
+        rm -f "$base_file"
+        return 1
+    fi
+    echo "${base_file}${suffix}"
+}
+
 # Setup function - called before each test suite
 setup_test_suite() {
     # Create temporary directory

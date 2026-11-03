@@ -482,7 +482,7 @@ test_parallel_failed_details_in_summary() {
     start_test "Failed test details are shown in summary for parallel runs"
 
     local suite_file suite_name output
-    suite_file=$(mktemp "$PROJECT_ROOT/tests/test_parallel_failed_details_XXXXXX.sh") || {
+    suite_file=$(make_temp_file_with_suffix "$PROJECT_ROOT/tests/test_parallel_failed_details_" .sh) || {
         fail_test "Failed to create temp suite file"
         return
     }

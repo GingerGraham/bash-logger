@@ -131,7 +131,7 @@ generate_junit_xml() {
 
             # Output testcases for this suite
             IFS='|' read -ra testcases <<< "${SUITE_TESTCASES[$suite_idx]}"
-            for testcase in "${testcases[@]}"; do
+            for testcase in "${testcases[@]+"${testcases[@]}"}"; do
                 if [[ -n "$testcase" ]]; then
                     echo "    $testcase"
                 fi
