@@ -424,13 +424,16 @@ Current runnable suite files include:
 * `test_mixed_sanitization_modes.sh`
 * `test_output.sh`
 * `test_path_traversal.sh`
+* `test_posix_compat.sh`
 * `test_resource_limits.sh`
 * `test_runtime_config.sh`
 * `test_script_name_sanitization.sh`
 * `test_sensitive_data.sh`
+* `test_shell_compat.sh`
 * `test_source_guard.sh`
 * `test_toctou_protection.sh`
 * `test_unsafe_newlines.sh`
+* `test_validator_equivalence.sh`
 * `test_zsh_compat.sh`
 
 ### Test Coverage
@@ -592,6 +595,15 @@ require_shell zsh || return 0
 
 # Skip a test with reason
 skip_test "logger command not available"
+
+# Print the shells in TEST_SHELLS, one per line (default: bash)
+test_shell_list
+
+# Return 0 for shells whose string operations count characters (bash, zsh)
+shell_counts_characters "busybox sh"
+
+# Run a command and stop it after a number of seconds (works on macOS)
+run_with_timeout 30 some_command args
 ```
 
 #### Cross-Shell Tests
@@ -622,11 +634,35 @@ the runner as a suite crash.
 
 When zsh is not installed, these tests skip. Set `TEST_REQUIRE_SHELLS` to a
 space-separated list of shells that must be present, so the tests fail instead
-of silently skipping. CI sets `TEST_REQUIRE_SHELLS=zsh`:
+of silently skipping. CI sets `TEST_REQUIRE_SHELLS="zsh dash busybox"`:
 
 ```bash
 TEST_REQUIRE_SHELLS=zsh ./tests/run_tests.sh
 ```
+
+#### Shell Matrix Suites
+
+`test_shell_compat.sh`, `test_validator_equivalence.sh` and `test_posix_compat.sh` run the
+library under every shell in `TEST_SHELLS` (default `bash`). Separate commands with commas
+when a command has flags:
+
+```bash
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
+    ./tests/run_tests.sh test_shell_compat test_validator_equivalence test_posix_compat
+```
+
+* **`test_shell_compat.sh`** runs each script in `tests/compat/scenarios/` under bash and under
+  each other shell, and compares stdout, stderr, the log file and the exit status (timestamps
+  masked). To cover new behaviour, add a scenario: a short POSIX sh script that sources
+  `"$LOGGER_ROOT/logging.sh"` and writes any log file to `"$SCENARIO_DIR/test.log"`. A
+  `# compat-locale: C.UTF-8` header line runs it in that locale (default `C`). Shell/scenario
+  pairs that are expected to differ for now are listed in `tests/compat/known_failures.txt`.
+* **`test_validator_equivalence.sh`** runs the validators over the corpus in
+  `tests/compat/golden/` and compares with golden results recorded from the bash regular
+  expressions the validators used before the POSIX conversion. Do not regenerate the golden
+  files from current code; see `tests/compat/generate_validator_golden.sh`.
+* **`test_posix_compat.sh`** checks the behaviour documented in
+  [Shell Compatibility](shell-compatibility.md).
 
 **Example**:
 
@@ -845,11 +881,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install zsh
-        run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Install zsh, dash and busybox
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
       - name: Run tests
         env:
-          TEST_REQUIRE_SHELLS: zsh
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
+          TEST_REQUIRE_SHELLS: zsh dash busybox
         run: |
           cd tests
           ./run_tests.sh
@@ -860,7 +897,8 @@ jobs:
 * Bash 3.2 or later (the Bash 3.2 that macOS ships as `/bin/bash` is supported)
 * Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
 * Optional: `logger` command for journal logging tests
-* Optional: `zsh` for cross-shell tests (required when `TEST_REQUIRE_SHELLS=zsh`)
+* Optional: `zsh`, `dash` and `busybox` for cross-shell tests (required when listed in
+  `TEST_REQUIRE_SHELLS`)
 * Optional: `bc` for accurate test timing in JUnit XML output (durations show as 0 if unavailable)
 
 The CI workflow also runs the full suite on macOS under `/bin/bash` 3.2 with the BSD userland

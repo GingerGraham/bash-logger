@@ -40,16 +40,25 @@ demos, and pipeline scripts - exists to support using that file.
 * Configurable log line length limits for DoS resistance
 * TOCTOU race condition protection during log file creation
 
-## Supported Bash Versions
+## Supported Shells
 
-* **Library (`logging.sh`)**: Bash 3.2 or later. This includes the Bash 3.2 that macOS ships as
-  `/bin/bash`. The library uses no Bash 4+ syntax, and `scripts/check-bash32-compat.sh` enforces this.
-* **Test suite (`tests/`)**: Bash 3.2 or later, on Linux and on macOS with its BSD userland.
+* **Library (`logging.sh`)**: written for POSIX sh plus `local`, so the same file works in:
+  * bash 3.2 or later, including the bash 3.2 that macOS ships as `/bin/bash`, and bash `--posix`
+  * zsh
+  * dash (`/bin/sh` on Debian and Ubuntu)
+  * busybox ash (`/bin/sh` on Alpine and other busybox-based images)
+* **Test suite (`tests/`)**: Bash 3.2 or later, on Linux and on macOS with its BSD userland. The
+  cross-shell suites run the library under each shell listed in `TEST_SHELLS`.
+
+`scripts/check-bash32-compat.sh` rejects bash 4+ syntax and `scripts/check-posix-compat.sh`
+rejects syntax that dash does not support. See [Shell Compatibility](docs/shell-compatibility.md)
+for the few documented differences between shells (script name detection and how truncation
+counts multi-byte characters).
 
 ## Quick Start
 
 ```bash
-# Source the logging module
+# Source the logging module (use ". /path/to/logging.sh" in a POSIX sh script)
 source /path/to/logging.sh
 
 # Initialize the logger
@@ -84,6 +93,7 @@ See [Getting Started](docs/getting-started.md) for detailed installation and bas
 * **[API Reference](docs/api-reference.md)** - Complete function reference
 * [Examples](docs/examples.md) - Comprehensive usage examples
 * [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+* [Shell Compatibility](docs/shell-compatibility.md) - Supported shells and their differences
 
 ## Common Use Cases
 

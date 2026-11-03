@@ -31,6 +31,7 @@ Deep dives into specific features:
 
 * **[API Reference](api-reference.md)** - Complete function reference
 * **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+* **[Shell Compatibility](shell-compatibility.md)** - Supported shells (bash, zsh, dash, busybox ash) and their differences
 * **[Testing](testing.md)** - Guide to the test suite
 * **[Writing Tests](writing-tests.md)** - Contributor guide for writing and structuring tests
 * **[Releases](releases.md)** - Release process and versioning

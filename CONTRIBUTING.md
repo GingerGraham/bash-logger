@@ -40,6 +40,10 @@ Great! Here's the process:
 4. **Test your changes**
    * Test with bash 3.2 (macOS `/bin/bash`) and bash 5.x if possible. CI runs the suite under
      bash 3.2 on macOS, and `scripts/check-bash32-compat.sh` rejects bash 4+ syntax in `logging.sh`
+   * `logging.sh` is POSIX sh plus `local`. Run the cross-shell suites with
+     `TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh"` (see
+     [docs/shell-compatibility.md](docs/shell-compatibility.md)); `scripts/check-posix-compat.sh`
+     rejects syntax that dash does not support
    * Verify existing functionality still works
    * Run tests locally: `./tests/run_tests.sh` or `make test`
    * Optionally run coverage: `make coverage` (requires [kcov](https://github.com/SimonKagstrom/kcov))

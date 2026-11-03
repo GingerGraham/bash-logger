@@ -59,7 +59,22 @@ conventions, and PR description format.
 
 ## Shell Compatibility Guidelines
 
-The project targets Bash but aims for broad compatibility where possible.
+**Core library (`logging.sh`):** written for **POSIX sh plus `local`**, one implementation for
+bash 3.2+, bash `--posix`, zsh, dash and busybox ash (Issue #143). This replaces the earlier
+bash-forward preference for `logging.sh`. In that file:
+
+* Use `[ ]`, `case` and parameter expansion; no `[[ ]]`, `=~`, arrays, `$'...'`,
+  `${var//}`, `${var:offset:length}` or `&>`
+* Print data with `printf '%s\n'`, never `echo` (dash and zsh `echo` expand backslashes)
+* Initialise every local: `local name=""` (dash's `local` keeps the outer value)
+* Shell-specific code only where no POSIX form gives the same result, behind a
+  `BASH_VERSION` or `ZSH_VERSION` check, with a `shellcheck disable` directive and the reason
+  on the line above
+* `scripts/check-posix-compat.sh` must pass (zero `SC3xxx` findings from `--shell=dash`)
+* Document any behaviour that differs between shells in
+  [docs/shell-compatibility.md](docs/shell-compatibility.md)
+
+The guidelines below apply to the other scripts in the repository.
 
 **Supported shells** (in order of priority):
 
@@ -71,8 +86,8 @@ The project targets Bash but aims for broad compatibility where possible.
 
 **DO:**
 
-* Use `[[ ]]` in Bash-targeted files (like `logging.sh`); reserve `[ ]` for scripts where
-  POSIX portability is explicitly required
+* Use `[[ ]]` in Bash-targeted files (such as the test suite and `scripts/`); reserve `[ ]`
+  for scripts where POSIX portability is explicitly required
 * Use `$(...)` instead of backticks (works everywhere)
 * Use `.` for POSIX sh; `source` is Bash/Zsh/Ksh-specific (but widely supported)
 * Document shell requirements in comments
@@ -91,8 +106,9 @@ add a comment explaining why, and use ShellCheck suppressions with justification
 # shellcheck disable=SC3010 -- bash-specific syntax required for performance here
 ```
 
-The main `logging.sh` uses `#!/usr/bin/env bash` explicitly. Configuration and demo
-scripts should maintain broader compatibility.
+`logging.sh` keeps a `#!/usr/bin/env bash` line, so running it directly in bash prints its
+usage message; its code is POSIX sh plus `local`. Configuration and demo scripts should
+maintain broader compatibility.
 
 ## Markdown Formatting Standards
 
@@ -132,7 +148,8 @@ Before proposing or generating code, verify:
 * [ ] Commit message follows Conventional Commits format — see `writing-commits` skill
 * [ ] Security implications reviewed for changes touching input, files, config, or external
   commands — see `security-review` skill
-* [ ] Code is shell-agnostic where possible, with Bash as fallback
+* [ ] `logging.sh` passes `scripts/check-posix-compat.sh`; other code is shell-agnostic where
+  possible, with Bash as fallback
 * [ ] Lines are under 100 characters where reasonable
 * [ ] 4-space indentation throughout
 
