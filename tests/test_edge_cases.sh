@@ -357,7 +357,8 @@ test_message_newline_stripping() {
     # The newline should be replaced
     assert_file_exists "$TEST_DIR/newline.log" || return
     local line_count
-    line_count=$(wc -l < "$TEST_DIR/newline.log")
+    # BSD wc (macOS) pads the count with spaces, which breaks a string comparison
+    line_count=$(wc -l < "$TEST_DIR/newline.log" | tr -d ' ')
 
     # Should be two lines: the INIT line from init_logger + one log entry
     # (newline in the message replaced with space, not producing an extra line)

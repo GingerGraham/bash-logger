@@ -40,6 +40,12 @@ demos, and pipeline scripts - exists to support using that file.
 * Configurable log line length limits for DoS resistance
 * TOCTOU race condition protection during log file creation
 
+## Supported Bash Versions
+
+* **Library (`logging.sh`)**: Bash 3.2 or later. This includes the Bash 3.2 that macOS ships as
+  `/bin/bash`. The library uses no Bash 4+ syntax, and `scripts/check-bash32-compat.sh` enforces this.
+* **Test suite (`tests/`)**: Bash 3.2 or later, on Linux and on macOS with its BSD userland.
+
 ## Quick Start
 
 ```bash

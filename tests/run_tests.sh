@@ -131,7 +131,7 @@ generate_junit_xml() {
 
             # Output testcases for this suite
             IFS='|' read -ra testcases <<< "${SUITE_TESTCASES[$suite_idx]}"
-            for testcase in "${testcases[@]}"; do
+            for testcase in "${testcases[@]+"${testcases[@]}"}"; do
                 if [[ -n "$testcase" ]]; then
                     echo "    $testcase"
                 fi
@@ -162,7 +162,7 @@ write_suite_results() {
     local suite_status="$1"
     set +e
     local suite_end_time suite_duration
-    suite_end_time=$(date +%s.%N 2>/dev/null || date +%s)
+    suite_end_time=$(_get_timestamp)
     suite_duration=$(echo "$suite_end_time - $suite_start_time" | bc 2>/dev/null || echo "0")
 
     cleanup_test_suite
@@ -195,6 +195,22 @@ write_suite_results() {
     } > "$results_file"
 }
 
+# Run one suite with its output captured, then print a single progress line. Parallel
+# results are only printed after every suite has finished, so without this line a slow or
+# stuck suite is invisible while the run is in progress. The suite's own exit status is
+# returned. Used for parallel runs only.
+run_test_suite_with_progress() {
+    local test_file="$1" result_file="$2"
+    local test_name suite_status started_at=$SECONDS
+    test_name="$(basename "$test_file" .sh)"
+
+    run_test_suite "$test_file" "$result_file" >"${result_file}.output" 2>&1
+    suite_status=$?
+
+    echo -e "${COLOR_BLUE}←${COLOR_RESET} Finished $test_name (exit status $suite_status, $((SECONDS - started_at))s)"
+    return "$suite_status"
+}
+
 # Isolate both sequential and parallel suites, including shell options and exits.
 run_test_suite() (
     local test_file="$1"
@@ -212,7 +228,7 @@ run_test_suite() (
 
     local suite_completed=false
     local suite_start_time
-    suite_start_time=$(date +%s.%N 2>/dev/null || date +%s)
+    suite_start_time=$(_get_timestamp)
     trap 'write_suite_results "$?"' EXIT
 
     # Do not put source or this worker in an if/||: that disables suite errexit.
@@ -357,7 +373,8 @@ print_summary() {
         echo "  Failed Tests"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
-        for detail in "${FAILED_TEST_DETAILS[@]}"; do
+        # The +"..." form keeps an empty array safe under set -u in bash before 4.4
+        for detail in "${FAILED_TEST_DETAILS[@]+"${FAILED_TEST_DETAILS[@]}"}"; do
             echo -e "${COLOR_RED}$detail${COLOR_RESET}"
         done
         echo ""
@@ -522,7 +539,7 @@ main() {
             test_name="$(basename "$test_file" .sh)"
             result_file="$RESULTS_DIR/result_${suite_idx}.txt"
             echo -e "${COLOR_BLUE}→${COLOR_RESET} Dispatching $test_name [$((suite_idx + 1))/$total_suites]"
-            run_test_suite "$test_file" "$result_file" >"${result_file}.output" 2>&1 &
+            run_test_suite_with_progress "$test_file" "$result_file" &
             suite_pids+=("$!")
             suite_idx=$((suite_idx + 1))
         done

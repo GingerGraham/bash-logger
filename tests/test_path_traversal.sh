@@ -17,23 +17,25 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 test_path_traversal_basic() {
     start_test "Path traversal attempts handled safely"
 
-    local malicious_path="$TEST_TMP_DIR/../../etc/passwd"
+    # Traverse with .. components but stay inside TEST_DIR. The number of directories above
+    # a temp dir differs between systems (/tmp on Linux, a deep /var/folders path on macOS),
+    # so a path aimed at /etc/passwd resolves differently on each, and as root it would
+    # write to the real file. This path resolves to the same place everywhere.
+    mkdir -p "$TEST_DIR/a/b" "$TEST_DIR/target"
+    local malicious_path="$TEST_DIR/a/b/../../target/passwd.log"
+    local resolved_path="$TEST_DIR/target/passwd.log"
 
-    # This should either fail or create the file in a safe location
-    # The normalized path should not escape TEST_TMP_DIR
+    # This should either fail or log to the normalized path
     if init_logger -l "$malicious_path" --no-color > /dev/null 2>&1; then
-        log_info "Test message" 2>&1
-        # If it succeeds, verify the actual log file is still under TEST_TMP_DIR
-        # Find any log files created by this test
-        local created_logs
-        created_logs=$(find "$TEST_TMP_DIR" -name "*.log" -o -name "*passwd*" 2>/dev/null | wc -l)
-        if [[ $created_logs -gt 0 ]]; then
+        log_info "Test message" > /dev/null 2>&1
+        # If it succeeds, the log must be at the normalized path inside TEST_DIR
+        if [[ -f "$resolved_path" ]] && grep -q "Test message" "$resolved_path"; then
             pass_test
         else
-            fail_test "Path traversal may have succeeded - no logs in TEST_TMP_DIR"
+            fail_test "Path traversal succeeded but the log is not at $resolved_path"
         fi
     else
-        # If it fails (expected), that's also acceptable
+        # If it fails (expected for a stricter library), that's also acceptable
         pass_test
     fi
 }

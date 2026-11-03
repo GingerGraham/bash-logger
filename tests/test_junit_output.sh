@@ -119,7 +119,7 @@ test_get_test_duration_returns_number() {
     start_test "Test duration returns a number"
 
     # Set a start time
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    TEST_START_TIME=$(_get_timestamp)
     sleep 0.1
 
     local duration
@@ -127,6 +127,28 @@ test_get_test_duration_returns_number() {
 
     # Duration should be a number (possibly with decimal, may start with . for values < 1)
     assert_matches "$duration" "^[0-9.]" "Duration should be a numeric value" || return
+
+    pass_test
+}
+
+test_get_timestamp_without_nanosecond_support() {
+    start_test "Timestamp falls back to whole seconds when date prints a literal N"
+
+    # Mimic BSD date (macOS): %N is accepted but printed as the letter N
+    mkdir -p "$TEST_DIR/bin"
+    cat > "$TEST_DIR/bin/date" << 'FAKE_DATE'
+#!/bin/sh
+case "$1" in
+    +%s.%N) echo "1730000000.N" ;;
+    +%s) echo "1730000000" ;;
+esac
+FAKE_DATE
+    chmod +x "$TEST_DIR/bin/date"
+
+    local timestamp
+    timestamp=$(PATH="$TEST_DIR/bin:$PATH" _get_timestamp)
+
+    assert_equals "1730000000" "$timestamp" "Should fall back to whole seconds" || return
 
     pass_test
 }
@@ -170,7 +192,7 @@ _junit_testcase_xml() {
         JUNIT_OUTPUT=true
         CURRENT_SUITE_TESTCASES=""
         current_test="$name"
-        TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+        TEST_START_TIME=$(_get_timestamp)
         _add_junit_testcase "$status" "$message"
         printf '%s' "$CURRENT_SUITE_TESTCASES"
     )
@@ -198,7 +220,7 @@ test_junit_testcase_accumulation_multiple_entries() {
     testcases=$(
         JUNIT_OUTPUT=true
         CURRENT_SUITE_TESTCASES=""
-        TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+        TEST_START_TIME=$(_get_timestamp)
 
         current_test="test_one"
         _add_junit_testcase "pass"
@@ -460,7 +482,7 @@ test_parallel_failed_details_in_summary() {
     start_test "Failed test details are shown in summary for parallel runs"
 
     local suite_file suite_name output
-    suite_file=$(mktemp "$PROJECT_ROOT/tests/test_parallel_failed_details_XXXXXX.sh") || {
+    suite_file=$(make_temp_file_with_suffix "$PROJECT_ROOT/tests/test_parallel_failed_details_" .sh) || {
         fail_test "Failed to create temp suite file"
         return
     }
@@ -496,6 +518,7 @@ test_junit_xml_escape_preserves_normal_text
 test_junit_xml_escape_strips_control_characters
 test_junit_xml_escape_keeps_tab_and_newline
 test_get_test_duration_returns_number
+test_get_timestamp_without_nanosecond_support
 test_get_test_duration_fallback_without_bc
 test_junit_testcase_accumulation_first_entry
 test_junit_testcase_accumulation_multiple_entries

@@ -311,7 +311,8 @@ EOF
     assert_file_contains "$log_file" "Logger initialized by malicious_name.sh" || return
 
     local line_count
-    line_count=$(wc -l < "$log_file")
+    # BSD wc (macOS) pads the count with spaces, which breaks a string comparison
+    line_count=$(wc -l < "$log_file" | tr -d ' ')
     assert_equals "1" "$line_count" "Expected init log to remain a single line" || return
 
     pass_test

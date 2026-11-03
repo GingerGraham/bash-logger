@@ -14,7 +14,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 test_preset_log_file_handling() {
     start_test "Pre-set LOG_FILE environment variable handling"
 
-    local malicious_log="$TEST_TMP_DIR/malicious_${BASHPID}_$RANDOM.log"
+    local malicious_log="$TEST_TMP_DIR/malicious_$$_$RANDOM.log"
     export LOG_FILE="$malicious_log"
     local intended_file="$TEST_TMP_DIR/intended.log"
 
@@ -40,7 +40,7 @@ test_malicious_path_variable() {
 
     local original_path="$PATH"
     local malicious_dir="$TEST_TMP_DIR/malicious_bin"
-    local execution_marker="$TEST_TMP_DIR/malicious_execution_marker_${BASHPID}_$RANDOM"
+    local execution_marker="$TEST_TMP_DIR/malicious_execution_marker_$$_$RANDOM"
     mkdir -p "$malicious_dir"
 
     # Create fake logger command

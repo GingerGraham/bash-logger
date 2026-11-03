@@ -857,11 +857,15 @@ jobs:
 
 **Requirements**:
 
-* Bash 4.0 or later
+* Bash 3.2 or later (the Bash 3.2 that macOS ships as `/bin/bash` is supported)
 * Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
 * Optional: `logger` command for journal logging tests
 * Optional: `zsh` for cross-shell tests (required when `TEST_REQUIRE_SHELLS=zsh`)
 * Optional: `bc` for accurate test timing in JUnit XML output (durations show as 0 if unavailable)
+
+The CI workflow also runs the full suite on macOS under `/bin/bash` 3.2 with the BSD userland
+(`test-macos-bash32` in `.github/workflows/tests.yml`). Write tests so they run on both: avoid
+Bash 4+ syntax, and avoid GNU-only options such as `date +%s%N` or `sed -i` without a suffix.
 
 **CI Characteristics**:
 

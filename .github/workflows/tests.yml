@@ -35,3 +35,35 @@ jobs:
           name: test-results
           path: tests/
           retention-days: 30
+
+  test-macos-bash32:
+    permissions:
+      contents: read
+    runs-on: macos-latest
+    name: Run Test Suite (macOS /bin/bash 3.2)
+    # The default job timeout is 6 hours, which would hide a hung suite for that long
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Runner images can put a newer Homebrew bash first on PATH, and the tests start
+      # nested bash processes. A PATH shim makes every bash call use Apple's bash 3.2.
+      - name: Use /bin/bash for every bash call
+        run: |
+          mkdir -p "$RUNNER_TEMP/bash32"
+          ln -s /bin/bash "$RUNNER_TEMP/bash32/bash"
+          echo "$RUNNER_TEMP/bash32" >> "$GITHUB_PATH"
+
+      - name: Confirm bash 3.2
+        run: |
+          bash --version | head -1
+          bash -c '[[ "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" == "3.2" ]]'
+
+      - name: Run tests
+        env:
+          TEST_PARALLEL_JOBS: 3
+        run: |
+          cd tests
+          ./run_tests.sh

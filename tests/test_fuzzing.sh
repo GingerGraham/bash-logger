@@ -15,6 +15,14 @@
 # shellcheck source=tests/test_helpers.sh disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 
+# Print the single byte with the given decimal code (1-255).
+# Octal escapes in the printf format work in bash 3.2, bash 5, zsh and dash.
+# \x escapes do not in bash 3.2 ("missing hex digit"), so the fuzz inputs would be wrong.
+byte_from_code() {
+    local code="$1"
+    printf "\\$(printf '%03o' "$code")"
+}
+
 # Test: Random printable ASCII characters
 test_random_ascii() {
     start_test "Random ASCII characters are handled"
@@ -26,7 +34,13 @@ test_random_ascii() {
     # Generate random ASCII printable characters
     for i in {1..10}; do # reduced from 50 to avoid overwhelming test environment
         local random_str
-        random_str=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom 2>/dev/null | head -c 100 2>/dev/null || echo "fallback")
+        # Read a finite chunk of random bytes (about 1500 are printable, enough for 100).
+        # Piping an endless /dev/urandom into tr and relying on head to close the pipe can
+        # run forever when SIGPIPE is ignored (CI runners) and tr does not check for write
+        # errors (macOS), which hung this suite.
+        random_str=$(head -c 4096 /dev/urandom 2>/dev/null \
+            | LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' 2>/dev/null \
+            | head -c 100 2>/dev/null || echo "fallback")
         log_info "$random_str" 2>&1 || true
     done
 
@@ -58,6 +72,24 @@ test_invalid_utf8() {
     fi
 }
 
+# Test: The byte generator produces the byte it was asked for
+test_fuzzing_generates_expected_bytes() {
+    start_test "Fuzz byte generator produces the expected byte for each code"
+
+    assert_equals "A" "$(byte_from_code 65)" "65 should be A" || return
+    assert_equals "$(printf '\033')" "$(byte_from_code 27)" "27 should be ESC" || return
+
+    # Check the numeric value of every byte the control and extended tests use.
+    # Code 10 is skipped because command substitution strips a trailing newline.
+    local code actual
+    for code in {1..9} {11..31} {128..255}; do
+        actual=$(byte_from_code "$code" | od -An -tu1 | tr -d ' \n')
+        assert_equals "$code" "$actual" "byte_from_code $code" || return
+    done
+
+    pass_test
+}
+
 # Test: Control characters (0x00-0x1F)
 test_control_characters() {
     start_test "Control characters are handled"
@@ -69,7 +101,7 @@ test_control_characters() {
     # Test various control characters
     for i in {1..31}; do
         local char
-        char=$(printf "\\x%02x" $i)
+        char=$(byte_from_code "$i")
         log_info "Control char $i: ${char}END" 2>&1 || true
     done
 
@@ -91,7 +123,7 @@ test_extended_ascii() {
     # Test extended ASCII range
     for i in {128..255}; do
         local char
-        char=$(printf "\\x%02x" $i)
+        char=$(byte_from_code "$i")
         log_info "Extended $i: ${char}" 2>&1 || true
     done
 
@@ -580,6 +612,7 @@ test_random_level_changes() {
 # Run all tests
 test_random_ascii
 test_invalid_utf8
+test_fuzzing_generates_expected_bytes
 test_control_characters
 test_extended_ascii
 test_long_word

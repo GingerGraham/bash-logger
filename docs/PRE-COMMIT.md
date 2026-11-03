@@ -67,19 +67,25 @@ Pre-commit hooks run automatically before each commit. They check:
    * Catches syntax errors, undefined variables, incorrect quoting, and more
    * Runs on all `.sh` files
 
-2. **MarkdownLint** - Checks and auto-fixes Markdown formatting
+2. **Bash 3.2 Compatibility** - Rejects bash 4+ syntax in `logging.sh`
+
+   * macOS ships bash 3.2 as `/bin/bash`, and ShellCheck does not flag bash 4+ features
+   * Catches `${var,,}`, `declare -A`, `mapfile`, `[[ -v name ]]`, `&>>`, and similar constructs
+   * Run it directly with `scripts/check-bash32-compat.sh [file ...]`
+
+3. **MarkdownLint** - Checks and auto-fixes Markdown formatting
 
    * Automatically fixes formatting issues (blank lines, trailing spaces, etc.)
    * For issues that can't be auto-fixed (line length), you'll need to fix manually
    * Ensures consistent formatting, proper headings, and link validation
    * Runs on all `.md` files
 
-3. **Bash Logger Tests** - Runs the test suite
+4. **Bash Logger Tests** - Runs the test suite
 
    * Verifies all changes pass the test suite
    * Prevents committing broken code
 
-4. **Commit Message Format** - Validates semantic versioning format
+5. **Commit Message Format** - Validates semantic versioning format
    * Ensures commit messages follow the pattern: `<type>(<scope>): <subject>`
    * Enables automated release and version management
    * Provides clear feedback if message format is incorrect
