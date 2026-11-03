@@ -41,6 +41,8 @@ jobs:
       contents: read
     runs-on: macos-latest
     name: Run Test Suite (macOS /bin/bash 3.2)
+    # The default job timeout is 6 hours, which would hide a hung suite for that long
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code

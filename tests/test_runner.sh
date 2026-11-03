@@ -355,6 +355,24 @@ test_runner_fail_fast_crash() {
     pass_test
 }
 
+test_runner_parallel_reports_progress() {
+    start_test "Parallel runs print a line as each suite finishes"
+    local suite_file second_suite_file suite_name second_suite_name
+    suite_file=$(mktemp "$SCRIPT_DIR/test_runner_fixture_XXXXXX.sh")
+    second_suite_file=$(mktemp "$SCRIPT_DIR/test_runner_fixture_XXXXXX.sh")
+    trap 'rm -f "$suite_file" "$second_suite_file"; trap - RETURN' RETURN
+    printf '%s\n' 'start_test "first pass"; pass_test' >"$suite_file"
+    printf '%s\n' 'start_test "second crash"; exit 3' >"$second_suite_file"
+    suite_name=$(basename "$suite_file" .sh)
+    second_suite_name=$(basename "$second_suite_file" .sh)
+
+    runner_invoke 2 "$suite_name" "$second_suite_name"
+    assert_contains "$runner_output" "Finished $suite_name (exit status 0," || return
+    assert_contains "$runner_output" "Finished $second_suite_name (exit status 3," || return
+    assert_equals "1" "$runner_status" "A crashing suite must still fail the runner" || return
+    pass_test
+}
+
 test_runner_failure_without_detail() {
     start_test "A failure counted without a detail line still prints the full summary"
     local suite_file jobs
@@ -394,3 +412,4 @@ test_runner_early_success_exit_fails
 test_runner_completed_counters_survive
 test_runner_fail_fast_crash
 test_runner_failure_without_detail
+test_runner_parallel_reports_progress

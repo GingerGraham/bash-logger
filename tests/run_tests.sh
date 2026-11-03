@@ -195,6 +195,22 @@ write_suite_results() {
     } > "$results_file"
 }
 
+# Run one suite with its output captured, then print a single progress line. Parallel
+# results are only printed after every suite has finished, so without this line a slow or
+# stuck suite is invisible while the run is in progress. The suite's own exit status is
+# returned. Used for parallel runs only.
+run_test_suite_with_progress() {
+    local test_file="$1" result_file="$2"
+    local test_name suite_status started_at=$SECONDS
+    test_name="$(basename "$test_file" .sh)"
+
+    run_test_suite "$test_file" "$result_file" >"${result_file}.output" 2>&1
+    suite_status=$?
+
+    echo -e "${COLOR_BLUE}←${COLOR_RESET} Finished $test_name (exit status $suite_status, $((SECONDS - started_at))s)"
+    return "$suite_status"
+}
+
 # Isolate both sequential and parallel suites, including shell options and exits.
 run_test_suite() (
     local test_file="$1"
@@ -523,7 +539,7 @@ main() {
             test_name="$(basename "$test_file" .sh)"
             result_file="$RESULTS_DIR/result_${suite_idx}.txt"
             echo -e "${COLOR_BLUE}→${COLOR_RESET} Dispatching $test_name [$((suite_idx + 1))/$total_suites]"
-            run_test_suite "$test_file" "$result_file" >"${result_file}.output" 2>&1 &
+            run_test_suite_with_progress "$test_file" "$result_file" &
             suite_pids+=("$!")
             suite_idx=$((suite_idx + 1))
         done
