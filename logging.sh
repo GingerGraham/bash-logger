@@ -1122,26 +1122,31 @@ _format_log_message() {
         timezone_str="LOCAL"
     fi
 
-    # Replace format variables - zsh compatible method
-    local formatted_message="$LOG_FORMAT"
-    # Handle % escaping for zsh compatibility
-    if [[ -n "${ZSH_VERSION:-}" ]]; then
-        # In zsh, we need a different approach
-        formatted_message=${formatted_message:gs/%d/$current_date}
-        formatted_message=${formatted_message:gs/%l/$level_name}
-        formatted_message=${formatted_message:gs/%s/${SCRIPT_NAME:-unknown}}
-        formatted_message=${formatted_message:gs/%m/$message}
-        formatted_message=${formatted_message:gs/%z/$timezone_str}
-    else
-        # Bash version
-        formatted_message="${formatted_message//%d/$current_date}"
-        formatted_message="${formatted_message//%l/$level_name}"
-        formatted_message="${formatted_message//%s/${SCRIPT_NAME:-unknown}}"
-        formatted_message="${formatted_message//%m/$message}"
-        formatted_message="${formatted_message//%z/$timezone_str}"
-    fi
+    # Expand format tokens in a single left-to-right pass.
+    # Each %X token is replaced once and inserted values are never re-scanned,
+    # so message content cannot be read as a token or as replacement syntax
+    # (e.g. '&' under bash 5.2 patsub_replacement). Behaves the same in bash
+    # and zsh. Unknown tokens, '%%' and a trailing '%' are kept literally.
+    local remaining="$LOG_FORMAT"
+    local formatted_message=""
+    local token
+    while [[ "$remaining" == *%* ]]; do
+        formatted_message="${formatted_message}${remaining%%\%*}"
+        remaining="${remaining#*\%}"
+        token="${remaining:0:1}"
+        case "$token" in
+            d) formatted_message="${formatted_message}${current_date}" ;;
+            l) formatted_message="${formatted_message}${level_name}" ;;
+            s) formatted_message="${formatted_message}${SCRIPT_NAME:-unknown}" ;;
+            m) formatted_message="${formatted_message}${message}" ;;
+            z) formatted_message="${formatted_message}${timezone_str}" ;;
+            *) formatted_message="${formatted_message}%${token}" ;;
+        esac
+        remaining="${remaining#?}"
+    done
+    formatted_message="${formatted_message}${remaining}"
 
-    echo "$formatted_message"
+    printf '%s\n' "$formatted_message"
 }
 
 # Function to initialize logger with custom settings

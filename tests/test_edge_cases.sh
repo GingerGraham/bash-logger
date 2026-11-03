@@ -366,19 +366,14 @@ test_message_newline_stripping() {
     pass_test
 }
 
-# Test: Zsh parameter expansion format (:gs syntax)
+# Test: Format expansion under zsh
 test_zsh_format_expansion() {
-    start_test "Format expansion works in zsh syntax"
+    start_test "Format expansion works in zsh"
 
-    # Only test if we're in zsh
-    if [[ -z "${ZSH_VERSION:-}" ]]; then
-        skip_test "Not running in zsh"
-        return
-    fi
+    require_shell zsh || return 0
 
-    init_logger --quiet --log "$TEST_DIR/zsh.log" --format "%l - %m"
-
-    log_info "Test message"
+    run_with_logger_in_shell "zsh" \
+        "init_logger --quiet --log '$TEST_DIR/zsh.log' --format '%l - %m'; log_info 'Test message'"
 
     assert_file_exists "$TEST_DIR/zsh.log" || return
     assert_file_contains "$TEST_DIR/zsh.log" "INFO - Test message" || return

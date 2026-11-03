@@ -591,14 +591,28 @@ log_info "$formatted_msg"
 
 ## Escaping in Format Strings
 
-Format placeholders are literal strings. If you need to include a literal `%` character, you can work around it:
+The format string is expanded in a single left-to-right pass. Each placeholder is replaced once, and the inserted
+values are never scanned again. This means:
+
+* Text in the log message is never expanded. `log_info "5%z off"` logs `5%z off`, and `log_info "Tom & Jerry"` logs
+  `Tom & Jerry`.
+* A placeholder can appear more than once; each occurrence is replaced.
+* A `%` followed by any character that is not a placeholder letter is kept as written. A trailing `%` is kept too.
+* `%%` is kept as written (two `%` characters). It is **not** an escape for a single `%`. Because the pair is read
+  together, a placeholder letter straight after it is not expanded: `A%%mB` logs `A%%mB`.
 
 ```bash
-# This works - % not followed by a format letter
+# % not followed by a placeholder letter is kept
 init_logger --format "%d [%l] %m (100% complete)"
 
-# This is interpreted as format string
-# init_logger --format "%d [%l] %m %d" # Second %d would be replaced
+# %% is kept as written
+init_logger --format "%l 100%% %m"      # INFO 100%% <message>
+
+# Unknown placeholders and a trailing % are kept
+init_logger --format "<%l|%q|end%"      # <INFO|%q|end%
+
+# Every occurrence of a placeholder is replaced
+init_logger --format "%d [%l] %m %d"    # Date appears twice
 ```
 
 ## Testing Your Format

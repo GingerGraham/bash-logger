@@ -375,6 +375,263 @@ test_format_script_name_token_sanitised_to_underscores() {
     pass_test
 }
 
+# ---------------------------------------------------------------------------
+# Issue #137: '&' in a message must not be treated as replacement syntax
+# (bash 5.2+ enables patsub_replacement by default)
+# ---------------------------------------------------------------------------
+
+# Test: Ampersand in message is logged unchanged
+test_format_message_with_ampersand() {
+    start_test "Ampersand in message is logged unchanged (Issue #137)"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/ampersand.log"
+    LOG_FILE="$log_file"
+
+    log_info "Tom & Jerry"
+
+    assert_file_contains "$log_file" "Tom & Jerry" || return
+    assert_file_not_contains "$log_file" "%m" "'&' must not expand to the matched token" || return
+
+    pass_test
+}
+
+# Test: URL query string with several ampersands is logged unchanged
+test_format_message_with_query_string() {
+    start_test "URL query string with ampersands is logged unchanged (Issue #137)"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/query.log"
+    LOG_FILE="$log_file"
+
+    log_info "https://example.com/?a=1&b=2&c=3"
+
+    assert_file_contains "$log_file" "https://example.com/?a=1&b=2&c=3" || return
+
+    pass_test
+}
+
+# Test: Messages made only of ampersands are logged unchanged
+test_format_message_ampersand_only() {
+    start_test "Ampersand-only messages are logged unchanged (Issue #137)"
+
+    init_logger --quiet --format "%m"
+    local log_file="$TEST_DIR/ampersand_only.log"
+    LOG_FILE="$log_file"
+
+    log_info "&"
+    log_info "&&"
+    log_info "& &"
+
+    local expected
+    expected=$(printf '%s\n' "&" "&&" "& &")
+    assert_equals "$expected" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: Backslash before an ampersand is not consumed
+test_format_message_with_escaped_ampersand() {
+    start_test "Backslash before ampersand is preserved (Issue #137)"
+
+    init_logger --quiet --format "%m"
+    local log_file="$TEST_DIR/escaped_ampersand.log"
+    LOG_FILE="$log_file"
+
+    log_info 'a\&b'
+
+    assert_equals 'a\&b' "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: Message-only format with an ampersand gives the exact message
+test_format_message_ampersand_message_only_format() {
+    start_test "Message-only format keeps ampersand exactly (Issue #137)"
+
+    init_logger --quiet --format "%m"
+    local log_file="$TEST_DIR/ampersand_msg_only.log"
+    LOG_FILE="$log_file"
+
+    log_info "x&y"
+
+    assert_equals "x&y" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: Ampersand is preserved on console output
+test_format_message_ampersand_console() {
+    start_test "Ampersand is preserved on console output (Issue #137)"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        init_logger --no-color
+        log_info 'Tom & Jerry'
+    " >"$TEST_DIR/stdout" 2>"$TEST_DIR/stderr"
+
+    assert_file_contains "$TEST_DIR/stdout" "Tom & Jerry" || return
+    assert_file_not_contains "$TEST_DIR/stdout" "%m" || return
+
+    pass_test
+}
+
+# Test: Ampersand is preserved under bash, bash --posix and zsh
+test_format_message_with_ampersand_cross_shell() {
+    start_test "Ampersand is preserved in bash, bash --posix and zsh (Issue #137)"
+
+    require_shell zsh || return 0
+
+    local shell_command
+    local output
+    for shell_command in "bash" "bash --posix" "zsh"; do
+        output=$(run_with_logger_in_shell "$shell_command" \
+            "init_logger --no-color --format '%m'; log_info 'Tom & Jerry a\\&b'" 2>&1)
+        assert_equals 'Tom & Jerry a\&b' "$output" "shell: $shell_command" || return
+    done
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
+# Issue #138: format tokens inside a message must not be expanded
+# ---------------------------------------------------------------------------
+
+# Test: Token-like text in a message is kept literally
+test_format_message_tokens_not_expanded() {
+    start_test "Format tokens inside a message are not expanded (Issue #138)"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/tokens.log"
+    LOG_FILE="$log_file"
+
+    log_info "literal %d %l %s %m %z %%"
+
+    local content
+    content=$(cat "$log_file")
+    case "$content" in
+        *"] literal %d %l %s %m %z %%")
+            ;;
+        *)
+            fail_test "Message tokens were expanded: $content"
+            return
+            ;;
+    esac
+
+    pass_test
+}
+
+# Test: %z in a message is not replaced with UTC
+test_format_message_percent_z_utc() {
+    start_test "%z in a message is not replaced in UTC mode (Issue #138)"
+
+    init_logger --quiet --utc
+    local log_file="$TEST_DIR/percent_z.log"
+    LOG_FILE="$log_file"
+
+    log_info "5%z off"
+
+    assert_file_contains "$log_file" "5%z off" || return
+    assert_file_not_contains "$log_file" "5UTC off" || return
+
+    pass_test
+}
+
+# Test: A message that is only a token is kept literally
+test_format_message_token_as_whole_message() {
+    start_test "Message consisting only of a token is kept literally (Issue #138)"
+
+    init_logger --quiet --format "[%l] %m"
+    local log_file="$TEST_DIR/token_whole.log"
+    LOG_FILE="$log_file"
+
+    log_info "%z"
+
+    assert_equals "[INFO] %z" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: Unknown tokens and a trailing % in the format are kept (regression guard)
+test_format_unknown_token_kept() {
+    start_test "Unknown format tokens and trailing % are kept literally"
+
+    init_logger --quiet --format "<%l|%q|end%"
+    local log_file="$TEST_DIR/unknown_token.log"
+    LOG_FILE="$log_file"
+
+    log_info "ignored"
+
+    assert_equals "<INFO|%q|end%" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: %% in the format is kept as written (regression guard)
+test_format_double_percent_kept() {
+    start_test "Double percent in the format is kept as written"
+
+    init_logger --quiet --format "%l 100%% %m"
+    local log_file="$TEST_DIR/double_percent.log"
+    LOG_FILE="$log_file"
+
+    log_info "done"
+
+    assert_equals "INFO 100%% done" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: %% before a token letter is a literal pair and suppresses the token
+test_format_double_percent_before_token() {
+    start_test "Double percent before a token letter is kept literally (Issue #138)"
+
+    init_logger --quiet --format "A%%mB"
+    local log_file="$TEST_DIR/double_percent_token.log"
+    LOG_FILE="$log_file"
+
+    log_info "message"
+
+    assert_equals "A%%mB" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: Token expansion does not depend on token order
+test_format_token_order_independent() {
+    start_test "Token expansion is independent of token order (Issue #138)"
+
+    init_logger --quiet --format "%z %m %d"
+    local log_file="$TEST_DIR/token_order.log"
+    # shellcheck disable=SC2034  # LOG_FILE is read by logging.sh
+    LOG_FILE="$log_file"
+
+    log_info "%z"
+
+    local content
+    content=$(cat "$log_file")
+    assert_matches "$content" "^LOCAL %z [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$" || return
+
+    pass_test
+}
+
+# Test: Message tokens are not expanded under bash, bash --posix and zsh
+test_format_message_tokens_not_expanded_cross_shell() {
+    start_test "Message tokens are not expanded in bash, bash --posix and zsh (Issue #138)"
+
+    require_shell zsh || return 0
+
+    local shell_command
+    local output
+    for shell_command in "bash" "bash --posix" "zsh"; do
+        output=$(run_with_logger_in_shell "$shell_command" \
+            "init_logger --no-color --format '[%l] %m'; log_info 'literal %d %l %s %m %z %%'" 2>&1)
+        assert_equals "[INFO] literal %d %l %s %m %z %%" "$output" "shell: $shell_command" || return
+    done
+
+    pass_test
+}
+
 # Run all tests
 test_default_format
 test_format_message_only
@@ -394,3 +651,18 @@ test_format_special_chars
 test_format_empty
 test_format_does_not_affect_journal_output
 test_format_script_name_token_sanitised_to_underscores
+test_format_message_with_ampersand
+test_format_message_with_query_string
+test_format_message_ampersand_only
+test_format_message_with_escaped_ampersand
+test_format_message_ampersand_message_only_format
+test_format_message_ampersand_console
+test_format_message_with_ampersand_cross_shell
+test_format_message_tokens_not_expanded
+test_format_message_percent_z_utc
+test_format_message_token_as_whole_message
+test_format_unknown_token_kept
+test_format_double_percent_kept
+test_format_double_percent_before_token
+test_format_token_order_independent
+test_format_message_tokens_not_expanded_cross_shell
