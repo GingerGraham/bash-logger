@@ -70,7 +70,7 @@ _is_readonly() {
 # Guard against re-initialization when sourced multiple times
 # Use readonly status instead of emptiness to avoid environment bypass
 if ! _is_readonly BASH_LOGGER_VERSION; then
-    readonly BASH_LOGGER_VERSION="2.6.2"
+    readonly BASH_LOGGER_VERSION="2.7.0"
 
     # Unset potentially malicious environment variables before setting internal constants
     # Only unset if not already readonly (which would indicate re-sourcing)
