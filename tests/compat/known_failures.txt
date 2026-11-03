@@ -1,0 +1,46 @@
+# Known differences from bash, one per line: <shell command>|<scenario file name>
+# test_shell_compat.sh reports a listed pair as skipped while it still differs, and
+# fails once it matches bash, so remove entries as each area is converted.
+zsh|backslashes.sh
+dash|backslashes.sh
+busybox sh|backslashes.sh
+zsh|colors.sh
+dash|colors.sh
+busybox sh|colors.sh
+dash|config_all_keys.sh
+busybox sh|config_all_keys.sh
+zsh|config_invalid.sh
+dash|config_invalid.sh
+busybox sh|config_invalid.sh
+zsh|errors.sh
+dash|errors.sh
+busybox sh|errors.sh
+dash|format_tokens.sh
+busybox sh|format_tokens.sh
+zsh|init_options.sh
+dash|init_options.sh
+busybox sh|init_options.sh
+dash|journal_untrusted.sh
+busybox sh|journal_untrusted.sh
+zsh|level_filtering.sh
+dash|level_filtering.sh
+busybox sh|level_filtering.sh
+zsh|log_levels.sh
+dash|log_levels.sh
+busybox sh|log_levels.sh
+zsh|resource.sh
+dash|resource.sh
+busybox sh|resource.sh
+zsh|sanitization.sh
+dash|sanitization.sh
+busybox sh|sanitization.sh
+zsh|script_name.sh
+dash|script_name.sh
+busybox sh|script_name.sh
+zsh|set_eu.sh
+dash|set_eu.sh
+busybox sh|set_eu.sh
+dash|set_functions.sh
+busybox sh|set_functions.sh
+dash|truncation.sh
+busybox sh|truncation.sh
