@@ -75,8 +75,12 @@ new_line="${text_before}${first_year}-${CURRENT_YEAR}${text_after}"
 license_text=$(cat "$LICENSE_FILE"; printf x)
 license_text="${license_text%x}"
 
-# Quoting the search text makes this a literal match, not a glob pattern.
+# Splice the new line in with prefix/suffix removal. Quoting the copyright line makes
+# it a literal match, not a glob pattern. A quoted pattern inside ${var/pat/rep} keeps
+# its quote characters in bash 3.2 (macOS), so it is not used here.
 # Redirecting into the existing file keeps its permissions.
-printf '%s' "${license_text/"$copyright_line"/"$new_line"}" > "$LICENSE_FILE"
+text_before_line=${license_text%%"$copyright_line"*}
+text_after_line=${license_text#*"$copyright_line"}
+printf '%s' "${text_before_line}${new_line}${text_after_line}" > "$LICENSE_FILE"
 
 echo "Updated copyright notice: $first_year-$CURRENT_YEAR"

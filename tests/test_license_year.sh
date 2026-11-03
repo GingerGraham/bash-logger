@@ -195,6 +195,21 @@ test_license_year_start_year_in_future_fails() {
     pass_test
 }
 
+test_license_year_no_literal_quotes() {
+    start_test "License year: update adds no double quotes that were not in the file"
+
+    local license_file
+    license_file=$(create_license_file "Copyright © 2026 Graham Watts")
+
+    "$UPDATE_LICENSE_SCRIPT" "$license_file" 2027 > /dev/null || { fail_test "script failed"; return; }
+
+    # bash 3.2 keeps the quotes of a quoted ${var/pattern/replacement} literally
+    assert_file_not_contains "$license_file" '"' "Update wrote literal quote characters" || return
+    assert_file_contains "$license_file" "Copyright © 2026-2027 Graham Watts" || return
+
+    pass_test
+}
+
 test_license_year_single_year_becomes_range
 test_license_year_range_end_year_is_extended
 test_license_year_current_single_year_is_unchanged
@@ -207,3 +222,4 @@ test_license_year_missing_copyright_line_fails
 test_license_year_missing_file_fails
 test_license_year_invalid_year_fails_without_changes
 test_license_year_start_year_in_future_fails
+test_license_year_no_literal_quotes
