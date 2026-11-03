@@ -459,6 +459,17 @@ test_verbose_overrides_level() {
     pass_test
 }
 
+# Test: --facility value is case-insensitive (Issue #141)
+test_cli_facility_case_insensitive() {
+    start_test "--facility value is case-insensitive"
+
+    init_logger --quiet --facility LOCAL3
+
+    assert_equals "local3" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
 # Run all tests
 test_default_initialization
 test_quiet_option
@@ -493,3 +504,4 @@ test_no_init_message_flag
 test_no_init_message_config
 test_quiet_and_level_together
 test_verbose_overrides_level
+test_cli_facility_case_insensitive

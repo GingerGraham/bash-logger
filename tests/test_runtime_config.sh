@@ -831,6 +831,32 @@ test_set_syslog_facility_invalid_emits_error() {
     pass_test
 }
 
+# Test: set_syslog_facility is case-insensitive (Issue #141)
+test_set_syslog_facility_case_insensitive() {
+    start_test "set_syslog_facility is case-insensitive"
+
+    init_logger --quiet
+    set_syslog_facility USER
+
+    assert_equals "user" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
+# Test: set_unsafe_* flags accept mixed-case values (Issue #141)
+test_set_unsafe_flags_case_insensitive() {
+    start_test "set_unsafe_* flags accept mixed-case values"
+
+    init_logger --quiet
+    set_unsafe_allow_newlines YES
+    set_unsafe_allow_ansi_codes On
+
+    assert_equals "true" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    assert_equals "true" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -876,3 +902,5 @@ test_set_unsafe_allow_ansi_codes_truthy_variants
 test_set_unsafe_allow_ansi_codes_falsy_variants
 test_set_unsafe_allow_ansi_codes_invalid_input
 test_set_syslog_facility_invalid_emits_error
+test_set_syslog_facility_case_insensitive
+test_set_unsafe_flags_case_insensitive

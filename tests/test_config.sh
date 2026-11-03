@@ -535,6 +535,159 @@ EOF
     pass_test
 }
 
+# ---------------------------------------------------------------------------
+# Issue #141: case-insensitive handling without ${var,,} (bash 3.2 / zsh)
+# ---------------------------------------------------------------------------
+
+# Test: _to_lower basic behaviour
+test_to_lower_basic() {
+    start_test "_to_lower lowercases mixed, lower and empty input"
+
+    assert_equals "debug" "$(_to_lower "DeBuG")" || return
+    assert_equals "debug" "$(_to_lower "debug")" || return
+    assert_equals "" "$(_to_lower "")" || return
+
+    pass_test
+}
+
+# Test: _to_lower leaves non-letters unchanged
+test_to_lower_preserves_non_letters() {
+    start_test "_to_lower preserves digits and punctuation"
+
+    assert_equals "local0_x-y.z" "$(_to_lower "LOCAL0_x-Y.z")" || return
+
+    pass_test
+}
+
+# Test: Boolean config values are case-insensitive
+test_config_bool_values_case_insensitive() {
+    start_test "Boolean config values are case-insensitive"
+
+    local config_file="$TEST_DIR/bool_case.conf"
+    local value
+    for value in TRUE Yes ON; do
+        printf '[logging]\nutc = %s\n' "$value" > "$config_file"
+        USE_UTC="false"
+        init_logger --quiet --config "$config_file"
+        assert_equals "true" "$USE_UTC" "utc = $value" || return
+    done
+    for value in False NO Off; do
+        printf '[logging]\nutc = %s\n' "$value" > "$config_file"
+        USE_UTC="true"
+        init_logger --quiet --config "$config_file"
+        assert_equals "false" "$USE_UTC" "utc = $value" || return
+    done
+
+    pass_test
+}
+
+# Test: Facility in config is case-insensitive
+test_config_facility_case_insensitive() {
+    start_test "Syslog facility in config is case-insensitive"
+
+    local config_file="$TEST_DIR/facility_case.conf"
+    printf '[logging]\nfacility = LOCAL0\n' > "$config_file"
+
+    init_logger --quiet --config "$config_file"
+
+    assert_equals "local0" "$SYSLOG_FACILITY" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
+# Issue #141: --config is found wherever it appears in the argument list
+# ---------------------------------------------------------------------------
+
+# Write a config that sets a distinctive level, for the position tests
+_write_position_config() {
+    printf '[logging]\nlevel = DEBUG\n' > "$1"
+}
+
+# Test: --config as the first option
+test_config_option_first() {
+    start_test "--config is loaded when it is the first option"
+
+    local config_file="$TEST_DIR/first.conf"
+    _write_position_config "$config_file"
+
+    init_logger --config "$config_file" --no-color --quiet
+
+    assert_equals "$LOG_LEVEL_DEBUG" "$CURRENT_LOG_LEVEL" || return
+
+    pass_test
+}
+
+# Test: --config in the middle of the options
+test_config_option_middle() {
+    start_test "--config is loaded when it is in the middle"
+
+    local config_file="$TEST_DIR/middle.conf"
+    _write_position_config "$config_file"
+
+    init_logger --no-color --config "$config_file" --quiet
+
+    assert_equals "$LOG_LEVEL_DEBUG" "$CURRENT_LOG_LEVEL" || return
+
+    pass_test
+}
+
+# Test: --config as the last option
+test_config_option_last() {
+    start_test "--config is loaded when it is the last option"
+
+    local config_file="$TEST_DIR/last.conf"
+    _write_position_config "$config_file"
+
+    init_logger --quiet --no-color --config "$config_file"
+
+    assert_equals "$LOG_LEVEL_DEBUG" "$CURRENT_LOG_LEVEL" || return
+
+    pass_test
+}
+
+# Test: -c behaves the same as --config
+test_config_short_option() {
+    start_test "-c behaves the same as --config"
+
+    local config_file="$TEST_DIR/short.conf"
+    _write_position_config "$config_file"
+
+    init_logger --quiet --no-color -c "$config_file"
+
+    assert_equals "$LOG_LEVEL_DEBUG" "$CURRENT_LOG_LEVEL" || return
+
+    pass_test
+}
+
+# Test: --config with no following argument
+test_config_missing_path() {
+    start_test "--config without a path returns an error"
+
+    local stderr_file="$TEST_DIR/stderr"
+    local rc=0
+    init_logger --no-color --config 2>"$stderr_file" || rc=$?
+
+    assert_equals "1" "$rc" "init_logger should return 1" || return
+    assert_file_contains "$stderr_file" "requires a file path" || return
+
+    pass_test
+}
+
+# Test: --config with an empty path
+test_config_empty_path() {
+    start_test "--config with an empty path returns an error"
+
+    local stderr_file="$TEST_DIR/stderr"
+    local rc=0
+    init_logger --config "" 2>"$stderr_file" || rc=$?
+
+    assert_equals "1" "$rc" "init_logger should return 1" || return
+    assert_file_contains "$stderr_file" "requires a file path" || return
+
+    pass_test
+}
+
 # Run all tests
 test_basic_config_load
 test_multiple_config_options
@@ -563,3 +716,13 @@ test_config_unknown_key
 test_config_alternative_keys
 test_config_file_with_bom
 test_config_unknown_key_ignored
+test_to_lower_basic
+test_to_lower_preserves_non_letters
+test_config_bool_values_case_insensitive
+test_config_facility_case_insensitive
+test_config_option_first
+test_config_option_middle
+test_config_option_last
+test_config_short_option
+test_config_missing_path
+test_config_empty_path
