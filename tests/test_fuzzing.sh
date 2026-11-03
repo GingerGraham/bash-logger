@@ -34,7 +34,13 @@ test_random_ascii() {
     # Generate random ASCII printable characters
     for i in {1..10}; do # reduced from 50 to avoid overwhelming test environment
         local random_str
-        random_str=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom 2>/dev/null | head -c 100 2>/dev/null || echo "fallback")
+        # Read a finite chunk of random bytes (about 1500 are printable, enough for 100).
+        # Piping an endless /dev/urandom into tr and relying on head to close the pipe can
+        # run forever when SIGPIPE is ignored (CI runners) and tr does not check for write
+        # errors (macOS), which hung this suite.
+        random_str=$(head -c 4096 /dev/urandom 2>/dev/null \
+            | LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' 2>/dev/null \
+            | head -c 100 2>/dev/null || echo "fallback")
         log_info "$random_str" 2>&1 || true
     done
 
