@@ -1093,7 +1093,7 @@ log_info "Test message"
 
 ```bash
 bash --version
-# Module requires Bash 3.0 or later
+# Module requires Bash 3.2 or later (the /bin/bash that macOS ships is 3.2)
 ```
 
 1. **Verify file permissions:**

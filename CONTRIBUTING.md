@@ -38,7 +38,8 @@ Great! Here's the process:
    * Add comments for complex logic
 
 4. **Test your changes**
-   * Test with bash 4.x and 5.x if possible
+   * Test with bash 3.2 (macOS `/bin/bash`) and bash 5.x if possible. CI runs the suite under
+     bash 3.2 on macOS, and `scripts/check-bash32-compat.sh` rejects bash 4+ syntax in `logging.sh`
    * Verify existing functionality still works
    * Run tests locally: `./tests/run_tests.sh` or `make test`
    * Optionally run coverage: `make coverage` (requires [kcov](https://github.com/SimonKagstrom/kcov))
@@ -126,9 +127,9 @@ The project supports additional code quality tools for local development:
 
 | Command               | Description                                   | Requirements                                  |
 | --------------------- | --------------------------------------------- | --------------------------------------------- |
-| `make test`           | Run test suite                                | Bash 4.0+                                     |
-| `make test-junit`     | Run tests with JUnit XML output               | Bash 4.0+                                     |
-| `make test-fail-fast` | Run tests, stop at first failure              | Bash 4.0+                                     |
+| `make test`           | Run test suite                                | Bash 3.2+                                     |
+| `make test-junit`     | Run tests with JUnit XML output               | Bash 3.2+                                     |
+| `make test-fail-fast` | Run tests, stop at first failure              | Bash 3.2+                                     |
 | `make coverage`       | Run tests with code coverage                  | [kcov](https://github.com/SimonKagstrom/kcov) |
 | `make coverage-debug` | Run kcov coverage, stop at first failure      | kcov                                          |
 | `make sonar-analysis` | Full coverage + SonarQube scan                | kcov, sonar-scanner, secret-tool              |
