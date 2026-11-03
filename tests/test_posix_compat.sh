@@ -119,7 +119,7 @@ test_posix_ansi_constants() {
     output=$(run_snippet_in_shell "$shell_command" C \
         "for name in COLOR_RESET COLOR_BLUE COLOR_GREEN COLOR_YELLOW COLOR_RED \
 COLOR_RED_BOLD COLOR_WHITE_ON_RED COLOR_BOLD_WHITE_ON_RED COLOR_PURPLE COLOR_CYAN; do \
-eval \"value=\\\$\$name\"; printf '%s=' \"\$name\"; printf '%s' \"\$value\" | od -An -to1 | tr -s ' '; done" 2>&1)
+eval \"value=\\\$\$name\"; printf '%s=' \"\$name\"; printf '%s' \"\$value\" | od -An -to1 | tr -s ' ' | sed 's/ *$//'; done" 2>&1)
 
     local expected
     expected=$(printf '%s\n' \
