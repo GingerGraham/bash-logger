@@ -179,7 +179,7 @@ test_is_readonly_with_pipefail() {
 
     local snippet='set -o pipefail; i=0; \
 while [ "$i" -lt 2000 ]; do \
-eval "readonly ZZ_FILL_$i=$(printf "%0100d" 0)"; i=$((i + 1)); done; \
+eval "readonly ZZ_FILL_$i=$(printf %0100d 0)"; i=$((i + 1)); done; \
 readonly AAA_RO=1; _is_readonly AAA_RO; echo "rc=$?"'
     local shell_command
     local output
