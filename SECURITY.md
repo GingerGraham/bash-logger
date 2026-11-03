@@ -193,6 +193,15 @@ bash-logger uses version guards to prevent issues when sourced multiple times:
 * Re-sourcing does not attempt to redeclare readonly variables
 * This prevents errors in environments where the library may be sourced multiple times
 
+The guards check whether a constant is readonly (not merely set), so a value inherited from the environment cannot
+skip initialisation. The check reads `readonly -p` and accepts the output format of each supported shell:
+
+| Shell                                                | `readonly -p` format                              |
+| ---------------------------------------------------- | ------------------------------------------------- |
+| bash (normal mode)                                   | `declare -r NAME="value"`                         |
+| bash in POSIX mode (`--posix`, `set -o posix`, `sh`) | `readonly NAME="value"`                           |
+| zsh                                                  | `typeset -r NAME=value` or `export -r NAME=value` |
+
 ## Known Security Considerations
 
 ### Not Applicable to bash-logger

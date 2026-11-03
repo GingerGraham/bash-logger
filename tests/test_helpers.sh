@@ -408,6 +408,39 @@ run_with_logger() {
     "
 }
 
+# Run a snippet with logging.sh sourced, under the given shell command.
+# The shell command may include flags, e.g. "bash --posix".
+# Usage: run_with_logger_in_shell "zsh" "init_logger --quiet; log_info hi"
+run_with_logger_in_shell() {
+    local shell_command="$1"
+    shift
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    $shell_command -c ". '$PROJECT_ROOT/logging.sh'; $*"
+}
+
+# Skip the current test if a shell is not installed, unless it is required.
+# TEST_REQUIRE_SHELLS is a space-separated list of shells that must be present
+# (set in CI so cross-shell tests fail rather than silently skip).
+# Returns 0 if the shell is available; otherwise records a skip or failure and
+# returns 1, so callers use: require_shell zsh || return 0
+# (return 0, not a bare return: the result is already recorded, and a non-zero
+# status from the last test in a suite is reported by the runner as a crash)
+require_shell() {
+    local shell_name="$1"
+    if command -v "$shell_name" >/dev/null 2>&1; then
+        return 0
+    fi
+    case " ${TEST_REQUIRE_SHELLS:-} " in
+        *" $shell_name "*)
+            fail_test "$shell_name is required (TEST_REQUIRE_SHELLS) but not installed"
+            ;;
+        *)
+            skip_test "$shell_name not installed"
+            ;;
+    esac
+    return 1
+}
+
 # Helper to run script and capture its output
 run_script() {
     local script="$1"

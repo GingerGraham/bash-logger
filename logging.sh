@@ -50,10 +50,21 @@
 #   - Advanced features: docs/journal-logging.md, docs/runtime-configuration.md
 #   - Troubleshooting: docs/troubleshooting.md
 
+# Returns 0 if the named variable is readonly in the current shell (internal).
+# Used by the re-source guards below; must be defined before the first guard.
+# Accepts the readonly -p output formats of bash (declare -r), bash POSIX mode
+# and dash (readonly), and zsh (typeset -r, or export -r when also exported).
+# readonly -p lists only readonly variables, so the prefix word is not a risk.
+# The ^ anchor stops a match on another readonly variable whose value contains
+# " NAME=".
+_is_readonly() {
+    readonly -p 2>/dev/null | grep -qE "^(declare|typeset|readonly|export)( -[a-zA-Z]+)* ${1}="
+}
+
 # Version (updated by release workflow)
 # Guard against re-initialization when sourced multiple times
 # Use readonly status instead of emptiness to avoid environment bypass
-if ! readonly -p 2>/dev/null | grep -qE '(declare|typeset) -[^ ]*r[^ ]* BASH_LOGGER_VERSION='; then
+if ! _is_readonly BASH_LOGGER_VERSION; then
     readonly BASH_LOGGER_VERSION="2.6.1"
 
     # Unset potentially malicious environment variables before setting internal constants
@@ -61,7 +72,7 @@ if ! readonly -p 2>/dev/null | grep -qE '(declare|typeset) -[^ ]*r[^ ]* BASH_LOG
     # This protects against environment variable override attacks
     for var in LOG_LEVEL_EMERGENCY LOG_LEVEL_ALERT LOG_LEVEL_CRITICAL LOG_LEVEL_ERROR \
                LOG_LEVEL_WARN LOG_LEVEL_NOTICE LOG_LEVEL_INFO LOG_LEVEL_DEBUG LOG_LEVEL_FATAL; do
-        if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* $var="; then
+        if ! _is_readonly "$var"; then
             unset "$var" 2>/dev/null || true
         fi
     done
@@ -100,7 +111,7 @@ LOG_INIT_MESSAGE="true" # Set to false to suppress the INIT message written to t
 # Journal logging settings
 USE_JOURNAL="false"
 JOURNAL_TAG=""  # Tag for syslog/journal entries
-if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* SYSLOG_FACILITY="; then
+if ! _is_readonly SYSLOG_FACILITY; then
     unset SYSLOG_FACILITY 2>/dev/null || true
 fi
 SYSLOG_FACILITY="${SYSLOG_FACILITY:-daemon}"  # Syslog facility for journal entries
@@ -109,13 +120,13 @@ SYSLOG_FACILITY="${SYSLOG_FACILITY:-daemon}"  # Syslog facility for journal entr
 USE_COLORS="auto"  # Can be "auto", "always", or "never"
 
 # Initialize color constants only once (guard against re-sourcing)
-if [[ -z "${COLOR_RESET:-}" ]] || ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* COLOR_RESET="; then
+if [[ -z "${COLOR_RESET:-}" ]] || ! _is_readonly COLOR_RESET; then
     # Unset potentially malicious color variables before setting them
     # Only unset if not already readonly (which would indicate re-sourcing)
     for var in COLOR_RESET COLOR_BLUE COLOR_GREEN COLOR_YELLOW COLOR_RED \
                COLOR_RED_BOLD COLOR_WHITE_ON_RED COLOR_BOLD_WHITE_ON_RED \
                COLOR_PURPLE COLOR_CYAN; do
-        if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* $var="; then
+        if ! _is_readonly "$var"; then
             unset "$var" 2>/dev/null || true
         fi
     done
@@ -170,7 +181,7 @@ LOG_MAX_JOURNAL_LENGTH=4096
 
 # Configuration value validation limits
 # Maximum length for configuration file values (defense against malicious/malformed configs)
-if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* CONFIG_MAX_VALUE_LENGTH="; then
+if ! _is_readonly CONFIG_MAX_VALUE_LENGTH; then
     readonly CONFIG_MAX_VALUE_LENGTH=4096
     # Maximum length for file paths in configuration
     readonly CONFIG_MAX_PATH_LENGTH=4096
@@ -239,7 +250,7 @@ _should_use_stderr() {
 # Path to validated logger command (set by _find_and_validate_logger)
 # Keep mutable until first successful validation, then lock as readonly.
 # Guard assignment for re-source safety when LOGGER_PATH was already locked.
-if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
+if ! _is_readonly LOGGER_PATH; then
     LOGGER_PATH=""
 fi
 # Internal flag: set to "true" by _find_and_validate_logger on every exit path
@@ -275,7 +286,7 @@ _find_and_validate_logger() {
         /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger)
             # If LOGGER_PATH is already locked, only accept the same validated path.
             # This preserves immutability while still allowing repeat availability checks.
-            if readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* LOGGER_PATH="; then
+            if _is_readonly LOGGER_PATH; then
                 if [[ "$LOGGER_PATH" == "$logger_candidate" ]]; then
                     _LOGGER_DISCOVERY_DONE="true"
                     return 0
