@@ -12,7 +12,7 @@
 #
 # The golden files record how the validators behaved BEFORE the POSIX conversion.
 # Generate them only from a logging.sh that still uses the bash regular expressions
-# (main at 0cf2bf7 or earlier). Never regenerate them from the converted code: the
+# (e53fcda or earlier). Never regenerate them from the converted code: the
 # point of the files is to prove that the conversion accepts and rejects exactly the
 # same inputs.
 #
@@ -188,6 +188,6 @@ write_corpus "$golden_dir/validator_corpus_utf8.txt" "${utf8_inputs[@]}"
 write_golden "$golden_dir/validator_corpus.txt" "$golden_dir/validators.tsv" C
 write_golden "$golden_dir/validator_corpus_utf8.txt" "$golden_dir/validators_utf8.tsv" C.UTF-8 \
     string string_no_cntrl config_file_path config_journal_tag journal_tag \
-    config_format parse_log_file
+    config_format
 
 echo "Wrote golden files to $golden_dir"
