@@ -115,24 +115,33 @@ test_posix_ansi_constants() {
 
     require_shell "${shell_command%% *}" || return 0
 
+    # Each constant is compared, inside the shell under test, with the bytes printf
+    # makes from an octal escape. This avoids od, whose output format differs
+    # between GNU and BSD.
     local output
-    output=$(run_snippet_in_shell "$shell_command" C \
-        "for name in COLOR_RESET COLOR_BLUE COLOR_GREEN COLOR_YELLOW COLOR_RED \
-COLOR_RED_BOLD COLOR_WHITE_ON_RED COLOR_BOLD_WHITE_ON_RED COLOR_PURPLE COLOR_CYAN; do \
-eval \"value=\\\$\$name\"; printf '%s=' \"\$name\"; printf '%s' \"\$value\" | od -An -to1 | tr -s ' ' | sed 's/ *$//'; done" 2>&1)
+    output=$(run_snippet_in_shell "$shell_command" C '
+check() {
+    if [ "$2" = "$(printf "\033[$3")" ]; then
+        printf "%s ok\n" "$1"
+    else
+        printf "%s wrong\n" "$1"
+    fi
+}
+check COLOR_RESET "$COLOR_RESET" "0m"
+check COLOR_BLUE "$COLOR_BLUE" "34m"
+check COLOR_GREEN "$COLOR_GREEN" "32m"
+check COLOR_YELLOW "$COLOR_YELLOW" "33m"
+check COLOR_RED "$COLOR_RED" "31m"
+check COLOR_RED_BOLD "$COLOR_RED_BOLD" "31;1m"
+check COLOR_WHITE_ON_RED "$COLOR_WHITE_ON_RED" "37;41m"
+check COLOR_BOLD_WHITE_ON_RED "$COLOR_BOLD_WHITE_ON_RED" "1;37;41m"
+check COLOR_PURPLE "$COLOR_PURPLE" "35m"
+check COLOR_CYAN "$COLOR_CYAN" "36m"
+' 2>&1)
 
     local expected
-    expected=$(printf '%s\n' \
-        "COLOR_RESET= 033 133 060 155" \
-        "COLOR_BLUE= 033 133 063 064 155" \
-        "COLOR_GREEN= 033 133 063 062 155" \
-        "COLOR_YELLOW= 033 133 063 063 155" \
-        "COLOR_RED= 033 133 063 061 155" \
-        "COLOR_RED_BOLD= 033 133 063 061 073 061 155" \
-        "COLOR_WHITE_ON_RED= 033 133 063 067 073 064 061 155" \
-        "COLOR_BOLD_WHITE_ON_RED= 033 133 061 073 063 067 073 064 061 155" \
-        "COLOR_PURPLE= 033 133 063 065 155" \
-        "COLOR_CYAN= 033 133 063 066 155")
+    expected=$(printf '%s ok\n' COLOR_RESET COLOR_BLUE COLOR_GREEN COLOR_YELLOW COLOR_RED \
+        COLOR_RED_BOLD COLOR_WHITE_ON_RED COLOR_BOLD_WHITE_ON_RED COLOR_PURPLE COLOR_CYAN)
 
     assert_equals "$expected" "$output" || return
 
