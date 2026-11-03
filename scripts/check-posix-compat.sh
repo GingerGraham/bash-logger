@@ -22,7 +22,16 @@ fi
 
 status=0
 for file in "$@"; do
-    findings=$(shellcheck --shell=dash --format=gcc "$file" | grep -E '\[SC3[0-9]{3}\]' || true)
+    # Exit status 1 means findings; 2 or more means ShellCheck could not check
+    # the file, which is an error here
+    shellcheck_status=0
+    shellcheck_output=$(shellcheck --shell=dash --format=gcc "$file" 2>&1) || shellcheck_status=$?
+    if [[ $shellcheck_status -gt 1 ]]; then
+        echo "$shellcheck_output" >&2
+        echo "Error: shellcheck could not check $file (exit status $shellcheck_status)" >&2
+        exit 2
+    fi
+    findings=$(printf '%s\n' "$shellcheck_output" | grep -E '\[SC3[0-9]{3}\]' || true)
     if [[ -n "$findings" ]]; then
         echo "$findings"
         status=1

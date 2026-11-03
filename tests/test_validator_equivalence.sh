@@ -40,13 +40,19 @@ equivalence_checks_in() {
 # Print one line for each result that does not match the golden file.
 # A golden "crash" (bash on main exited the shell) must not crash now; any other
 # result is accepted for it, because exiting the caller's shell was a bug.
-# Every other golden row must match the status and checksum exactly.
+# Every other golden row must match the status and checksum exactly, and a result
+# that has no golden row is reported too.
 equivalence_compare() {
     local expected_file="$1"
     local actual_file="$2"
     awk -F '\t' '
         NR == FNR { expected[$1 "\t" $2] = $3 " " $4; order[++count] = $1 "\t" $2; next }
-        { actual[$1 "\t" $2] = $3 " " $4 }
+        {
+            actual[$1 "\t" $2] = $3 " " $4
+            if (!(($1 "\t" $2) in expected)) {
+                printf "%s: not in the golden file, got %s %s\n", $1 "\t" $2, $3, $4
+            }
+        }
         END {
             for (i = 1; i <= count; i++) {
                 key = order[i]
