@@ -1012,57 +1012,50 @@ _strip_ansi_codes() {
         return
     fi
 
-    # Remove various ANSI escape sequences using multiple patterns
-    # This approach removes ANSI codes that would otherwise manipulate terminal display
-
-    # Remove CSI (Control Sequence Introducer) sequences: ESC [ ... letter
-    # Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
-    # Also handles DEC private modes (e.g., \e[?25l, \e[?1049h) and other parameter bytes
-    # Pattern: \e[ followed by zero or more parameter bytes ([<=>?!] plus digits/semicolons),
-    # followed by a letter or @
-    local esc bel
+    # Remove ANSI escape sequences that would otherwise manipulate terminal display.
+    #
+    # All patterns run in one sed process, in the order listed below. Each pattern is its
+    # own -e expression and is written to work with both GNU and BSD sed (macOS):
+    #   * -E (extended regex) is used because BSD sed has no \| alternation in basic regex
+    #   * a loop label is its own -e expression, because BSD sed ends a label at a newline
+    #     and not at a semicolon
+    #   * the escape character is inserted as a literal byte, because BSD sed does not
+    #     recognise \x1b
+    #   * ^ is escaped because it is an anchor everywhere in an extended regex
+    local esc bel stripped
     esc=$'\033'
     bel=$'\a'
-    local step1
-    step1=$(printf '%s' "$input" | sed "s/${esc}\[[0-9;<?>=!]*[a-zA-Z@]//g")
 
-    # Remove OSC (Operating System Command) sequences: ESC ] ... BEL/ST
-    # Pattern: \e] followed by anything up to \a (BEL) or \e\\ (ST)
-    # First, remove BEL-terminated OSC sequences
-    local step2
-    # Remove BEL-terminated OSC sequences (match any char until BEL)
-    step2=$(printf '%s' "$step1" | sed "s/${esc}][^${bel}]*${bel}//g")
-    # Remove ST-terminated OSC sequences - loop to handle multiple sequences and embedded escapes
-    # Pattern: \([^ESC]\|ESC[^\\]\)* matches any char except ESC, OR ESC if not followed by \
-    # This allows embedded ESC codes like \e[31m while still stopping at \e\\ terminator
-    # The loop ensures multiple consecutive OSC sequences are all removed
-    step2=$(printf '%s' "$step2" | sed ":loop; s/${esc}]\(\([^${esc}]\|${esc}[^\\\\]\)*\)${esc}\\\\//g; t loop")
+    # 1. CSI (Control Sequence Introducer): ESC [ parameters letter
+    #    Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
+    #    Also handles DEC private modes (e.g., \e[?25l, \e[?1049h) and other parameter
+    #    bytes: [<=>?!] plus digits and semicolons, then a letter or @
+    # 2. OSC (Operating System Command), BEL terminated: ESC ] ... BEL
+    # 3. OSC, ST terminated: ESC ] ... ESC \
+    #    The payload is any char except ESC, or ESC when not followed by \, so embedded
+    #    codes such as \e[31m do not end the match early. The loop removes consecutive
+    #    sequences. A substitution earlier in the script can set the t flag, which costs
+    #    one extra pass through the loop and nothing else.
+    # 4. OSC, ST terminated, without embedded escapes (second pass)
+    # 5. DCS (Device Control String): ESC P ... ESC \
+    #    Carries device control payloads (e.g. Sixel graphics, DECRQSS responses).
+    #    The payload and the ST terminator are removed along with the opener.
+    # 6. PM (Privacy Message): ESC ^ ... ESC \
+    # 7. APC (Application Program Command): ESC _ ... ESC \
+    # 8. Remaining escape sequences (simplified fallback): ESC and the next character
+    stripped=$(printf '%s' "$input" | sed -E \
+        -e "s/${esc}\[[0-9;<?>=!]*[a-zA-Z@]//g" \
+        -e "s/${esc}][^${bel}]*${bel}//g" \
+        -e ':osc_st_loop' \
+        -e "s/${esc}]([^${esc}]|${esc}[^\\\\])*${esc}\\\\//g" \
+        -e 't osc_st_loop' \
+        -e "s/${esc}][^${esc}]*${esc}\\\\//g" \
+        -e "s/${esc}P[^${esc}]*${esc}\\\\//g" \
+        -e "s/${esc}\^[^${esc}]*${esc}\\\\//g" \
+        -e "s/${esc}_[^${esc}]*${esc}\\\\//g" \
+        -e "s/${esc}[^[]//g")
 
-    # Remove ST-terminated OSC sequences (ESC ] ... ESC \)
-    # Using | as delimiter to avoid escaping issues with backslash in pattern
-    local step2b
-    step2b=$(printf '%s' "$step2" | sed "s|${esc}][^${esc}]*${esc}\\\\||g")
-
-    # Remove DCS (Device Control String) sequences: ESC P ... ESC \
-    # These carry device control payloads (e.g. Sixel graphics, DECRQSS responses).
-    # Both the payload and the ST terminator must be removed along with the opener.
-    local step2c
-    step2c=$(printf '%s' "$step2b" | sed "s|${esc}P[^${esc}]*${esc}\\\\||g")
-
-    # Remove PM (Privacy Message) sequences: ESC ^ ... ESC \
-    local step2d
-    step2d=$(printf '%s' "$step2c" | sed "s|${esc}^[^${esc}]*${esc}\\\\||g")
-
-    # Remove APC (Application Program Command) sequences: ESC _ ... ESC \
-    local step2e
-    step2e=$(printf '%s' "$step2d" | sed "s|${esc}_[^${esc}]*${esc}\\\\||g")
-
-    # Remove remaining escape sequences (simplified fallback)
-    local step3
-    # shellcheck disable=SC1117
-    step3=$(printf '%s' "$step2e" | sed 's/\x1b[^[]//g')
-
-    echo "$step3"
+    echo "$stripped"
 }
 
 # Function to sanitize log messages to prevent log injection (internal)

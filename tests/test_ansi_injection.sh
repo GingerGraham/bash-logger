@@ -323,6 +323,57 @@ test_osc_with_embedded_escapes_stripped() {
     fi
 }
 
+# Test: Text without escape sequences is never altered or blanked
+# Guards against a sed that cannot parse the stripping script: the command substitution
+# then captures nothing, and every logged message would be blanked.
+test_strip_ansi_plain_text_unchanged() {
+    start_test "Plain text without escape sequences is logged unchanged"
+
+    local log_file="$TEST_DIR/plain_text.log"
+    init_logger -l "$log_file" --no-color --quiet
+
+    # Each message contains characters used by escape sequences, but no ESC byte
+    local plain_messages=(
+        "Just a plain message"
+        "close bracket ] and open bracket [ alone"
+        "back\\slash and C:\\path\\to\\file"
+        "caret ^ and under_score and P for DCS"
+        "[31m is only text without the ESC byte"
+        "]0;title is only text without the ESC byte"
+        "mixed [ ] \\ ^ _ P ; ? ! @ together"
+    )
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local message result
+    for message in "${plain_messages[@]}"; do
+        result=$(_strip_ansi_codes "$message")
+        assert_equals "$message" "$result" "_strip_ansi_codes altered plain text" || return
+
+        log_info "$message"
+        assert_file_contains "$log_file" "$message" "Plain text missing from the log" || return
+    done
+
+    pass_test
+}
+
+# Test: ST-terminated OSC sequences containing other escape sequences are stripped
+test_strip_ansi_osc_st_with_embedded_csi() {
+    start_test "ST-terminated OSC with embedded CSI and escape sequences is stripped"
+
+    # Embedded CSI (ESC [ 31 m) and a non-CSI escape (ESC X) inside the payload, followed by
+    # a second OSC, so the stripping loop has to run more than once.
+    local malicious_input=$'A\e]0;one\e[31mred\e\\B\e]2;two\eXmore\e\\C'
+    local expected="ABC"
+
+    LOG_UNSAFE_ALLOW_ANSI_CODES="false"
+    local sanitized
+    sanitized=$(_strip_ansi_codes "$malicious_input")
+
+    assert_equals "$expected" "$sanitized" "OSC with embedded sequences not stripped" || return
+
+    pass_test
+}
+
 # Test: Multiple consecutive OSC sequences are all stripped
 test_multiple_consecutive_osc_stripped() {
     start_test "Multiple consecutive OSC sequences are all stripped"
@@ -474,6 +525,8 @@ test_dec_private_modes_stripped
 test_osc_st_terminated_stripped
 test_osc_with_embedded_escapes_stripped
 test_multiple_consecutive_osc_stripped
+test_strip_ansi_plain_text_unchanged
+test_strip_ansi_osc_st_with_embedded_csi
 test_mixed_mode_newlines_allowed_ansi_stripped
 test_other_csi_parameter_bytes_stripped
 test_dcs_sequences_stripped
