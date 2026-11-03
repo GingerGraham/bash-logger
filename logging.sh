@@ -57,8 +57,13 @@
 # readonly -p lists only readonly variables, so the prefix word is not a risk.
 # The ^ anchor stops a match on another readonly variable whose value contains
 # " NAME=".
+# grep reads all of its input (no -q): with -q it can exit on the first match
+# while readonly -p is still writing, and under a caller's "set -o pipefail"
+# the resulting SIGPIPE makes the pipeline report a readonly variable as not
+# readonly.
 _is_readonly() {
-    readonly -p 2>/dev/null | grep -qE "^(declare|typeset|readonly|export)( -[a-zA-Z]+)* ${1}="
+    readonly -p 2>/dev/null \
+        | grep -E "^(declare|typeset|readonly|export)( -[a-zA-Z]+)* ${1}=" >/dev/null
 }
 
 # Version (updated by release workflow)

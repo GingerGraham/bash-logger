@@ -168,6 +168,29 @@ _is_readonly UNSET_VAR; printf '%s\n' \"\$?\""
     pass_test
 }
 
+# Test: _is_readonly is reliable under a caller's pipefail
+# Over 64 KiB of readonly -p output fills the pipe buffer, so a grep that
+# exits on its first match leaves readonly -p blocked and it is killed by
+# SIGPIPE. Under pipefail that turned a readonly variable into "not readonly".
+test_is_readonly_with_pipefail() {
+    start_test "_is_readonly is reliable under pipefail with large readonly -p output"
+
+    require_shell zsh || return 0
+
+    local snippet='set -o pipefail; i=0; \
+while [ "$i" -lt 2000 ]; do \
+eval "readonly ZZ_FILL_$i=$(printf "%0100d" 0)"; i=$((i + 1)); done; \
+readonly AAA_RO=1; _is_readonly AAA_RO; echo "rc=$?"'
+    local shell_command
+    local output
+    for shell_command in "${GUARD_TEST_SHELLS[@]}"; do
+        output=$(run_with_logger_in_shell "$shell_command" "$snippet" 2>&1)
+        assert_equals "rc=0" "$output" "_is_readonly under pipefail ($shell_command)" || return
+    done
+
+    pass_test
+}
+
 # Run all tests
 test_resource_bash
 test_resource_bash_posix
@@ -177,3 +200,4 @@ test_resource_keeps_runtime_state
 test_env_bypass_rejected_posix
 test_guard_ignores_value_lookalike
 test_is_readonly_helper
+test_is_readonly_with_pipefail
