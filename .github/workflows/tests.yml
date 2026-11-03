@@ -17,13 +17,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Install zsh
-        run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Install zsh, dash and busybox
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
 
+      # TEST_SHELLS drives the cross-shell suites (test_shell_compat, test_validator_equivalence,
+      # test_posix_compat). TEST_REQUIRE_SHELLS makes a missing shell fail instead of skip.
       - name: Run tests
         env:
           TEST_PARALLEL_JOBS: 4
-          TEST_REQUIRE_SHELLS: zsh
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
+          TEST_REQUIRE_SHELLS: zsh dash busybox
         run: |
           cd tests
           ./run_tests.sh
@@ -67,3 +70,40 @@ jobs:
         run: |
           cd tests
           ./run_tests.sh
+
+  benchmark:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    name: Per-message Benchmark
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install zsh, dash and busybox
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
+
+      # The base branch's logging.sh is the bash baseline; the job fails if bash is slower
+      # than the baseline by more than the timing-noise allowance in bench-logging.sh
+      - name: Get baseline logging.sh
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: git show "origin/${BASE_REF}:logging.sh" > "$RUNNER_TEMP/baseline-logging.sh"
+
+      - name: Run benchmark
+        shell: bash
+        run: |
+          scripts/bench-logging.sh --rounds 5 --baseline "$RUNNER_TEMP/baseline-logging.sh" \
+            bash "bash --posix" zsh dash "busybox sh" | tee bench-results.txt
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: bench-results.txt
+          retention-days: 30

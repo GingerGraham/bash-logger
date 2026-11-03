@@ -37,13 +37,20 @@ repos:
         language: node
         types: [markdown]
 
-  # Local hooks: bash 3.2 syntax check, test suite and commit message validation
+  # Local hooks: bash 3.2 and POSIX sh syntax checks, test suite and commit message validation
   - repo: local
     hooks:
       - id: bash32-compat
         name: Bash 3.2 Compatibility
         description: Fail on bash 4+ syntax in logging.sh (macOS /bin/bash is 3.2)
         entry: scripts/check-bash32-compat.sh
+        language: script
+        files: ^logging\.sh$
+
+      - id: posix-compat
+        name: POSIX sh Compatibility
+        description: Fail on syntax dash and busybox ash do not support in logging.sh (needs shellcheck)
+        entry: scripts/check-posix-compat.sh
         language: script
         files: ^logging\.sh$
 
