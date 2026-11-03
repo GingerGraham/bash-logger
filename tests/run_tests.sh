@@ -162,7 +162,7 @@ write_suite_results() {
     local suite_status="$1"
     set +e
     local suite_end_time suite_duration
-    suite_end_time=$(date +%s.%N 2>/dev/null || date +%s)
+    suite_end_time=$(_get_timestamp)
     suite_duration=$(echo "$suite_end_time - $suite_start_time" | bc 2>/dev/null || echo "0")
 
     cleanup_test_suite
@@ -212,7 +212,7 @@ run_test_suite() (
 
     local suite_completed=false
     local suite_start_time
-    suite_start_time=$(date +%s.%N 2>/dev/null || date +%s)
+    suite_start_time=$(_get_timestamp)
     trap 'write_suite_results "$?"' EXIT
 
     # Do not put source or this worker in an if/||: that disables suite errexit.
@@ -357,7 +357,8 @@ print_summary() {
         echo "  Failed Tests"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
-        for detail in "${FAILED_TEST_DETAILS[@]}"; do
+        # The +"..." form keeps an empty array safe under set -u in bash before 4.4
+        for detail in "${FAILED_TEST_DETAILS[@]+"${FAILED_TEST_DETAILS[@]}"}"; do
             echo -e "${COLOR_RED}$detail${COLOR_RESET}"
         done
         echo ""

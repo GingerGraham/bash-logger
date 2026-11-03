@@ -38,8 +38,8 @@ setup_test() {
     source "$PROJECT_ROOT/logging.sh"
 
     # Create test-specific temp directory
-    TEST_DIR="$TEST_TMP_DIR/$(date +%s%N)"
-    mkdir -p "$TEST_DIR"
+    # mktemp gives a unique name on GNU and BSD systems; date +%s%N does not on macOS
+    TEST_DIR=$(mktemp -d "$TEST_TMP_DIR/test.XXXXXX")
 
     # Redirect stderr/stdout to files for capturing
     TEST_STDOUT="$TEST_DIR/stdout"
@@ -59,13 +59,26 @@ teardown_test() {
     fi
 }
 
+# Print the current time in seconds, with a fractional part where date supports %N.
+# BSD date (macOS) accepts %N but prints a literal N, which breaks the bc arithmetic,
+# so the output is checked and whole seconds are used when it is not a number.
+_get_timestamp() {
+    local now
+    now=$(date +%s.%N 2>/dev/null)
+    if [[ "$now" =~ ^[0-9]+\.[0-9]+$ ]]; then
+        echo "$now"
+    else
+        date +%s
+    fi
+}
+
 # Start a new test
 start_test() {
     local test_name="$1"
     current_test="$test_name"
     suite_tests=$((suite_tests + 1))
     # Record test start time for JUnit
-    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
+    TEST_START_TIME=$(_get_timestamp)
     setup_test
 }
 
@@ -85,7 +98,7 @@ _junit_xml_escape() {
 # Calculate test duration
 _get_test_duration() {
     local end_time
-    end_time=$(date +%s.%N 2>/dev/null || date +%s)
+    end_time=$(_get_timestamp)
     echo "$end_time - ${TEST_START_TIME:-$end_time}" | bc 2>/dev/null || echo "0"
 }
 

@@ -355,6 +355,26 @@ test_runner_fail_fast_crash() {
     pass_test
 }
 
+test_runner_failure_without_detail() {
+    start_test "A failure counted without a detail line still prints the full summary"
+    local suite_file jobs
+    suite_file=$(mktemp "$SCRIPT_DIR/test_runner_fixture_XXXXXX.sh")
+    trap 'rm -f "$suite_file"; trap - RETURN' RETURN
+    # Count the failure directly, so no detail line is recorded (bash 3.2 to 4.3
+    # treat the empty detail array as unbound under set -u when the summary prints).
+    printf '%s\n' 'start_test "counted without detail"; suite_failed=$((suite_failed + 1))' >"$suite_file"
+    for jobs in 1 2; do
+        runner_invoke "$jobs" "$(basename "$suite_file" .sh)"
+        assert_equals "1" "$runner_status" "Runner must fail when a failure is counted" || return
+        assert_not_contains "$runner_output" "unbound variable" || return
+        assert_contains "$runner_output" "Test Summary" || return
+        assert_contains "$runner_output" "Failed:        1" || return
+        assert_contains "$runner_output" "Failed Tests" || return
+        assert_not_contains "$runner_output" "All tests passed!" || return
+    done
+    pass_test
+}
+
 test_runner_crash_parallel_fails
 test_runner_crash_sequential_reports
 test_runner_crash_before_any_test
@@ -373,3 +393,4 @@ test_runner_nonzero_source_status
 test_runner_early_success_exit_fails
 test_runner_completed_counters_survive
 test_runner_fail_fast_crash
+test_runner_failure_without_detail
