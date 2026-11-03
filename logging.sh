@@ -496,8 +496,10 @@ _validate_journal_tag() {
 # Portable replacement for ${var,,}, which bash 3.2 and zsh do not support.
 # Only used during initialisation, config parsing and set_* functions, so the
 # extra process is not on the per-message path.
+# LC_ALL=C keeps the mapping ASCII-only: in some locales (e.g. Turkish) 'I'
+# lowercases to a dotless i, which would break keyword matching.
 _to_lower() {
-    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+    printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'
 }
 
 # Validate syslog facility value (internal)
