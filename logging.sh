@@ -6,12 +6,17 @@
 #
 # License: MIT License
 #
+# Supported shells: bash 3.2+ (including --posix), zsh, dash and busybox ash.
+# The code is POSIX sh plus "local" (Issue #143). Shell-specific code is used only
+# behind BASH_VERSION/ZSH_VERSION checks; see docs/shell-compatibility.md.
+#
 # shellcheck disable=SC2034
 # Note: SC2034 (unused variable) is disabled because this script is designed to be
 # sourced by other scripts. Variables like LOG_LEVEL_FATAL, LOG_CONFIG_FILE, VERBOSE,
 # and current_section are intentionally exported for external use or future features.
 #
 # Quick usage: source logging.sh && init_logger [options]
+#   (in a POSIX sh script: . logging.sh && init_logger [options])
 #
 # Public API Functions:
 #   Initialization:
@@ -64,6 +69,308 @@
 _is_readonly() {
     readonly -p 2>/dev/null \
         | grep -E "^(declare|typeset|readonly|export)( -[a-zA-Z]+)* ${1}=" >/dev/null
+}
+
+# Control characters used by the sanitizers, the config parser and the color constants.
+# POSIX sh has no $'...' quoting, so they are produced with printf once, at source time.
+# They are readonly so a later assignment cannot weaken message sanitization.
+if ! _is_readonly _LOGGER_ESC; then
+    _LOGGER_ESC=$(printf '\033')
+    _LOGGER_BEL=$(printf '\007')
+    _LOGGER_CR=$(printf '\r')
+    _LOGGER_TAB=$(printf '\t')
+    _LOGGER_NEWLINE='
+'
+    # UTF-8 byte order mark (EF BB BF)
+    _LOGGER_BOM=$(printf '\357\273\277')
+    # UTF-8 encodings of the non-ASCII control characters, one per line: C1 controls
+    # U+0080 to U+009F (C2 80 to C2 9F), LINE SEPARATOR U+2028 (E2 80 A8) and
+    # PARAGRAPH SEPARATOR U+2029 (E2 80 A9). In a UTF-8 locale bash and zsh count these
+    # as [[:cntrl:]]; dash and busybox ash do not, so _contains_control_characters
+    # checks for them explicitly.
+    _LOGGER_UTF8_CONTROLS=$(printf '%b\n' \
+        '\0302\0200' '\0302\0201' '\0302\0202' '\0302\0203' '\0302\0204' '\0302\0205' \
+        '\0302\0206' '\0302\0207' '\0302\0210' '\0302\0211' '\0302\0212' '\0302\0213' \
+        '\0302\0214' '\0302\0215' '\0302\0216' '\0302\0217' '\0302\0220' '\0302\0221' \
+        '\0302\0222' '\0302\0223' '\0302\0224' '\0302\0225' '\0302\0226' '\0302\0227' \
+        '\0302\0230' '\0302\0231' '\0302\0232' '\0302\0233' '\0302\0234' '\0302\0235' \
+        '\0302\0236' '\0302\0237' '\0342\0200\0250' '\0342\0200\0251')
+    # Characters allowed in script names and sanitized journal tags. Listed one by one
+    # rather than as ranges such as a-z, because what a range matches depends on the
+    # locale in some shells (for example bash 3.2 without globasciiranges).
+    _LOGGER_NAME_CHARACTERS='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-'
+    readonly _LOGGER_ESC _LOGGER_BEL _LOGGER_CR _LOGGER_TAB _LOGGER_NEWLINE _LOGGER_BOM \
+        _LOGGER_UTF8_CONTROLS _LOGGER_NAME_CHARACTERS
+fi
+
+# Byte classes used by _text_prefix in shells that truncate by bytes. They are made on
+# first use and inserted into a sed script, so they are cleared here: a value taken
+# from the environment could otherwise inject sed commands.
+_LOGGER_UTF8_LEAD=""
+_LOGGER_UTF8_LEAD3=""
+_LOGGER_UTF8_LEAD4=""
+_LOGGER_UTF8_CONTINUATION=""
+
+# Return 0 if the shell's string operations work on characters (internal).
+# bash and zsh count characters in a multi-byte locale. dash always counts bytes.
+# busybox ash counts characters when built with Unicode support, but its printf
+# precision counts bytes, so it is treated as a byte shell for truncation.
+_shell_counts_characters() {
+    [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ]
+}
+
+# Return 0 if the locale environment selects UTF-8 (internal).
+# Uses the same precedence as the C library: LC_ALL, then LC_CTYPE, then LANG.
+_is_utf8_locale() {
+    local active_locale="${LC_ALL:-}"
+    if [ -z "$active_locale" ]; then
+        active_locale="${LC_CTYPE:-}"
+    fi
+    if [ -z "$active_locale" ]; then
+        active_locale="${LANG:-}"
+    fi
+    case "$active_locale" in
+        *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*) return 0 ;;
+    esac
+    return 1
+}
+
+# Set _LOGGER_CHARACTER_COUNT to the number of characters in a value (internal).
+# bash and zsh count characters directly. In other shells ${#value} may count bytes,
+# so values with non-ASCII bytes are counted with "wc -m", which follows the locale
+# (bytes in the C locale, characters in a UTF-8 locale), as bash does.
+_count_characters() {
+    _LOGGER_CHARACTER_COUNT=${#1}
+    if _shell_counts_characters; then
+        return 0
+    fi
+    case "$1" in
+        *[!\ -~]*)
+            local counted=""
+            counted=$(printf '%s' "$1" | wc -m 2>/dev/null | tr -d ' ')
+            case "$counted" in
+                ''|*[!0123456789]*) ;;
+                *) _LOGGER_CHARACTER_COUNT="$counted" ;;
+            esac
+            ;;
+    esac
+    return 0
+}
+
+# Return 0 if a value contains a control character (internal).
+# Matches what the earlier [[ $value =~ [[:cntrl:]] ]] check matched in bash: ASCII
+# control characters, and in a UTF-8 locale the non-ASCII control characters as well.
+_contains_control_characters() {
+    case "$1" in
+        *[[:cntrl:]]*) return 0 ;;
+    esac
+    if ! _is_utf8_locale; then
+        return 1
+    fi
+    # Only values with a non-ASCII byte can contain a non-ASCII control character
+    case "$1" in
+        *[!\ -~]*) ;;
+        *) return 1 ;;
+    esac
+    local utf8_control=""
+    while IFS= read -r utf8_control; do
+        case "$1" in
+            *"$utf8_control"*) return 0 ;;
+        esac
+    done <<UTF8_CONTROLS
+$_LOGGER_UTF8_CONTROLS
+UTF8_CONTROLS
+    return 1
+}
+
+# Return 0 if a value contains a shell metacharacter (internal).
+# Characters: $ ` ; | & < > ( ) { } [ ] \
+_contains_shell_metacharacters() {
+    case "$1" in
+        *'$'*|*'`'*|*';'*|*'|'*|*'&'*|*'<'*|*'>'*|*'('*|*')'*|*'{'*|*'}'*|*'['*|*']'*|*'\'*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+# Return 0 if a separator is followed, after any number of spaces, by a word (internal).
+# Usage: _has_word_after_separator <text> <separator> <word>
+# Every occurrence of the separator is checked, including overlapping ones, as a
+# regular expression search does: "a||sh" matches "|" then "sh", and "x&&&rm"
+# matches "&&" then "rm" at its second "&".
+_has_word_after_separator() {
+    local remaining="$1"
+    local separator="$2"
+    local word="$3"
+    local after_separator=""
+    while :; do
+        case "$remaining" in
+            *"$separator"*) ;;
+            *) return 1 ;;
+        esac
+        # Move to the next occurrence, then look at what follows it
+        remaining="${remaining#"${remaining%%"$separator"*}"}"
+        after_separator="${remaining#"$separator"}"
+        # Remove leading spaces (spaces only, as in the earlier " *" regex)
+        after_separator="${after_separator#"${after_separator%%[! ]*}"}"
+        case "$after_separator" in
+            "$word"*) return 0 ;;
+        esac
+        # Step one character, so an occurrence that overlaps this one is found
+        remaining="${remaining#?}"
+    done
+}
+
+# Set _LOGGER_REPLACED to text with every occurrence of a string replaced (internal).
+# Usage: _replace_all <text> <search> <replacement>
+# The search string is literal. Occurrences are replaced left to right and the
+# replacement is never searched again, like ${text//search/replacement} in bash.
+_replace_all() {
+    local remaining="$1"
+    local search="$2"
+    local replacement="$3"
+    local result=""
+    if [ -z "$search" ]; then
+        _LOGGER_REPLACED="$remaining"
+        return 0
+    fi
+    while :; do
+        case "$remaining" in
+            *"$search"*) ;;
+            *) break ;;
+        esac
+        result="${result}${remaining%%"$search"*}${replacement}"
+        remaining="${remaining#*"$search"}"
+    done
+    _LOGGER_REPLACED="${result}${remaining}"
+}
+
+# Set _LOGGER_REPLACED to text with every character that is not a letter, digit,
+# period, underscore or hyphen replaced by an underscore (internal).
+# In shells that work on bytes (dash), each byte of a multi-byte character is replaced.
+_replace_unsafe_name_characters() {
+    local remaining="$1"
+    local result=""
+    local safe_prefix=""
+    while :; do
+        case "$remaining" in
+            *[!"$_LOGGER_NAME_CHARACTERS"]*) ;;
+            *) break ;;
+        esac
+        safe_prefix="${remaining%%[!"$_LOGGER_NAME_CHARACTERS"]*}"
+        result="${result}${safe_prefix}_"
+        remaining="${remaining#"$safe_prefix"}"
+        remaining="${remaining#?}"
+    done
+    _LOGGER_REPLACED="${result}${remaining}"
+}
+
+# Parse a non-negative integer the way bash arithmetic reads it (internal).
+# Sets _LOGGER_INTEGER and returns 0, or returns 1 if the value is not all digits.
+# A leading 0 means octal, as in bash, so 010 is 8 and 08 is invalid (returns 1).
+# Values with more than 15 significant digits are set to 999999999999999: large
+# enough for every range check here, and safe from overflow in every shell.
+_parse_shell_integer() {
+    local digits="$1"
+    case "$digits" in
+        ''|*[!0123456789]*) return 1 ;;
+    esac
+    local value=0
+    case "$digits" in
+        0?*)
+            # Octal
+            case "$digits" in
+                *[89]*) return 1 ;;
+            esac
+            digits="${digits#"${digits%%[!0]*}"}"
+            if [ "${#digits}" -gt 15 ]; then
+                _LOGGER_INTEGER=999999999999999
+                return 0
+            fi
+            local digit=""
+            while [ -n "$digits" ]; do
+                digit="${digits%"${digits#?}"}"
+                digits="${digits#?}"
+                value=$((value * 8 + digit))
+            done
+            ;;
+        *)
+            if [ "${#digits}" -gt 15 ]; then
+                value=999999999999999
+            else
+                value="$digits"
+            fi
+            ;;
+    esac
+    _LOGGER_INTEGER="$value"
+    return 0
+}
+
+# Set _LOGGER_PREFIX to the first <length> characters of text (internal).
+# bash and zsh count characters, as ${text:0:length} always has.
+# Other shells count bytes (printf precision), and a multi-byte UTF-8 character cut
+# at the end is removed, so the result is never an invalid UTF-8 sequence.
+_text_prefix() {
+    local text="$1"
+    local length="$2"
+    if _shell_counts_characters; then
+        # substring expansion only runs in bash and zsh
+        # shellcheck disable=SC3057
+        _LOGGER_PREFIX="${text:0:$length}"
+        return 0
+    fi
+    if [ -z "$_LOGGER_UTF8_LEAD" ]; then
+        # Byte classes for UTF-8 lead and continuation bytes, made once on first use
+        _LOGGER_UTF8_LEAD=$(printf '[\300-\377]')
+        _LOGGER_UTF8_LEAD3=$(printf '[\340-\377]')
+        _LOGGER_UTF8_LEAD4=$(printf '[\360-\377]')
+        _LOGGER_UTF8_CONTINUATION=$(printf '[\200-\277]')
+    fi
+    # The x keeps a trailing newline that command substitution would remove.
+    # sed only edits the last line ($), where a cut character can be.
+    _LOGGER_PREFIX=$(
+        printf "%.${length}s" "$text" | LC_ALL=C sed \
+            -e "\$ s/${_LOGGER_UTF8_LEAD4}${_LOGGER_UTF8_CONTINUATION}${_LOGGER_UTF8_CONTINUATION}\$//" \
+            -e "\$ s/${_LOGGER_UTF8_LEAD3}${_LOGGER_UTF8_CONTINUATION}\$//" \
+            -e "\$ s/${_LOGGER_UTF8_LEAD}\$//"
+        printf 'x'
+    )
+    _LOGGER_PREFIX="${_LOGGER_PREFIX%x}"
+}
+
+# Set _LOGGER_TEXT_LENGTH to the length of text, counted the way _text_prefix
+# counts: characters in bash and zsh, bytes in other shells (internal).
+# Only text longer than a quarter of the limit can exceed it in bytes, so short text
+# is measured without starting a process.
+_text_length() {
+    local text="$1"
+    local limit="$2"
+    _LOGGER_TEXT_LENGTH=${#text}
+    if _shell_counts_characters; then
+        return 0
+    fi
+    if [ $((_LOGGER_TEXT_LENGTH * 4)) -le "$limit" ]; then
+        return 0
+    fi
+    local byte_count=""
+    byte_count=$(printf '%s' "$text" | LC_ALL=C wc -c | tr -d ' ')
+    case "$byte_count" in
+        ''|*[!0123456789]*) ;;
+        *) _LOGGER_TEXT_LENGTH="$byte_count" ;;
+    esac
+}
+
+# Remove trailing newlines from the value of _LOGGER_TEXT (internal).
+# Earlier versions passed messages through command substitution, which removes
+# trailing newlines; this keeps that result without starting a subshell.
+_strip_trailing_newlines() {
+    while :; do
+        case "$_LOGGER_TEXT" in
+            *"$_LOGGER_NEWLINE") _LOGGER_TEXT="${_LOGGER_TEXT%"$_LOGGER_NEWLINE"}" ;;
+            *) return 0 ;;
+        esac
+    done
 }
 
 # Version (updated by release workflow)
@@ -125,7 +432,7 @@ SYSLOG_FACILITY="${SYSLOG_FACILITY:-daemon}"  # Syslog facility for journal entr
 USE_COLORS="auto"  # Can be "auto", "always", or "never"
 
 # Initialize color constants only once (guard against re-sourcing)
-if [[ -z "${COLOR_RESET:-}" ]] || ! _is_readonly COLOR_RESET; then
+if [ -z "${COLOR_RESET:-}" ] || ! _is_readonly COLOR_RESET; then
     # Unset potentially malicious color variables before setting them
     # Only unset if not already readonly (which would indicate re-sourcing)
     for var in COLOR_RESET COLOR_BLUE COLOR_GREEN COLOR_YELLOW COLOR_RED \
@@ -136,18 +443,18 @@ if [[ -z "${COLOR_RESET:-}" ]] || ! _is_readonly COLOR_RESET; then
         fi
     done
 
-    # ANSI color codes (using $'...' syntax for literal escape characters)
+    # ANSI color codes, built from the literal escape character in _LOGGER_ESC
     # These are readonly to prevent malicious override after initialization
-    readonly COLOR_RESET=$'\e[0m'
-    readonly COLOR_BLUE=$'\e[34m'
-    readonly COLOR_GREEN=$'\e[32m'
-    readonly COLOR_YELLOW=$'\e[33m'
-    readonly COLOR_RED=$'\e[31m'
-    readonly COLOR_RED_BOLD=$'\e[31;1m'
-    readonly COLOR_WHITE_ON_RED=$'\e[37;41m'
-    readonly COLOR_BOLD_WHITE_ON_RED=$'\e[1;37;41m'
-    readonly COLOR_PURPLE=$'\e[35m'
-    readonly COLOR_CYAN=$'\e[36m'
+    readonly COLOR_RESET="${_LOGGER_ESC}[0m"
+    readonly COLOR_BLUE="${_LOGGER_ESC}[34m"
+    readonly COLOR_GREEN="${_LOGGER_ESC}[32m"
+    readonly COLOR_YELLOW="${_LOGGER_ESC}[33m"
+    readonly COLOR_RED="${_LOGGER_ESC}[31m"
+    readonly COLOR_RED_BOLD="${_LOGGER_ESC}[31;1m"
+    readonly COLOR_WHITE_ON_RED="${_LOGGER_ESC}[37;41m"
+    readonly COLOR_BOLD_WHITE_ON_RED="${_LOGGER_ESC}[1;37;41m"
+    readonly COLOR_PURPLE="${_LOGGER_ESC}[35m"
+    readonly COLOR_CYAN="${_LOGGER_ESC}[36m"
 fi
 
 # Stream output settings
@@ -195,29 +502,34 @@ fi
 # Function to detect terminal color support (internal)
 _detect_color_support() {
     # Default to no colors if explicitly disabled
-    if [[ -n "${NO_COLOR:-}" || "${CLICOLOR:-}" == "0" ]]; then
+    if [ -n "${NO_COLOR:-}" ] || [ "${CLICOLOR:-}" = "0" ]; then
         return 1
     fi
 
     # Force colors if explicitly enabled
-    if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then
+    if [ "${CLICOLOR_FORCE:-}" = "1" ]; then
         return 0
     fi
 
     # Check if stdout is a terminal
-    if [[ ! -t 1 ]]; then
+    if [ ! -t 1 ]; then
         return 1
     fi
 
     # Check color capabilities with tput if available
     if command -v tput >/dev/null 2>&1; then
-        if [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]]; then
+        local color_count=""
+        color_count=$(tput colors 2>/dev/null)
+        case "$color_count" in
+            ''|*[!0123456789]*) color_count=0 ;;
+        esac
+        if [ "$color_count" -ge 8 ]; then
             return 0
         fi
     fi
 
     # Check TERM as fallback
-    if [[ -n "${TERM:-}" && "${TERM:-}" != "dumb" ]]; then
+    if [ -n "${TERM:-}" ] && [ "${TERM:-}" != "dumb" ]; then
         case "${TERM:-}" in
             xterm*|rxvt*|ansi|linux|screen*|tmux*|vt100|vt220|alacritty)
                 return 0
@@ -249,7 +561,7 @@ _should_use_colors() {
 _should_use_stderr() {
     local level_value="$1"
     # Lower number = more severe, so use stderr if level <= threshold
-    [[ "$level_value" -le "$LOG_STDERR_LEVEL" ]]
+    [ "$level_value" -le "$LOG_STDERR_LEVEL" ] 2>/dev/null
 }
 
 # Path to validated logger command (set by _find_and_validate_logger)
@@ -271,18 +583,18 @@ _LOGGER_DISCOVERY_DONE="false"
 # Returns 0 if logger is found and valid, 1 otherwise
 _find_and_validate_logger() {
     # Try to find logger command
-    local logger_candidate
+    local logger_candidate=""
     logger_candidate=$(command -v logger 2>/dev/null)
 
-    if [[ -z "$logger_candidate" ]]; then
+    if [ -z "$logger_candidate" ]; then
         USE_JOURNAL="false"
         _LOGGER_DISCOVERY_DONE="true"
         return 1
     fi
 
     # Resolve any symlinks to get the real path
-    if command -v readlink &>/dev/null; then
-        logger_candidate=$(readlink -f "$logger_candidate" 2>/dev/null || echo "$logger_candidate")
+    if command -v readlink >/dev/null 2>&1; then
+        logger_candidate=$(readlink -f "$logger_candidate" 2>/dev/null || printf '%s\n' "$logger_candidate")
     fi
 
     # Validate logger is in a safe system location
@@ -292,13 +604,13 @@ _find_and_validate_logger() {
             # If LOGGER_PATH is already locked, only accept the same validated path.
             # This preserves immutability while still allowing repeat availability checks.
             if _is_readonly LOGGER_PATH; then
-                if [[ "$LOGGER_PATH" == "$logger_candidate" ]]; then
+                if [ "$LOGGER_PATH" = "$logger_candidate" ]; then
                     _LOGGER_DISCOVERY_DONE="true"
                     return 0
                 fi
-                echo "Warning: logger path changed after validation: $logger_candidate" >&2
-                echo "  Locked logger path is: $LOGGER_PATH" >&2
-                echo "  Journal logging disabled for security" >&2
+                printf '%s\n' "Warning: logger path changed after validation: $logger_candidate" >&2
+                printf '%s\n' "  Locked logger path is: $LOGGER_PATH" >&2
+                printf '%s\n' "  Journal logging disabled for security" >&2
                 USE_JOURNAL="false"
                 _LOGGER_DISCOVERY_DONE="true"
                 return 1
@@ -311,9 +623,9 @@ _find_and_validate_logger() {
             ;;
         *)
             # Logger found but in unexpected location - could be malicious
-            echo "Warning: logger found at unexpected location: $logger_candidate" >&2
-            echo "  Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin" >&2
-            echo "  Journal logging disabled for security" >&2
+            printf '%s\n' "Warning: logger found at unexpected location: $logger_candidate" >&2
+            printf '%s\n' "  Expected: /bin, /usr/bin, /usr/local/bin, /sbin, or /usr/sbin" >&2
+            printf '%s\n' "  Journal logging disabled for security" >&2
             USE_JOURNAL="false"
             _LOGGER_DISCOVERY_DONE="true"
             return 1
@@ -339,18 +651,23 @@ _validate_string() {
     local allow_empty="${4:-false}"
     local check_control_chars="${5:-true}"
 
-    if [[ "$allow_empty" != "true" && -z "$value" ]]; then
-        echo "Error: Empty $label" >&2
+    if [ "$allow_empty" != "true" ] && [ -z "$value" ]; then
+        printf '%s\n' "Error: Empty $label" >&2
         return 1
     fi
 
-    if [[ ${#value} -gt $max_length ]]; then
-        echo "Error: $label exceeds maximum length of $max_length (actual: ${#value})" >&2
-        return 1
+    # ${#value} counts bytes in dash, so the character count is only worked out
+    # when the value is longer than the limit
+    if [ "${#value}" -gt "$max_length" ]; then
+        _count_characters "$value"
+        if [ "$_LOGGER_CHARACTER_COUNT" -gt "$max_length" ]; then
+            printf '%s\n' "Error: $label exceeds maximum length of $max_length (actual: $_LOGGER_CHARACTER_COUNT)" >&2
+            return 1
+        fi
     fi
 
-    if [[ "$check_control_chars" == "true" && "$value" =~ [[:cntrl:]] ]]; then
-        echo "Error: $label contains control characters" >&2
+    if [ "$check_control_chars" = "true" ] && _contains_control_characters "$value"; then
+        printf '%s\n' "Error: $label contains control characters" >&2
         return 1
     fi
 
@@ -387,22 +704,39 @@ _validate_config_file_path() {
     fi
 
     # Check for empty path
-    if [[ -z "$path" ]]; then
+    if [ -z "$path" ]; then
         return 0  # Empty is valid (means disabled)
     fi
 
     # Must be absolute path (starts with /)
-    if [[ "$path" != /* ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num must be an absolute path (got: '$path')" >&2
-        return 1
-    fi
+    case "$path" in
+        /*) ;;
+        *)
+            printf '%s\n' "Error: Configuration value for '$key' at line $line_num must be an absolute path (got: '$path')" >&2
+            return 1
+            ;;
+    esac
 
     # Check for suspicious shell metacharacter patterns that could indicate injection attempts
     # Allow normal path characters but reject dangerous patterns
-    # Note: We check for common command injection patterns
-    local suspicious_patterns='(\$\(|`|; *rm|; *dd|\| *sh|&& *(rm|dd))'
-    if [[ "$path" =~ $suspicious_patterns ]]; then
-        echo "Error: Configuration value for '$key' at line $line_num contains suspicious patterns" >&2
+    # Note: We check for common command injection patterns. These are the same patterns
+    # as the earlier regular expression (\$\(|`|; *rm|; *dd|\| *sh|&& *(rm|dd)), where
+    # " *" means any number of spaces (not tabs).
+    local suspicious="false"
+    case "$path" in
+        *'$('*|*'`'*) suspicious="true" ;;
+    esac
+    if [ "$suspicious" = "false" ]; then
+        if _has_word_after_separator "$path" ";" "rm" \
+            || _has_word_after_separator "$path" ";" "dd" \
+            || _has_word_after_separator "$path" "|" "sh" \
+            || _has_word_after_separator "$path" "&&" "rm" \
+            || _has_word_after_separator "$path" "&&" "dd"; then
+            suspicious="true"
+        fi
+    fi
+    if [ "$suspicious" = "true" ]; then
+        printf '%s\n' "Error: Configuration value for '$key' at line $line_num contains suspicious patterns" >&2
         return 1
     fi
 
@@ -420,15 +754,16 @@ _validate_config_format() {
     # Allow normal format variables like %d, %l, %s, %m, %z
     local clean_format="$format"
     # Remove valid format specifiers
-    clean_format="${clean_format//\%d/}"
-    clean_format="${clean_format//\%l/}"
-    clean_format="${clean_format//\%s/}"
-    clean_format="${clean_format//\%m/}"
-    clean_format="${clean_format//\%z/}"
+    _replace_all "$clean_format" "%d" ""
+    _replace_all "$_LOGGER_REPLACED" "%l" ""
+    _replace_all "$_LOGGER_REPLACED" "%s" ""
+    _replace_all "$_LOGGER_REPLACED" "%m" ""
+    _replace_all "$_LOGGER_REPLACED" "%z" ""
+    clean_format="$_LOGGER_REPLACED"
 
     # Check remaining string for control characters (excluding valid format specifiers)
     if ! _validate_string "$clean_format" "$CONFIG_MAX_VALUE_LENGTH" "configuration format at line $line_num" "true" "true" >/dev/null 2>&1; then
-        echo "Warning: Configuration format at line $line_num contains control characters (may be stripped)" >&2
+        printf '%s\n' "Warning: Configuration format at line $line_num contains control characters (may be stripped)" >&2
     fi
 
     return 0
@@ -444,22 +779,22 @@ _validate_config_journal_tag() {
     local max_tag_length=64
 
     # Handle empty tag explicitly to preserve single-warning behavior
-    if [[ -z "$tag" ]]; then
-        echo "Warning: Empty journal tag at line $line_num" >&2
+    if [ -z "$tag" ]; then
+        printf '%s\n' "Warning: Empty journal tag at line $line_num" >&2
         return 1
     fi
 
     if ! _validate_string "$tag" "$max_tag_length" "journal tag at line $line_num" "false" "true"; then
-        if [[ ${#tag} -gt $max_tag_length ]]; then
-            echo "  Hint: Truncating to maximum length" >&2
+        _count_characters "$tag"
+        if [ "$_LOGGER_CHARACTER_COUNT" -gt "$max_tag_length" ]; then
+            printf '%s\n' "  Hint: Truncating to maximum length" >&2
         fi
         return 1
     fi
 
     # Check for shell metacharacters that could cause issues
-    # Character class includes: $ ` ; | & < > ( ) { } [ ] \
-    if [[ "$tag" =~ []$\`\;\|\&\<\>\(\)\{\}\[\\] ]]; then
-        echo "Warning: Journal tag at line $line_num contains shell metacharacters (will be sanitized)" >&2
+    if _contains_shell_metacharacters "$tag"; then
+        printf '%s\n' "Warning: Journal tag at line $line_num contains shell metacharacters (will be sanitized)" >&2
         return 1
     fi
 
@@ -473,8 +808,8 @@ _validate_journal_tag() {
     local tag="$1"
     local max_tag_length=64
 
-    if [[ -z "$tag" ]]; then
-        echo "Warning: Empty journal tag" >&2
+    if [ -z "$tag" ]; then
+        printf '%s\n' "Warning: Empty journal tag" >&2
         return 1
     fi
 
@@ -483,9 +818,8 @@ _validate_journal_tag() {
     fi
 
     # Check for shell metacharacters that could cause issues
-    # Character class includes: $ ` ; | & < > ( ) { } [ ] \
-    if [[ "$tag" =~ []$\`\;\|\&\<\>\(\)\{\}\[\\] ]]; then
-        echo "Warning: Journal tag contains shell metacharacters" >&2
+    if _contains_shell_metacharacters "$tag"; then
+        printf '%s\n' "Warning: Journal tag contains shell metacharacters" >&2
         return 1
     fi
 
@@ -508,7 +842,7 @@ _validate_syslog_facility() {
     local facility="$1"
 
     # Normalize facility to lowercase for case-insensitive validation
-    local facility_normalized
+    local facility_normalized=""
     facility_normalized="$(_to_lower "$facility")"
 
     case "$facility_normalized" in
@@ -516,8 +850,8 @@ _validate_syslog_facility() {
             return 0
             ;;
         *)
-            echo "Warning: Invalid syslog facility '$facility'" >&2
-            echo "  Valid facilities: kern, user, mail, daemon, auth, syslog, lpr, news, uucp, cron, authpriv, ftp, local0-local7" >&2
+            printf '%s\n' "Warning: Invalid syslog facility '$facility'" >&2
+            printf '%s\n' "  Valid facilities: kern, user, mail, daemon, auth, syslog, lpr, news, uucp, cron, authpriv, ftp, local0-local7" >&2
             return 1
             ;;
     esac
@@ -527,11 +861,11 @@ _validate_syslog_facility() {
 # Accepts: true/yes/on/1 -> prints "true"; false/no/off/0 -> prints "false"
 # Returns 0 on success, 1 for unrecognised input (prints nothing)
 _parse_bool_value() {
-    local input
+    local input=""
     input="$(_to_lower "$1")"
     case "$input" in
-        true|yes|on|1)   echo "true";  return 0 ;;
-        false|no|off|0)  echo "false"; return 0 ;;
+        true|yes|on|1)   printf '%s\n' "true";  return 0 ;;
+        false|no|off|0)  printf '%s\n' "false"; return 0 ;;
         *)               return 1 ;;
     esac
 }
@@ -544,39 +878,37 @@ _parse_config_file() {
     local config_file="$1"
 
     # Validate file exists and is readable
-    if [[ ! -f "$config_file" ]]; then
-        echo "Error: Configuration file not found" >&2
-        echo "  Hint: Check the --config argument and verify the file path is correct" >&2
+    if [ ! -f "$config_file" ]; then
+        printf '%s\n' "Error: Configuration file not found" >&2
+        printf '%s\n' "  Hint: Check the --config argument and verify the file path is correct" >&2
         return 1
     fi
 
-    if [[ ! -r "$config_file" ]]; then
-        echo "Error: Configuration file not readable" >&2
-        echo "  Hint: Check file permissions and ensure the process has read access" >&2
+    if [ ! -r "$config_file" ]; then
+        printf '%s\n' "Error: Configuration file not readable" >&2
+        printf '%s\n' "  Hint: Check file permissions and ensure the process has read access" >&2
         return 1
     fi
 
-    # zsh: fill BASH_REMATCH (bash_rematch) with 0-based indexes (ksh_arrays),
-    # scoped to this function only (local_options)
-    if [[ -n "${ZSH_VERSION:-}" ]]; then
-        setopt local_options bash_rematch ksh_arrays
-    fi
-    # Patterns are held in variables: zsh does not match inline regexes that
-    # contain escaped brackets or quotes
-    local section_pattern='^\[([^]]+)\]$'
-    local key_value_pattern='^([^=]+)=(.*)$'
-    local double_quoted_pattern='^"(.*)"$'
-    local single_quoted_pattern="^'(.*)'$"
-
+    # Lines are classified with case patterns and split with parameter expansion,
+    # which every supported shell handles the same way. These give the same results
+    # as the earlier regular expressions:
+    #   section     ^\[([^]]+)\]$     "[", one or more characters other than "]", "]"
+    #   key=value   ^([^=]+)=(.*)$    at least one character before the first "="
+    #   quoted      ^"(.*)"$ ^'(.*)'$ at least two characters, same quote at both ends
+    local line=""
     local line_num=0
     local current_section=""
+    local section_name=""
+    local key=""
+    local value=""
 
-    while IFS= read -r line || [[ -n "$line" ]]; do
+    while IFS= read -r line || [ -n "$line" ]; do
         line_num=$((line_num + 1))
 
         # Strip UTF-8 BOM (EF BB BF) from the first line if present
-        if [[ $line_num -eq 1 ]]; then
-            line="${line#$'\xef\xbb\xbf'}"
+        if [ "$line_num" -eq 1 ]; then
+            line="${line#"$_LOGGER_BOM"}"
         fi
 
         # Remove leading/trailing whitespace
@@ -584,227 +916,252 @@ _parse_config_file() {
         line="${line%"${line##*[![:space:]]}"}"
 
         # Skip empty lines and comments
-        [[ -z "$line" || "$line" =~ ^[#\;] ]] && continue
+        case "$line" in
+            ''|'#'*|';'*) continue ;;
+        esac
 
         # Handle section headers [section]
-        if [[ "$line" =~ $section_pattern ]]; then
-            current_section="${BASH_REMATCH[1]}"
-            continue
-        fi
+        case "$line" in
+            '['*']')
+                section_name="${line#"["}"
+                section_name="${section_name%"]"}"
+                case "$section_name" in
+                    ''|*']'*) ;;
+                    *)
+                        current_section="$section_name"
+                        continue
+                        ;;
+                esac
+                ;;
+        esac
 
         # Parse key = value pairs
-        if [[ "$line" =~ $key_value_pattern ]]; then
-            local key="${BASH_REMATCH[1]}"
-            local value="${BASH_REMATCH[2]}"
+        case "$line" in
+            [!=]*=*) ;;
+            *)
+                printf '%s\n' "Warning: Invalid syntax at line $line_num: $line" >&2
+                continue
+                ;;
+        esac
+        key="${line%%=*}"
+        value="${line#*=}"
 
-            # Trim whitespace from key and value
-            key="${key#"${key%%[![:space:]]*}"}"
-            key="${key%"${key##*[![:space:]]}"}"
-            value="${value#"${value%%[![:space:]]*}"}"
-            value="${value%"${value##*[![:space:]]}"}"
+        # Trim whitespace from key and value
+        key="${key#"${key%%[![:space:]]*}"}"
+        key="${key%"${key##*[![:space:]]}"}"
+        value="${value#"${value%%[![:space:]]*}"}"
+        value="${value%"${value##*[![:space:]]}"}"
 
-            # Remove surrounding quotes if present
-            if [[ "$value" =~ $double_quoted_pattern ]] || [[ "$value" =~ $single_quoted_pattern ]]; then
-                value="${BASH_REMATCH[1]}"
-            fi
+        # Remove surrounding quotes if present
+        case "$value" in
+            '"'*'"'|"'"*"'")
+                value="${value#?}"
+                value="${value%?}"
+                ;;
+        esac
 
-            # Validate value length for all config values (defense-in-depth)
-            if ! _validate_config_value_length "$value" "$CONFIG_MAX_VALUE_LENGTH" "$key" "$line_num"; then
-                echo "  Hint: Truncating value to maximum allowed length" >&2
-                value="${value:0:$CONFIG_MAX_VALUE_LENGTH}"
-            fi
-
-            # Apply configuration based on key (case-insensitive)
-            case "$(_to_lower "$key")" in
-                level|log_level)
-                    CURRENT_LOG_LEVEL=$(_get_log_level_value "$value" "$line_num")
-                    ;;
-                format|log_format)
-                    # Validate format string
-                    if _validate_config_format "$value" "$line_num"; then
-                        LOG_FORMAT="$value"
-                    else
-                        echo "  Hint: Skipping invalid format string, using default" >&2
-                    fi
-                    ;;
-                log_file|logfile|file)
-                    # Validate file path
-                    if _validate_config_file_path "$value" "$key" "$line_num"; then
-                        LOG_FILE="$value"
-                    else
-                        echo "  Hint: Skipping invalid log file path" >&2
-                    fi
-                    ;;
-                journal|use_journal)
-                    case "$(_to_lower "$value")" in
-                        true|yes|1|on)
-                            if check_logger_available; then
-                                USE_JOURNAL="true"
-                            else
-                                echo "Warning: logger command not found, journal logging disabled (config line $line_num)" >&2
-                            fi
-                            ;;
-                        false|no|0|off)
-                            USE_JOURNAL="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid journal value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
-                    ;;
-                tag|journal_tag)
-                    if _validate_config_journal_tag "$value" "$key" "$line_num"; then
-                        JOURNAL_TAG="$value"
-                    else
-                        # Truncate or sanitize if validation failed
-                        if [[ ${#value} -gt 64 ]]; then
-                            JOURNAL_TAG="${value:0:64}"
-                            echo "  Hint: Truncated journal tag to 64 characters" >&2
-                        else
-                            # Strip problematic characters
-                            JOURNAL_TAG="${value//[^a-zA-Z0-9._-]/_}"
-                            echo "  Hint: Sanitized journal tag to remove shell metacharacters" >&2
-                        fi
-                    fi
-                    ;;
-                facility|syslog_facility)
-                    if _validate_syslog_facility "$value"; then
-                        SYSLOG_FACILITY="$(_to_lower "$value")"
-                    else
-                        echo "  Hint: Skipping invalid syslog facility at line $line_num" >&2
-                    fi
-                    ;;
-                utc|use_utc)
-                    case "$(_to_lower "$value")" in
-                        true|yes|1|on)
-                            USE_UTC="true"
-                            ;;
-                        false|no|0|off)
-                            USE_UTC="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid utc value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
-                    ;;
-                color|colour|colors|colours|use_colors)
-                    case "$(_to_lower "$value")" in
-                        auto)
-                            USE_COLORS="auto"
-                            ;;
-                        always|true|yes|1|on)
-                            USE_COLORS="always"
-                            ;;
-                        never|false|no|0|off)
-                            USE_COLORS="never"
-                            ;;
-                        *)
-                            echo "Warning: Invalid color value '$value' at line $line_num, expected auto/always/never" >&2
-                            ;;
-                    esac
-                    ;;
-                stderr_level|stderr-level)
-                    LOG_STDERR_LEVEL=$(_get_log_level_value "$value" "$line_num")
-                    ;;
-                quiet|console_log)
-                    case "$(_to_lower "$key")" in
-                        quiet)
-                            # quiet=true means CONSOLE_LOG=false
-                            case "$(_to_lower "$value")" in
-                                true|yes|1|on)
-                                    CONSOLE_LOG="false"
-                                    ;;
-                                false|no|0|off)
-                                    CONSOLE_LOG="true"
-                                    ;;
-                                *)
-                                    echo "Warning: Invalid quiet value '$value' at line $line_num, expected true/false" >&2
-                                    ;;
-                            esac
-                            ;;
-                        console_log)
-                            case "$(_to_lower "$value")" in
-                                true|yes|1|on)
-                                    CONSOLE_LOG="true"
-                                    ;;
-                                false|no|0|off)
-                                    CONSOLE_LOG="false"
-                                    ;;
-                                *)
-                                    echo "Warning: Invalid console_log value '$value' at line $line_num, expected true/false" >&2
-                                    ;;
-                            esac
-                            ;;
-                    esac
-                    ;;
-                script_name|scriptname|name)
-                    # Sanitize to prevent shell metacharacter injection
-                    SCRIPT_NAME=$(_sanitize_script_name "$value")
-                    ;;
-                verbose)
-                    case "$(_to_lower "$value")" in
-                        true|yes|1|on)
-                            VERBOSE="true"
-                            CURRENT_LOG_LEVEL=$LOG_LEVEL_DEBUG
-                            ;;
-                        false|no|0|off)
-                            VERBOSE="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid verbose value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
-                    ;;
-                unsafe_allow_newlines|unsafe-allow-newlines)
-                    if ! LOG_UNSAFE_ALLOW_NEWLINES=$(_parse_bool_value "$value"); then
-                        echo "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
-                    fi
-                    ;;
-                unsafe_allow_ansi_codes|unsafe-allow-ansi-codes)
-                    if ! LOG_UNSAFE_ALLOW_ANSI_CODES=$(_parse_bool_value "$value"); then
-                        echo "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
-                    fi
-                    ;;
-                max_line_length|max-line-length|log_max_line_length|log-max-line-length)
-                    if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
-                        LOG_MAX_LINE_LENGTH="$value"
-                    else
-                        echo "Warning: Invalid max_line_length value '$value' at line $line_num, expected integer 0-1048576" >&2
-                        echo "  Hint: Using default value of 4096" >&2
-                    fi
-                    ;;
-                max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
-                    if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$value" -ge 0 ]] && [[ "$value" -le 1048576 ]]; then
-                        LOG_MAX_JOURNAL_LENGTH="$value"
-                    else
-                        echo "Warning: Invalid max_journal_length value '$value' at line $line_num, expected integer 0-1048576" >&2
-                        echo "  Hint: Using default value of 4096" >&2
-                    fi
-                    ;;
-                init_message|log_init_message)
-                    case "$(_to_lower "$value")" in
-                        true|yes|1|on)
-                            LOG_INIT_MESSAGE="true"
-                            ;;
-                        false|no|0|off)
-                            LOG_INIT_MESSAGE="false"
-                            ;;
-                        *)
-                            echo "Warning: Invalid init_message value '$value' at line $line_num, expected true/false" >&2
-                            ;;
-                    esac
-                    ;;
-                *)
-                    echo "Warning: Unknown configuration key '$key' at line $line_num" >&2
-                    echo "  Hint: Valid keys are: level, format, log_file, journal, tag, utc, color," >&2
-                    echo "        stderr_level, quiet, console_log, script_name, verbose," >&2
-                    echo "        unsafe_allow_newlines, unsafe_allow_ansi_codes, max_line_length, max_journal_length," >&2
-                    echo "        init_message" >&2
-                    ;;
-            esac
-        else
-            echo "Warning: Invalid syntax at line $line_num: $line" >&2
+        # Validate value length for all config values (defense-in-depth)
+        if ! _validate_config_value_length "$value" "$CONFIG_MAX_VALUE_LENGTH" "$key" "$line_num"; then
+            printf '%s\n' "  Hint: Truncating value to maximum allowed length" >&2
+            _text_prefix "$value" "$CONFIG_MAX_VALUE_LENGTH"
+            value="$_LOGGER_PREFIX"
         fi
+
+        # Apply configuration based on key (case-insensitive)
+        case "$(_to_lower "$key")" in
+            level|log_level)
+                CURRENT_LOG_LEVEL=$(_get_log_level_value "$value" "$line_num")
+                ;;
+            format|log_format)
+                # Validate format string
+                if _validate_config_format "$value" "$line_num"; then
+                    LOG_FORMAT="$value"
+                else
+                    printf '%s\n' "  Hint: Skipping invalid format string, using default" >&2
+                fi
+                ;;
+            log_file|logfile|file)
+                # Validate file path
+                if _validate_config_file_path "$value" "$key" "$line_num"; then
+                    LOG_FILE="$value"
+                else
+                    printf '%s\n' "  Hint: Skipping invalid log file path" >&2
+                fi
+                ;;
+            journal|use_journal)
+                case "$(_to_lower "$value")" in
+                    true|yes|1|on)
+                        if check_logger_available; then
+                            USE_JOURNAL="true"
+                        else
+                            printf '%s\n' "Warning: logger command not found, journal logging disabled (config line $line_num)" >&2
+                        fi
+                        ;;
+                    false|no|0|off)
+                        USE_JOURNAL="false"
+                        ;;
+                    *)
+                        printf '%s\n' "Warning: Invalid journal value '$value' at line $line_num, expected true/false" >&2
+                        ;;
+                esac
+                ;;
+            tag|journal_tag)
+                if _validate_config_journal_tag "$value" "$key" "$line_num"; then
+                    JOURNAL_TAG="$value"
+                else
+                    # Truncate or sanitize if validation failed
+                    _count_characters "$value"
+                    if [ "$_LOGGER_CHARACTER_COUNT" -gt 64 ]; then
+                        _text_prefix "$value" 64
+                        JOURNAL_TAG="$_LOGGER_PREFIX"
+                        printf '%s\n' "  Hint: Truncated journal tag to 64 characters" >&2
+                    else
+                        # Strip problematic characters
+                        _replace_unsafe_name_characters "$value"
+                        JOURNAL_TAG="$_LOGGER_REPLACED"
+                        printf '%s\n' "  Hint: Sanitized journal tag to remove shell metacharacters" >&2
+                    fi
+                fi
+                ;;
+            facility|syslog_facility)
+                if _validate_syslog_facility "$value"; then
+                    SYSLOG_FACILITY="$(_to_lower "$value")"
+                else
+                    printf '%s\n' "  Hint: Skipping invalid syslog facility at line $line_num" >&2
+                fi
+                ;;
+            utc|use_utc)
+                case "$(_to_lower "$value")" in
+                    true|yes|1|on)
+                        USE_UTC="true"
+                        ;;
+                    false|no|0|off)
+                        USE_UTC="false"
+                        ;;
+                    *)
+                        printf '%s\n' "Warning: Invalid utc value '$value' at line $line_num, expected true/false" >&2
+                        ;;
+                esac
+                ;;
+            color|colour|colors|colours|use_colors)
+                case "$(_to_lower "$value")" in
+                    auto)
+                        USE_COLORS="auto"
+                        ;;
+                    always|true|yes|1|on)
+                        USE_COLORS="always"
+                        ;;
+                    never|false|no|0|off)
+                        USE_COLORS="never"
+                        ;;
+                    *)
+                        printf '%s\n' "Warning: Invalid color value '$value' at line $line_num, expected auto/always/never" >&2
+                        ;;
+                esac
+                ;;
+            stderr_level|stderr-level)
+                LOG_STDERR_LEVEL=$(_get_log_level_value "$value" "$line_num")
+                ;;
+            quiet|console_log)
+                case "$(_to_lower "$key")" in
+                    quiet)
+                        # quiet=true means CONSOLE_LOG=false
+                        case "$(_to_lower "$value")" in
+                            true|yes|1|on)
+                                CONSOLE_LOG="false"
+                                ;;
+                            false|no|0|off)
+                                CONSOLE_LOG="true"
+                                ;;
+                            *)
+                                printf '%s\n' "Warning: Invalid quiet value '$value' at line $line_num, expected true/false" >&2
+                                ;;
+                        esac
+                        ;;
+                    console_log)
+                        case "$(_to_lower "$value")" in
+                            true|yes|1|on)
+                                CONSOLE_LOG="true"
+                                ;;
+                            false|no|0|off)
+                                CONSOLE_LOG="false"
+                                ;;
+                            *)
+                                printf '%s\n' "Warning: Invalid console_log value '$value' at line $line_num, expected true/false" >&2
+                                ;;
+                        esac
+                        ;;
+                esac
+                ;;
+            script_name|scriptname|name)
+                # Sanitize to prevent shell metacharacter injection
+                SCRIPT_NAME=$(_sanitize_script_name "$value")
+                ;;
+            verbose)
+                case "$(_to_lower "$value")" in
+                    true|yes|1|on)
+                        VERBOSE="true"
+                        CURRENT_LOG_LEVEL=$LOG_LEVEL_DEBUG
+                        ;;
+                    false|no|0|off)
+                        VERBOSE="false"
+                        ;;
+                    *)
+                        printf '%s\n' "Warning: Invalid verbose value '$value' at line $line_num, expected true/false" >&2
+                        ;;
+                esac
+                ;;
+            unsafe_allow_newlines|unsafe-allow-newlines)
+                if ! LOG_UNSAFE_ALLOW_NEWLINES=$(_parse_bool_value "$value"); then
+                    printf '%s\n' "Warning: Invalid unsafe_allow_newlines value '$value' at line $line_num, expected true/false" >&2
+                fi
+                ;;
+            unsafe_allow_ansi_codes|unsafe-allow-ansi-codes)
+                if ! LOG_UNSAFE_ALLOW_ANSI_CODES=$(_parse_bool_value "$value"); then
+                    printf '%s\n' "Warning: Invalid unsafe_allow_ansi_codes value '$value' at line $line_num, expected true/false" >&2
+                fi
+                ;;
+            max_line_length|max-line-length|log_max_line_length|log-max-line-length)
+                # Read as bash arithmetic does (a leading 0 means octal); the value is
+                # stored as written
+                if _parse_shell_integer "$value" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+                    LOG_MAX_LINE_LENGTH="$value"
+                else
+                    printf '%s\n' "Warning: Invalid max_line_length value '$value' at line $line_num, expected integer 0-1048576" >&2
+                    printf '%s\n' "  Hint: Using default value of 4096" >&2
+                fi
+                ;;
+            max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
+                # Read as bash arithmetic does (a leading 0 means octal); the value is
+                # stored as written
+                if _parse_shell_integer "$value" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+                    LOG_MAX_JOURNAL_LENGTH="$value"
+                else
+                    printf '%s\n' "Warning: Invalid max_journal_length value '$value' at line $line_num, expected integer 0-1048576" >&2
+                    printf '%s\n' "  Hint: Using default value of 4096" >&2
+                fi
+                ;;
+            init_message|log_init_message)
+                case "$(_to_lower "$value")" in
+                    true|yes|1|on)
+                        LOG_INIT_MESSAGE="true"
+                        ;;
+                    false|no|0|off)
+                        LOG_INIT_MESSAGE="false"
+                        ;;
+                    *)
+                        printf '%s\n' "Warning: Invalid init_message value '$value' at line $line_num, expected true/false" >&2
+                        ;;
+                esac
+                ;;
+            *)
+                printf '%s\n' "Warning: Unknown configuration key '$key' at line $line_num" >&2
+                printf '%s\n' "  Hint: Valid keys are: level, format, log_file, journal, tag, utc, color," >&2
+                printf '%s\n' "        stderr_level, quiet, console_log, script_name, verbose," >&2
+                printf '%s\n' "        unsafe_allow_newlines, unsafe_allow_ansi_codes, max_line_length, max_journal_length," >&2
+                printf '%s\n' "        init_message" >&2
+                ;;
+        esac
     done < "$config_file"
 
     LOG_CONFIG_FILE="$config_file"
@@ -814,47 +1171,46 @@ _parse_config_file() {
 
 # Convert log level name to numeric value (internal)
 _get_log_level_value() {
-    local level_name
+    local level_name=""
     level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
     local line_num="${2:-}"
     case "${level_name}" in
         "DEBUG")
-            echo "$LOG_LEVEL_DEBUG"
+            printf '%s\n' "$LOG_LEVEL_DEBUG"
             ;;
         "INFO")
-            echo "$LOG_LEVEL_INFO"
+            printf '%s\n' "$LOG_LEVEL_INFO"
             ;;
         "NOTICE")
-            echo "$LOG_LEVEL_NOTICE"
+            printf '%s\n' "$LOG_LEVEL_NOTICE"
             ;;
         "WARN" | "WARNING")
-            echo "$LOG_LEVEL_WARN"
+            printf '%s\n' "$LOG_LEVEL_WARN"
             ;;
         "ERROR" | "ERR")
-            echo "$LOG_LEVEL_ERROR"
+            printf '%s\n' "$LOG_LEVEL_ERROR"
             ;;
         "CRITICAL" | "CRIT")
-            echo "$LOG_LEVEL_CRITICAL"
+            printf '%s\n' "$LOG_LEVEL_CRITICAL"
             ;;
         "ALERT")
-            echo "$LOG_LEVEL_ALERT"
+            printf '%s\n' "$LOG_LEVEL_ALERT"
             ;;
         "EMERGENCY" | "EMERG" | "FATAL")
-            echo "$LOG_LEVEL_EMERGENCY"
+            printf '%s\n' "$LOG_LEVEL_EMERGENCY"
+            ;;
+        [01234567])
+            # A number between 0-7 (valid syslog levels) is used directly
+            printf '%s\n' "$level_name"
             ;;
         *)
-            # If it's a number between 0-7 (valid syslog levels), use it directly
-            if [[ "$level_name" =~ ^[0-7]$ ]]; then
-                echo "$level_name"
-            else
-                # Warn if line number provided (config file context)
-                if [[ -n "$line_num" ]]; then
-                    echo "Warning: Invalid log level '$level_name' at line $line_num, using INFO" >&2
-                    echo "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
-                fi
-                # Default to INFO if invalid
-                echo "$LOG_LEVEL_INFO"
+            # Warn if line number provided (config file context)
+            if [ -n "$line_num" ]; then
+                printf '%s\n' "Warning: Invalid log level '$level_name' at line $line_num, using INFO" >&2
+                printf '%s\n' "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
             fi
+            # Default to INFO if invalid
+            printf '%s\n' "$LOG_LEVEL_INFO"
             ;;
     esac
 }
@@ -864,106 +1220,76 @@ _get_log_level_name() {
     local level_value="$1"
     case "$level_value" in
         "$LOG_LEVEL_DEBUG")
-            echo "DEBUG"
+            printf '%s\n' "DEBUG"
             ;;
         "$LOG_LEVEL_INFO")
-            echo "INFO"
+            printf '%s\n' "INFO"
             ;;
         "$LOG_LEVEL_NOTICE")
-            echo "NOTICE"
+            printf '%s\n' "NOTICE"
             ;;
         "$LOG_LEVEL_WARN")
-            echo "WARN"
+            printf '%s\n' "WARN"
             ;;
         "$LOG_LEVEL_ERROR")
-            echo "ERROR"
+            printf '%s\n' "ERROR"
             ;;
         "$LOG_LEVEL_CRITICAL")
-            echo "CRITICAL"
+            printf '%s\n' "CRITICAL"
             ;;
         "$LOG_LEVEL_ALERT")
-            echo "ALERT"
+            printf '%s\n' "ALERT"
             ;;
         "$LOG_LEVEL_EMERGENCY")
-            echo "EMERGENCY"
+            printf '%s\n' "EMERGENCY"
             ;;
         *)
-            echo "UNKNOWN"
+            printf '%s\n' "UNKNOWN"
             ;;
     esac
 }
 
 # Gets the ANSI color codes for a level name (internal)
 _get_log_level_color() {
-    local level_name="$1"
-    case "$level_name" in
-        "DEBUG")
-            echo "${COLOR_BLUE}"
-            ;;
-        "INFO")
-            echo ""
-            ;;
-        "NOTICE")
-            echo "${COLOR_GREEN}"
-            ;;
-        "WARN")
-            echo "${COLOR_YELLOW}"
-            ;;
-        "ERROR")
-            echo "${COLOR_RED}"
-            ;;
-        "CRITICAL")
-            echo "${COLOR_RED_BOLD}"
-            ;;
-        "ALERT")
-            echo "${COLOR_WHITE_ON_RED}"
-            ;;
-        "EMERGENCY"|"FATAL")
-            echo "${COLOR_BOLD_WHITE_ON_RED}"
-            ;;
-        "INIT")
-            echo "${COLOR_PURPLE}"
-            ;;
-        "SENSITIVE")
-            echo "${COLOR_CYAN}"
-            ;;
-        *)
-            echo ""
-            ;;
+    _get_log_level_color_into "$1"
+    printf '%s\n' "$_LOGGER_COLOR"
+}
+
+# Set _LOGGER_COLOR to the ANSI color codes for a level name (internal)
+_get_log_level_color_into() {
+    case "$1" in
+        "DEBUG") _LOGGER_COLOR="${COLOR_BLUE}" ;;
+        "INFO") _LOGGER_COLOR="" ;;
+        "NOTICE") _LOGGER_COLOR="${COLOR_GREEN}" ;;
+        "WARN") _LOGGER_COLOR="${COLOR_YELLOW}" ;;
+        "ERROR") _LOGGER_COLOR="${COLOR_RED}" ;;
+        "CRITICAL") _LOGGER_COLOR="${COLOR_RED_BOLD}" ;;
+        "ALERT") _LOGGER_COLOR="${COLOR_WHITE_ON_RED}" ;;
+        "EMERGENCY"|"FATAL") _LOGGER_COLOR="${COLOR_BOLD_WHITE_ON_RED}" ;;
+        "INIT") _LOGGER_COLOR="${COLOR_PURPLE}" ;;
+        "SENSITIVE") _LOGGER_COLOR="${COLOR_CYAN}" ;;
+        *) _LOGGER_COLOR="" ;;
     esac
 }
 
 # Map log level to syslog priority (internal)
 _get_syslog_priority() {
-    local level_value="$1"
-    case "$level_value" in
-        "$LOG_LEVEL_DEBUG")
-            echo "debug"
-            ;;
-        "$LOG_LEVEL_INFO")
-            echo "info"
-            ;;
-        "$LOG_LEVEL_NOTICE")
-            echo "notice"
-            ;;
-        "$LOG_LEVEL_WARN")
-            echo "warning"
-            ;;
-        "$LOG_LEVEL_ERROR")
-            echo "err"
-            ;;
-        "$LOG_LEVEL_CRITICAL")
-            echo "crit"
-            ;;
-        "$LOG_LEVEL_ALERT")
-            echo "alert"
-            ;;
-        "$LOG_LEVEL_EMERGENCY")
-            echo "emerg"
-            ;;
-        *)
-            echo "notice"  # Default to notice for unknown levels
-            ;;
+    _get_syslog_priority_into "$1"
+    printf '%s\n' "$_LOGGER_PRIORITY"
+}
+
+# Set _LOGGER_PRIORITY to the syslog priority for a log level (internal)
+_get_syslog_priority_into() {
+    case "$1" in
+        "$LOG_LEVEL_DEBUG") _LOGGER_PRIORITY="debug" ;;
+        "$LOG_LEVEL_INFO") _LOGGER_PRIORITY="info" ;;
+        "$LOG_LEVEL_NOTICE") _LOGGER_PRIORITY="notice" ;;
+        "$LOG_LEVEL_WARN") _LOGGER_PRIORITY="warning" ;;
+        "$LOG_LEVEL_ERROR") _LOGGER_PRIORITY="err" ;;
+        "$LOG_LEVEL_CRITICAL") _LOGGER_PRIORITY="crit" ;;
+        "$LOG_LEVEL_ALERT") _LOGGER_PRIORITY="alert" ;;
+        "$LOG_LEVEL_EMERGENCY") _LOGGER_PRIORITY="emerg" ;;
+        *) _LOGGER_PRIORITY="notice" ;;  # Default to notice for unknown levels
     esac
 }
 
@@ -975,14 +1301,14 @@ _write_to_journal() {
     local message="$3"
     local force_when_disabled="${4:-false}"
 
-    if [[ "$force_when_disabled" != "true" && "$USE_JOURNAL" != "true" ]]; then
+    if [ "$force_when_disabled" != "true" ] && [ "$USE_JOURNAL" != "true" ]; then
         return 0
     fi
 
-    if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
-        if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
-            echo "Warning: logger command unavailable at '$LOGGER_PATH'" >&2
-            echo "  Journal logging disabled to prevent repeated failures" >&2
+    if [ -z "$LOGGER_PATH" ] || [ ! -x "$LOGGER_PATH" ]; then
+        if [ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]; then
+            printf '%s\n' "Warning: logger command unavailable at '$LOGGER_PATH'" >&2
+            printf '%s\n' "  Journal logging disabled to prevent repeated failures" >&2
             LOGGER_JOURNAL_ERROR_REPORTED="yes"
         fi
         USE_JOURNAL="false"
@@ -990,8 +1316,8 @@ _write_to_journal() {
     fi
 
     "$LOGGER_PATH" -p "${SYSLOG_FACILITY}.${priority}" -t "$tag" -- "$message" 2>/dev/null || {
-        if [[ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]]; then
-            echo "Warning: logger command failed; disabling journal logging" >&2
+        if [ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]; then
+            printf '%s\n' "Warning: logger command failed; disabling journal logging" >&2
             LOGGER_JOURNAL_ERROR_REPORTED="yes"
         fi
         USE_JOURNAL="false"
@@ -1004,13 +1330,29 @@ _write_to_journal() {
 # Function to sanitize log messages to prevent log injection (internal)
 # Removes control characters that could break log formats or inject fake entries
 _strip_ansi_codes() {
-    local input="$1"
+    _strip_ansi_codes_into "$1"
+    printf '%s\n' "$_LOGGER_TEXT"
+}
+
+# Set _LOGGER_TEXT to text with ANSI escape sequences removed (internal).
+# Same result as _strip_ansi_codes, without a subshell for the caller.
+_strip_ansi_codes_into() {
+    _LOGGER_TEXT="$1"
 
     # If unsafe mode is enabled, skip ANSI stripping and return input as-is
-    if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
-        echo "$input"
-        return
+    if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
+        return 0
     fi
+
+    # Every pattern below starts with ESC, so text without ESC is unchanged and sed
+    # is not started. Trailing newlines are still removed, as the sed path does.
+    case "$_LOGGER_TEXT" in
+        *"$_LOGGER_ESC"*) ;;
+        *)
+            _strip_trailing_newlines
+            return 0
+            ;;
+    esac
 
     # Remove ANSI escape sequences that would otherwise manipulate terminal display.
     #
@@ -1022,9 +1364,8 @@ _strip_ansi_codes() {
     #   * the escape character is inserted as a literal byte, because BSD sed does not
     #     recognise \x1b
     #   * ^ is escaped because it is an anchor everywhere in an extended regex
-    local esc bel stripped
-    esc=$'\033'
-    bel=$'\a'
+    local esc="$_LOGGER_ESC"
+    local bel="$_LOGGER_BEL"
 
     # 1. CSI (Control Sequence Introducer): ESC [ parameters letter
     #    Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
@@ -1043,7 +1384,7 @@ _strip_ansi_codes() {
     # 6. PM (Privacy Message): ESC ^ ... ESC \
     # 7. APC (Application Program Command): ESC _ ... ESC \
     # 8. Remaining escape sequences (simplified fallback): ESC and the next character
-    stripped=$(printf '%s' "$input" | sed -E \
+    _LOGGER_TEXT=$(printf '%s' "$_LOGGER_TEXT" | sed -E \
         -e "s/${esc}\[[0-9;<?>=!]*[a-zA-Z@]//g" \
         -e "s/${esc}][^${bel}]*${bel}//g" \
         -e ':osc_st_loop' \
@@ -1054,89 +1395,109 @@ _strip_ansi_codes() {
         -e "s/${esc}\^[^${esc}]*${esc}\\\\//g" \
         -e "s/${esc}_[^${esc}]*${esc}\\\\//g" \
         -e "s/${esc}[^[]//g")
-
-    echo "$stripped"
 }
 
 # Function to sanitize log messages to prevent log injection (internal)
 # Removes control characters that could break log formats or inject fake entries
 _sanitize_log_message() {
+    _sanitize_log_message_into "$1"
+    printf '%s\n' "$_LOGGER_TEXT"
+}
+
+# Set _LOGGER_TEXT to the sanitized message (internal).
+# Same result as _sanitize_log_message, without a subshell for the caller.
+_sanitize_log_message_into() {
     local message="$1"
 
     # Sanitize newlines if not in unsafe mode
     # This is independent from ANSI code stripping to prevent security bypass
-    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]]; then
+    if [ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]; then
         # Replace control characters with spaces to prevent log injection
         # These characters can break log formats and enable log injection attacks
-        message="${message//$'\n'/ }"   # newline (LF)
-        message="${message//$'\r'/ }"   # carriage return (CR)
-        message="${message//$'\t'/ }"   # tab (HT)
-        # Uncomment the line below if form feed characters should also be sanitized
-        # message="${message//$'\f'/ }"   # form feed (FF)
+        # newline (LF), carriage return (CR) and tab (HT)
+        _replace_all "$message" "$_LOGGER_NEWLINE" " "
+        _replace_all "$_LOGGER_REPLACED" "$_LOGGER_CR" " "
+        _replace_all "$_LOGGER_REPLACED" "$_LOGGER_TAB" " "
+        message="$_LOGGER_REPLACED"
     fi
 
     # Strip ANSI codes from user input to prevent terminal manipulation
     # This is independent from newline sanitization
-    message=$(_strip_ansi_codes "$message")
-
-    echo "$message"
+    _strip_ansi_codes_into "$message"
+    _strip_trailing_newlines
 }
 
 # Truncate log messages to a maximum length (internal)
 _truncate_log_message() {
+    _truncate_log_message_into "$1" "$2"
+    printf '%s\n' "$_LOGGER_TEXT"
+}
+
+# Set _LOGGER_TEXT to the message truncated to a limit (internal).
+# Same result as _truncate_log_message, without a subshell for the caller.
+# The limit counts characters in bash and zsh and bytes in other shells; a
+# multi-byte UTF-8 character is never cut in half (see _text_prefix).
+_truncate_log_message_into() {
     local message="$1"
     local limit="$2"
     local suffix="...[truncated]"
+    _LOGGER_TEXT="$message"
 
-    if [[ -z "$limit" ]]; then
-        echo "$message"
-        return
+    if [ -z "$limit" ]; then
+        return 0
     fi
 
-    if [[ ! "$limit" =~ ^[0-9]+$ ]]; then
-        echo "$message"
-        return
+    # Not a number (or invalid octal such as 08): no truncation
+    if ! _parse_shell_integer "$limit"; then
+        return 0
+    fi
+    limit="$_LOGGER_INTEGER"
+
+    if [ "$limit" -le 0 ]; then
+        return 0
     fi
 
-    if [[ "$limit" -le 0 ]]; then
-        echo "$message"
-        return
+    _text_length "$message" "$limit"
+    if [ "$_LOGGER_TEXT_LENGTH" -le "$limit" ]; then
+        return 0
     fi
 
-    if [[ ${#message} -le $limit ]]; then
-        echo "$message"
-        return
+    if [ "$limit" -le "${#suffix}" ]; then
+        _text_prefix "$message" "$limit"
+        _LOGGER_TEXT="$_LOGGER_PREFIX"
+        return 0
     fi
 
-    if [[ $limit -le ${#suffix} ]]; then
-        echo "${message:0:$limit}"
-        return
-    fi
-
-    local keep_length=$((limit - ${#suffix}))
-    echo "${message:0:$keep_length}${suffix}"
+    _text_prefix "$message" "$((limit - ${#suffix}))"
+    _LOGGER_TEXT="${_LOGGER_PREFIX}${suffix}"
 }
 
 # Function to sanitize script names to prevent shell metacharacter injection (internal)
 # Replaces any character that is not alphanumeric, period, underscore, or hyphen with underscore
 # This is a defense-in-depth measure to prevent potential injection attacks via crafted filenames
 _sanitize_script_name() {
-    local name="$1"
     # Replace any character that's not alphanumeric, period, underscore, or hyphen
     # with an underscore to prevent shell metacharacter injection
-    name="${name//[^a-zA-Z0-9._-]/_}"
-    echo "$name"
+    _replace_unsafe_name_characters "$1"
+    printf '%s\n' "$_LOGGER_REPLACED"
 }
 
 # Function to format log message (internal)
 _format_log_message() {
+    _format_log_message_into "$1" "$2"
+    printf '%s\n' "$_LOGGER_TEXT"
+}
+
+# Set _LOGGER_TEXT to the formatted log entry (internal).
+# Same result as _format_log_message, without a subshell for the caller.
+_format_log_message_into() {
     local level_name="$1"
     local message="$2"
 
     # Get timestamp in appropriate timezone
-    local current_date
-    local timezone_str
-    if [[ "$USE_UTC" == "true" ]]; then
+    local current_date=""
+    local timezone_str=""
+    if [ "$USE_UTC" = "true" ]; then
         current_date=$(date -u '+%Y-%m-%d %H:%M:%S')  # UTC time
         timezone_str="UTC"
     else
@@ -1147,15 +1508,20 @@ _format_log_message() {
     # Expand format tokens in a single left-to-right pass.
     # Each %X token is replaced once and inserted values are never re-scanned,
     # so message content cannot be read as a token or as replacement syntax
-    # (e.g. '&' under bash 5.2 patsub_replacement). Behaves the same in bash
-    # and zsh. Unknown tokens, '%%' and a trailing '%' are kept literally.
+    # (e.g. '&' under bash 5.2 patsub_replacement). Behaves the same in every
+    # supported shell. Unknown tokens, '%%' and a trailing '%' are kept literally.
     local remaining="$LOG_FORMAT"
     local formatted_message=""
-    local token
-    while [[ "$remaining" == *%* ]]; do
+    local token=""
+    while :; do
+        case "$remaining" in
+            *%*) ;;
+            *) break ;;
+        esac
         formatted_message="${formatted_message}${remaining%%\%*}"
         remaining="${remaining#*\%}"
-        token="${remaining:0:1}"
+        # First character of what follows the %
+        token="${remaining%"${remaining#?}"}"
         case "$token" in
             d) formatted_message="${formatted_message}${current_date}" ;;
             l) formatted_message="${formatted_message}${level_name}" ;;
@@ -1166,19 +1532,61 @@ _format_log_message() {
         esac
         remaining="${remaining#?}"
     done
-    formatted_message="${formatted_message}${remaining}"
+    _LOGGER_TEXT="${formatted_message}${remaining}"
+}
 
-    printf '%s\n' "$formatted_message"
+# Set _LOGGER_CALLER_PATH to the file that called init_logger (internal).
+# Must be called directly from init_logger: the call depth is fixed.
+#   bash: BASH_SOURCE[2] (this function, init_logger, then the caller)
+#   zsh:  funcfiletrace[2], which is "file:line" for the same caller; emulate -L
+#         gives 1-based arrays here even when the caller set ksh_arrays
+#   other shells: $0. In a script that runs ". logging.sh" this is the calling
+#         script. It is the shell's name when commands come from -c or stdin.
+_find_caller_script() {
+    _LOGGER_CALLER_PATH=""
+    if [ -n "${BASH_VERSION:-}" ]; then
+        # BASH_SOURCE is only read in bash
+        # shellcheck disable=SC3028,SC3054
+        _LOGGER_CALLER_PATH="${BASH_SOURCE[2]:-}"
+    elif [ -n "${ZSH_VERSION:-}" ]; then
+        emulate -L zsh
+        # funcfiletrace is a zsh array
+        # shellcheck disable=SC2154,SC3054
+        _LOGGER_CALLER_PATH="${funcfiletrace[2]:-}"
+        _LOGGER_CALLER_PATH="${_LOGGER_CALLER_PATH%:*}"
+    else
+        _LOGGER_CALLER_PATH="$0"
+    fi
+}
+
+# Return 0 if a value is one or more digits (internal)
+_is_digits() {
+    case "$1" in
+        ''|*[!0123456789]*) return 1 ;;
+    esac
+    return 0
+}
+
+# Check that an init_logger option has a value after it (internal).
+# Usage: _require_option_value "$@"   (with the option as $1)
+# Without this, "shift 2" fails at the end of the arguments: bash then loops forever
+# and POSIX shells exit the calling script.
+_require_option_value() {
+    if [ "$#" -lt 2 ]; then
+        printf '%s\n' "Error: $1 requires a value" >&2
+        return 1
+    fi
+    return 0
 }
 
 # Function to initialize logger with custom settings
 init_logger() {
     # Get the calling script's name (can be overridden with -n|--name option)
-    local caller_script
-    if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
-        caller_script=$(_sanitize_script_name "$(basename "${BASH_SOURCE[1]}")")
-    else
-        caller_script="unknown"
+    _find_caller_script
+    local caller_path="$_LOGGER_CALLER_PATH"
+    local caller_script="unknown"
+    if [ -n "$caller_path" ]; then
+        caller_script=$(_sanitize_script_name "$(basename "$caller_path")")
     fi
 
     # Variable to hold custom script name if provided
@@ -1188,12 +1596,12 @@ init_logger() {
     # This allows CLI arguments to override config file values
     # Iterates "$@" directly rather than an indexed array, because zsh arrays
     # are 1-based and bash arrays are 0-based
-    local first_pass_arg
+    local first_pass_arg=""
     local expect_config_path="false"
     for first_pass_arg in "$@"; do
-        if [[ "$expect_config_path" == "true" ]]; then
-            if [[ -z "$first_pass_arg" ]]; then
-                echo "Error: --config requires a file path argument" >&2
+        if [ "$expect_config_path" = "true" ]; then
+            if [ -z "$first_pass_arg" ]; then
+                printf '%s\n' "Error: --config requires a file path argument" >&2
                 return 1
             fi
             if ! _parse_config_file "$first_pass_arg"; then
@@ -1206,16 +1614,16 @@ init_logger() {
             -c|--config) expect_config_path="true" ;;
         esac
     done
-    if [[ "$expect_config_path" == "true" ]]; then
-        echo "Error: --config requires a file path argument" >&2
+    if [ "$expect_config_path" = "true" ]; then
+        printf '%s\n' "Error: --config requires a file path argument" >&2
         return 1
     fi
 
     # Second pass: parse all command line arguments (overrides config file)
-    while [[ "$#" -gt 0 ]]; do
+    while [ "$#" -gt 0 ]; do
         case $1 in
             -c|--config)
-                # Already processed in first pass, skip
+                # Already processed in first pass, which also rejected a missing path
                 shift 2
                 ;;
             --color|--colour)
@@ -1227,13 +1635,15 @@ init_logger() {
                 shift
                 ;;
             -d|--level)
-                local level_value
+                _require_option_value "$@" || return 1
+                local level_value=""
                 level_value=$(_get_log_level_value "$2")
                 CURRENT_LOG_LEVEL=$level_value
                 # If both --verbose and --level are specified, --level takes precedence
                 shift 2
                 ;;
             -f|--format)
+                _require_option_value "$@" || return 1
                 LOG_FORMAT="$2"
                 shift 2
                 ;;
@@ -1241,15 +1651,17 @@ init_logger() {
                 if _find_and_validate_logger; then
                     USE_JOURNAL="true"
                 else
-                    echo "Warning: logger command not available or not in safe location, journal logging disabled" >&2
+                    printf '%s\n' "Warning: logger command not available or not in safe location, journal logging disabled" >&2
                 fi
                 shift
                 ;;
             -l|--log|--logfile|--log-file|--file)
+                _require_option_value "$@" || return 1
                 LOG_FILE="$2"
                 shift 2
                 ;;
             -n|--name|--script-name)
+                _require_option_value "$@" || return 1
                 # Sanitize to prevent shell metacharacter injection
                 custom_script_name=$(_sanitize_script_name "$2")
                 shift 2
@@ -1259,18 +1671,19 @@ init_logger() {
                 shift
                 ;;
             -t|--tag)
+                _require_option_value "$@" || return 1
                 JOURNAL_TAG="$2"
                 shift 2
                 ;;
             -F|--facility)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --facility requires a value" >&2
+                if [ -z "${2:-}" ]; then
+                    printf '%s\n' "Error: --facility requires a value" >&2
                     return 1
                 fi
                 if _validate_syslog_facility "$2"; then
                     SYSLOG_FACILITY="$(_to_lower "$2")"
                 else
-                    echo "  Hint: Keeping existing syslog facility '$SYSLOG_FACILITY'" >&2
+                    printf '%s\n' "  Hint: Keeping existing syslog facility '$SYSLOG_FACILITY'" >&2
                 fi
                 shift 2
                 ;;
@@ -1284,7 +1697,8 @@ init_logger() {
                 shift
                 ;;
             -e|--stderr-level)
-                local stderr_level_value
+                _require_option_value "$@" || return 1
+                local stderr_level_value=""
                 stderr_level_value=$(_get_log_level_value "$2")
                 LOG_STDERR_LEVEL=$stderr_level_value
                 shift 2
@@ -1298,26 +1712,26 @@ init_logger() {
                 shift
                 ;;
             --max-line-length)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --max-line-length requires a value" >&2
+                if [ -z "${2:-}" ]; then
+                    printf '%s\n' "Error: --max-line-length requires a value" >&2
                     return 1
                 fi
-                if [[ "$2" =~ ^[0-9]+$ ]]; then
+                if _is_digits "$2"; then
                     LOG_MAX_LINE_LENGTH="$2"
                 else
-                    echo "Warning: Invalid max-line-length value '$2', expected non-negative integer" >&2
+                    printf '%s\n' "Warning: Invalid max-line-length value '$2', expected non-negative integer" >&2
                 fi
                 shift 2
                 ;;
             --max-journal-length)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --max-journal-length requires a value" >&2
+                if [ -z "${2:-}" ]; then
+                    printf '%s\n' "Error: --max-journal-length requires a value" >&2
                     return 1
                 fi
-                if [[ "$2" =~ ^[0-9]+$ ]]; then
+                if _is_digits "$2"; then
                     LOG_MAX_JOURNAL_LENGTH="$2"
                 else
-                    echo "Warning: Invalid max-journal-length value '$2', expected non-negative integer" >&2
+                    printf '%s\n' "Warning: Invalid max-journal-length value '$2', expected non-negative integer" >&2
                 fi
                 shift 2
                 ;;
@@ -1326,7 +1740,7 @@ init_logger() {
                 shift
                 ;;
             *)
-                echo "Unknown parameter for logger: $1" >&2
+                printf '%s\n' "Unknown parameter for logger: $1" >&2
                 return 1
                 ;;
         esac
@@ -1334,10 +1748,10 @@ init_logger() {
 
     # Set a global variable for the script name to use in log messages
     # Priority: CLI option > config file > auto-detected caller script
-    if [[ -n "$custom_script_name" ]]; then
+    if [ -n "$custom_script_name" ]; then
         # CLI option takes highest priority
         SCRIPT_NAME="$custom_script_name"
-    elif [[ -z "${SCRIPT_NAME:-}" ]]; then
+    elif [ -z "${SCRIPT_NAME:-}" ]; then
         # Only use auto-detected name if not already set (e.g., by config file)
         SCRIPT_NAME="$caller_script"
     fi
@@ -1348,20 +1762,20 @@ init_logger() {
     SCRIPT_NAME=$(_sanitize_script_name "$SCRIPT_NAME")
 
     # Set default journal tag if not specified but journal logging is enabled
-    if [[ "$USE_JOURNAL" == "true" && -z "$JOURNAL_TAG" ]]; then
+    if [ "$USE_JOURNAL" = "true" ] && [ -z "$JOURNAL_TAG" ]; then
         JOURNAL_TAG="$SCRIPT_NAME"
     fi
 
     # Validate log file path if specified
-    if [[ -n "$LOG_FILE" ]]; then
+    if [ -n "$LOG_FILE" ]; then
         # Get directory of log file
         LOG_DIR=$(dirname "$LOG_FILE")
 
         # Try to create directory if it doesn't exist
-        if [[ ! -d "$LOG_DIR" ]]; then
+        if [ ! -d "$LOG_DIR" ]; then
             mkdir -p "$LOG_DIR" 2>/dev/null || {
-                echo "Error: Cannot create log directory" >&2
-                echo "  Hint: Check the --log argument (or LOG_FILE environment variable) and parent directory permissions" >&2
+                printf '%s\n' "Error: Cannot create log directory" >&2
+                printf '%s\n' "  Hint: Check the --log argument (or LOG_FILE environment variable) and parent directory permissions" >&2
                 return 1
             }
         fi
@@ -1374,47 +1788,46 @@ init_logger() {
 
         # Immediately validate file security to minimize TOCTOU window
         # Reject symbolic links to prevent log redirection attacks
-        if [[ -L "$LOG_FILE" ]]; then
-            echo "Error: Log file path is a symbolic link" >&2
-            echo "  Hint: Verify the --log argument doesn't point to a symbolic link for security" >&2
+        if [ -L "$LOG_FILE" ]; then
+            printf '%s\n' "Error: Log file path is a symbolic link" >&2
+            printf '%s\n' "  Hint: Verify the --log argument doesn't point to a symbolic link for security" >&2
             return 1
         fi
 
         # Check if file exists (may not have been created due to permissions)
         # This provides clearer error messaging than the regular file check alone
-        if [[ ! -e "$LOG_FILE" ]]; then
-            echo "Error: Cannot create log file (check directory permissions)" >&2
-            echo "  Hint: Verify the log directory exists and the process has write permissions" >&2
+        if [ ! -e "$LOG_FILE" ]; then
+            printf '%s\n' "Error: Cannot create log file (check directory permissions)" >&2
+            printf '%s\n' "  Hint: Verify the log directory exists and the process has write permissions" >&2
             return 1
         fi
 
         # Verify it's a regular file, not a device or other special file
-        if [[ ! -f "$LOG_FILE" ]]; then
-            echo "Error: Log file exists but is not a regular file (may be a directory or device)" >&2
-            echo "  Hint: Check the --log argument (or LOG_FILE environment variable) and verify it points to a regular file" >&2
+        if [ ! -f "$LOG_FILE" ]; then
+            printf '%s\n' "Error: Log file exists but is not a regular file (may be a directory or device)" >&2
+            printf '%s\n' "  Hint: Check the --log argument (or LOG_FILE environment variable) and verify it points to a regular file" >&2
             return 1
         fi
 
         # Verify file is writable
-        if [[ ! -w "$LOG_FILE" ]]; then
-            echo "Error: Log file is not writable" >&2
-            echo "  Hint: Check file permissions and ensure the process has write access" >&2
+        if [ ! -w "$LOG_FILE" ]; then
+            printf '%s\n' "Error: Log file is not writable" >&2
+            printf '%s\n' "  Hint: Check file permissions and ensure the process has write access" >&2
             return 1
         fi
 
         # Write the initialization message using the same format
         # Can be suppressed with --no-init-message (or init_message=false in config)
-        if [[ "$LOG_INIT_MESSAGE" == "true" ]]; then
-            local init_message
-            init_message=$(_format_log_message "INIT" "Logger initialized by $SCRIPT_NAME")
-            echo "$init_message" >> "$LOG_FILE" 2>/dev/null || {
-                echo "Error: Failed to write initialization message to log file" >&2
-                echo "  Hint: Verify the file is writable and disk space is available" >&2
+        if [ "$LOG_INIT_MESSAGE" = "true" ]; then
+            _format_log_message_into "INIT" "Logger initialized by $SCRIPT_NAME"
+            { printf '%s\n' "$_LOGGER_TEXT" >> "$LOG_FILE"; } 2>/dev/null || {
+                printf '%s\n' "Error: Failed to write initialization message to log file" >&2
+                printf '%s\n' "  Hint: Verify the file is writable and disk space is available" >&2
                 return 1
             }
         fi
 
-        echo "Logger: Successfully initialized with log file enabled" >&2
+        printf '%s\n' "Logger: Successfully initialized with log file enabled" >&2
     fi
 
     # Log initialization success
@@ -1425,19 +1838,19 @@ init_logger() {
 # Function to change log level after initialization
 set_log_level() {
     local level="$1"
-    local old_level
+    local old_level=""
     old_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
     CURRENT_LOG_LEVEL=$(_get_log_level_value "$level")
-    local new_level
+    local new_level=""
     new_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
 
     # Create a special log entry that bypasses level checks
     local message="Log level changed from $old_level to $new_level"
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1446,8 +1859,8 @@ set_log_level() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1460,11 +1873,11 @@ set_timezone_utc() {
     USE_UTC="$use_utc"
 
     local message="Timezone setting changed from $old_setting to $USE_UTC"
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1473,8 +1886,8 @@ set_timezone_utc() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1487,11 +1900,11 @@ set_log_format() {
     LOG_FORMAT="$1"
 
     local message="Log format changed from \"$old_format\" to \"$LOG_FORMAT\""
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1500,8 +1913,8 @@ set_log_format() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1514,20 +1927,20 @@ set_journal_logging() {
     USE_JOURNAL="$1"
 
     # Check if logger is available when enabling journal logging
-    if [[ "$USE_JOURNAL" == "true" ]]; then
+    if [ "$USE_JOURNAL" = "true" ]; then
         if ! check_logger_available; then
-            echo "Error: logger command not found, cannot enable journal logging" >&2
+            printf '%s\n' "Error: logger command not found, cannot enable journal logging" >&2
             USE_JOURNAL="$old_setting"
             return 1
         fi
     fi
 
     local message="Journal logging changed from $old_setting to $USE_JOURNAL"
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1536,13 +1949,13 @@ set_journal_logging() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Log to journal if it was previously enabled or just being enabled
     # Only attempt journal write when logger path is set
-    if [[ "$old_setting" == "true" || "$USE_JOURNAL" == "true" ]]; then
+    if [ "$old_setting" = "true" ] || [ "$USE_JOURNAL" = "true" ]; then
         _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message" "true"
     fi
 }
@@ -1557,11 +1970,11 @@ set_journal_tag() {
     JOURNAL_TAG="$1"
 
     local message="Journal tag changed from \"$old_tag\" to \"$JOURNAL_TAG\""
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1570,8 +1983,8 @@ set_journal_tag() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Log to journal if enabled, using the old tag
@@ -1589,11 +2002,11 @@ set_syslog_facility() {
     SYSLOG_FACILITY="$(_to_lower "$1")"
 
     local message="Syslog facility changed from \"$old_facility\" to \"$SYSLOG_FACILITY\""
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1602,8 +2015,8 @@ set_syslog_facility() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1614,7 +2027,7 @@ set_syslog_facility() {
 set_color_mode() {
     local mode="$1"
     local old_setting="$USE_COLORS"
-    local new_value
+    local new_value=""
 
     case "$mode" in
         true|on|yes|1)
@@ -1627,8 +2040,8 @@ set_color_mode() {
             new_value="$mode"
             ;;
         *)
-            echo "Error: set_color_mode: unrecognised mode '$mode'" >&2
-            echo "  Valid modes: auto, always, never (or: true/false, on/off, yes/no, 1/0)" >&2
+            printf '%s\n' "Error: set_color_mode: unrecognised mode '$mode'" >&2
+            printf '%s\n' "  Valid modes: auto, always, never (or: true/false, on/off, yes/no, 1/0)" >&2
             return 1
             ;;
     esac
@@ -1636,11 +2049,11 @@ set_color_mode() {
     USE_COLORS="$new_value"
 
     local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1649,8 +2062,8 @@ set_color_mode() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Log to journal if enabled
@@ -1664,11 +2077,11 @@ set_script_name() {
     SCRIPT_NAME=$(_sanitize_script_name "$1")
 
     local message="Script name changed from \"$old_name\" to \"$SCRIPT_NAME\""
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         if _should_use_colors; then
             printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
         else
@@ -1677,8 +2090,8 @@ set_script_name() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1689,28 +2102,28 @@ set_script_name() {
 # WARNING: Disabling sanitization can allow log injection attacks. Only use if you have
 #          explicit control over all logged messages and your log parsing handles newlines safely.
 set_unsafe_allow_newlines() {
-    local new_value
+    local new_value=""
     new_value=$(_parse_bool_value "$1") || {
-        echo "Error: set_unsafe_allow_newlines: invalid value '$1'" >&2
-        echo "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        printf '%s\n' "Error: set_unsafe_allow_newlines: invalid value '$1'" >&2
+        printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
         return 1
     }
     local old_setting="$LOG_UNSAFE_ALLOW_NEWLINES"
     LOG_UNSAFE_ALLOW_NEWLINES="$new_value"
 
     local safety_notice=""
-    if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+    if [ "$LOG_UNSAFE_ALLOW_NEWLINES" = "true" ]; then
         safety_notice=" (WARNING: Log injection protection is disabled)"
     fi
 
     local message="Unsafe newline mode changed from $old_setting to $LOG_UNSAFE_ALLOW_NEWLINES$safety_notice"
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         # Use warning color if enabling unsafe mode
-        if [[ "$LOG_UNSAFE_ALLOW_NEWLINES" == "true" ]]; then
+        if [ "$LOG_UNSAFE_ALLOW_NEWLINES" = "true" ]; then
             if _should_use_colors; then
                 printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
             else
@@ -1726,8 +2139,8 @@ set_unsafe_allow_newlines() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1738,28 +2151,28 @@ set_unsafe_allow_newlines() {
 # WARNING: Disabling sanitization can allow terminal manipulation attacks. Only use if you have
 #          explicit control over all logged messages and trust their source.
 set_unsafe_allow_ansi_codes() {
-    local new_value
+    local new_value=""
     new_value=$(_parse_bool_value "$1") || {
-        echo "Error: set_unsafe_allow_ansi_codes: invalid value '$1'" >&2
-        echo "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        printf '%s\n' "Error: set_unsafe_allow_ansi_codes: invalid value '$1'" >&2
+        printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
         return 1
     }
     local old_setting="$LOG_UNSAFE_ALLOW_ANSI_CODES"
     LOG_UNSAFE_ALLOW_ANSI_CODES="$new_value"
 
     local safety_notice=""
-    if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
+    if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
         safety_notice=" (WARNING: ANSI code injection protection is disabled)"
     fi
 
     local message="Unsafe ANSI codes mode changed from $old_setting to $LOG_UNSAFE_ALLOW_ANSI_CODES$safety_notice"
-    local log_entry
+    local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Always print to console if enabled
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         # Use warning color if enabling unsafe mode
-        if [[ "$LOG_UNSAFE_ALLOW_ANSI_CODES" == "true" ]]; then
+        if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
             if _should_use_colors; then
                 printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
             else
@@ -1775,8 +2188,8 @@ set_unsafe_allow_ansi_codes() {
     fi
 
     # Always write to log file if set
-    if [[ -n "$LOG_FILE" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null
+    if [ -n "$LOG_FILE" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
     fi
 
     # Always log to journal if enabled
@@ -1789,24 +2202,24 @@ _log_to_console() {
     local level_name="$2"
     local level_value="$3"
 
-    local use_stderr=false
+    local use_stderr="false"
     if _should_use_stderr "$level_value"; then
-        use_stderr=true
+        use_stderr="true"
     fi
 
     local output="${log_entry}"
 
     if _should_use_colors; then
-        local log_color
-        log_color=$(_get_log_level_color "$level_name")
-        output="${log_color}${output}${COLOR_RESET}"
+        _get_log_level_color_into "$level_name"
+        output="${_LOGGER_COLOR}${output}${COLOR_RESET}"
     fi
 
-    if [[ "$use_stderr" == true ]]; then
+    if [ "$use_stderr" = "true" ]; then
         printf '%s\n' "${output}" >&2 # Log to stderr
     else
         printf '%s\n' "${output}"
     fi
+    return 0
 }
 
 # Function to log messages with different severity levels (internal)
@@ -1822,34 +2235,37 @@ _log_message() {
     # Skip logging if message level is more verbose than current log level
     # With syslog-style levels, HIGHER values are LESS severe (more verbose)
     # force_show=true bypasses this filter (used by log_init to always show)
-    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" && "$force_show" != "true" ]]; then
-        return
+    if [ "$force_show" != "true" ] && [ "$level_value" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
+        return 0
     fi
 
-    # Sanitize message to prevent log injection via control characters
-    local sanitized_message
-    sanitized_message=$(_sanitize_log_message "$message")
+    # The helpers below set _LOGGER_TEXT instead of printing, so no subshell is started
+    # for each step of every message
 
-    local console_message
-    console_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_LINE_LENGTH")
+    # Sanitize message to prevent log injection via control characters
+    _sanitize_log_message_into "$message"
+    local sanitized_message="$_LOGGER_TEXT"
+
+    _truncate_log_message_into "$sanitized_message" "$LOG_MAX_LINE_LENGTH"
+    local console_message="$_LOGGER_TEXT"
 
     # Format the log entry
-    local log_entry
-    log_entry=$(_format_log_message "$level_name" "$console_message")
+    _format_log_message_into "$level_name" "$console_message"
+    local log_entry="$_LOGGER_TEXT"
 
     # If CONSOLE_LOG is true, print to console
-    if [[ "$CONSOLE_LOG" == "true" ]]; then
+    if [ "$CONSOLE_LOG" = "true" ]; then
         _log_to_console "$log_entry" "$level_name" "$level_value"
     fi
 
     # If LOG_FILE is set and not empty, append to the log file (without colors)
     # Skip writing to the file if skip_file is true
-    if [[ -n "$LOG_FILE" && "$skip_file" != "true" ]]; then
-        printf '%s\n' "${log_entry}" >> "$LOG_FILE" 2>/dev/null || {
+    if [ -n "$LOG_FILE" ] && [ "$skip_file" != "true" ]; then
+        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null || {
             # Only print the error once to avoid spam
-            if [[ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]]; then
-                echo "ERROR: Failed to write to log file" >&2
-                echo "  Hint: Check file permissions, disk space, or if the log file was deleted" >&2
+            if [ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]; then
+                printf '%s\n' "ERROR: Failed to write to log file" >&2
+                printf '%s\n' "  Hint: Check file permissions, disk space, or if the log file was deleted" >&2
                 LOGGER_FILE_ERROR_REPORTED="yes"
             fi
 
@@ -1860,26 +2276,29 @@ _log_message() {
 
     # If journal logging is enabled or force_journal is true, log to the system journal.
     # skip_journal takes precedence — it overrides force_journal when true.
-    if [[ ( "$USE_JOURNAL" == "true" || "$force_journal" == "true" ) && "$skip_journal" != "true" ]]; then
+    if [ "$skip_journal" != "true" ] \
+        && { [ "$USE_JOURNAL" = "true" ] || [ "$force_journal" = "true" ]; }; then
         # Map our log level to syslog priority
-        local syslog_priority
-        syslog_priority=$(_get_syslog_priority "$level_value")
+        _get_syslog_priority_into "$level_value"
+        local syslog_priority="$_LOGGER_PRIORITY"
 
         # Use the logger command to send to syslog/journal
         # Strip any ANSI color codes from the message
-        local journal_message
-        journal_message=$(_truncate_log_message "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH")
-        local plain_message
-        plain_message=$(_strip_ansi_codes "$journal_message")
+        _truncate_log_message_into "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH"
+        _strip_ansi_codes_into "$_LOGGER_TEXT"
+        local plain_message="$_LOGGER_TEXT"
 
         # Pass force_when_disabled=true when force_journal=true and USE_JOURNAL=false so
         # _write_to_journal does not short-circuit the write.
         local write_forced="false"
-        if [[ "$force_journal" == "true" && "$USE_JOURNAL" != "true" ]]; then
+        if [ "$force_journal" = "true" ] && [ "$USE_JOURNAL" != "true" ]; then
             write_forced="true"
         fi
+        # The journal write status is the function's status, as before
         _write_to_journal "$syslog_priority" "${JOURNAL_TAG:-$SCRIPT_NAME}" "$plain_message" "$write_forced"
+        return
     fi
+    return 0
 }
 
 # Helper functions for different log levels
@@ -1943,18 +2362,18 @@ log_sensitive() {
 #   0 - Success
 #   1 - Invalid level or logger not available
 log_to_journal() {
-    if [[ $# -lt 2 ]]; then
-        echo "Usage: log_to_journal LEVEL MESSAGE" >&2
+    if [ $# -lt 2 ]; then
+        printf '%s\n' "Usage: log_to_journal LEVEL MESSAGE" >&2
         return 1
     fi
 
-    local level_name
+    local level_name=""
     level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
     shift
     local message="$*"
 
     # Validate and normalise the level name to the canonical form used by _log_message
-    local canonical_level
+    local canonical_level=""
     case "${level_name}" in
         DEBUG)                  canonical_level="DEBUG" ;;
         INFO)                   canonical_level="INFO" ;;
@@ -1969,18 +2388,18 @@ log_to_journal() {
             canonical_level=$(_get_log_level_name "${level_name}")
             ;;
         *)
-            echo "Error: log_to_journal: unrecognised level '$level_name'" >&2
-            echo "  Valid levels: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
+            printf '%s\n' "Error: log_to_journal: unrecognised level '$level_name'" >&2
+            printf '%s\n' "  Valid levels: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
             return 1
             ;;
     esac
 
-    local level_value
+    local level_value=""
     level_value=$(_get_log_level_value "$canonical_level")
 
     # Short-circuit: silently suppress messages that fall below the current log level,
     # matching the behaviour of all other log functions — no warning, no discovery.
-    if [[ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]]; then
+    if [ "$level_value" -gt "$CURRENT_LOG_LEVEL" ]; then
         return 0
     fi
 
@@ -1988,16 +2407,16 @@ log_to_journal() {
     # discovery locked the path as readonly). If LOGGER_PATH is empty — regardless of
     # whether _LOGGER_DISCOVERY_DONE is true — retry discovery so that logger becoming
     # available mid-session (installed, PATH corrected, etc.) is handled correctly.
-    if [[ "$_LOGGER_DISCOVERY_DONE" != "true" || -z "$LOGGER_PATH" ]]; then
+    if [ "$_LOGGER_DISCOVERY_DONE" != "true" ] || [ -z "$LOGGER_PATH" ]; then
         check_logger_available
     fi
 
     # Abort before any writes if logger is still unavailable after attempted discovery.
-    if [[ -z "$LOGGER_PATH" || ! -x "$LOGGER_PATH" ]]; then
+    if [ -z "$LOGGER_PATH" ] || [ ! -x "$LOGGER_PATH" ]; then
         # Mirror _write_to_journal: only warn once to avoid noisy stderr spam when
         # logger is missing or untrusted. Subsequent calls still fail but stay quiet.
-        if [[ -z "$LOGGER_JOURNAL_ERROR_REPORTED" ]]; then
-            echo "WARNING: log_to_journal called but logger command is not available" >&2
+        if [ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]; then
+            printf '%s\n' "WARNING: log_to_journal called but logger command is not available" >&2
             LOGGER_JOURNAL_ERROR_REPORTED="yes"
         fi
         return 1
@@ -2008,8 +2427,11 @@ log_to_journal() {
 
 # Only execute initialization if this script is being run directly
 # If it's being sourced, the sourcing script should call init_logger
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo "This script is designed to be sourced by other scripts, not executed directly."
-    echo "Usage: source logging.sh"
+# POSIX sh has no reliable way to tell, so this check only runs in bash.
+# BASH_SOURCE is only read in bash
+# shellcheck disable=SC3028,SC3054
+if [ -n "${BASH_VERSION:-}" ] && [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    printf '%s\n' "This script is designed to be sourced by other scripts, not executed directly."
+    printf '%s\n' "Usage: source logging.sh"
     exit 1
 fi

@@ -34,20 +34,6 @@ COMPAT_SCENARIO_DIR="$COMPAT_DIR/scenarios"
 COMPAT_KNOWN_FAILURES="$COMPAT_DIR/known_failures.txt"
 COMPAT_TIMEOUT_SECONDS=60
 
-# Print the shell commands from TEST_SHELLS, one per line.
-# Commas separate commands; without commas, each word is a command.
-compat_shell_list() {
-    local shell_list="${TEST_SHELLS:-bash}"
-    case "$shell_list" in
-        *,*)
-            printf '%s\n' "$shell_list" | tr ',' '\n'
-            ;;
-        *)
-            printf '%s\n' "$shell_list" | tr ' ' '\n'
-            ;;
-    esac | sed -e 's/^ *//' -e 's/ *$//' -e '/^$/d'
-}
-
 # Print the locale a scenario asks for, or C.
 compat_scenario_locale() {
     local scenario_file="$1"
@@ -70,23 +56,6 @@ compat_locale_available() {
     fi
     locale -a 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -d '-' \
         | grep -qx "$normalized_wanted"
-}
-
-# Run a command, stopping it after a number of seconds.
-# macOS has no timeout command, so this uses a background watchdog.
-# The watchdog's output goes to /dev/null so it never holds the runner's pipes open.
-compat_run_with_timeout() {
-    local seconds="$1"
-    shift
-    "$@" &
-    local command_pid=$!
-    ( sleep "$seconds" && kill -TERM "$command_pid" ) >/dev/null 2>&1 &
-    local watchdog_pid=$!
-    wait "$command_pid"
-    local command_status=$?
-    kill "$watchdog_pid" >/dev/null 2>&1
-    wait "$watchdog_pid" 2>/dev/null
-    return "$command_status"
 }
 
 # Replace timestamps with a fixed marker.
@@ -114,7 +83,7 @@ compat_run_scenario() {
     # shellcheck disable=SC2086  # word splitting of shell_command is intended
     (
         cd "$work_dir" || exit 1
-        compat_run_with_timeout "$COMPAT_TIMEOUT_SECONDS" \
+        run_with_timeout "$COMPAT_TIMEOUT_SECONDS" \
             env -i PATH="$PATH" HOME="$work_dir" LC_ALL="$scenario_locale" \
                 LOGGER_ROOT="$PROJECT_ROOT" SCENARIO_DIR="$work_dir" \
                 $shell_command "$scenario_file" \
@@ -251,7 +220,7 @@ test_compat_known_failures_are_valid() {
 # Run all tests
 test_compat_known_failures_are_valid
 
-compat_shells=$(compat_shell_list)
+compat_shells=$(test_shell_list)
 for compat_scenario_file in "$COMPAT_SCENARIO_DIR"/*.sh; do
     while IFS= read -r compat_shell_command; do
         test_compat_scenario_in_shell "$compat_shell_command" "$compat_scenario_file"

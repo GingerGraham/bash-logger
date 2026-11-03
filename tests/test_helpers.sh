@@ -469,6 +469,48 @@ require_shell() {
     return 1
 }
 
+# Print the shell commands from TEST_SHELLS, one per line (Issue #143).
+# Commas separate commands, so a command can include flags:
+#   TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh"
+# Without commas, each word is a command. Default: bash
+test_shell_list() {
+    local shell_list="${TEST_SHELLS:-bash}"
+    case "$shell_list" in
+        *,*)
+            printf '%s\n' "$shell_list" | tr ',' '\n'
+            ;;
+        *)
+            printf '%s\n' "$shell_list" | tr ' ' '\n'
+            ;;
+    esac | sed -e 's/^ *//' -e 's/ *$//' -e '/^$/d'
+}
+
+# Return 0 if a shell command runs logging.sh with character-based string
+# operations (bash and zsh); dash and busybox ash work on bytes
+shell_counts_characters() {
+    case "${1%% *}" in
+        bash|zsh) return 0 ;;
+    esac
+    return 1
+}
+
+# Run a command, stopping it after a number of seconds.
+# macOS has no timeout command, so this uses a background watchdog.
+# The watchdog's output goes to /dev/null so it never holds the runner's pipes open.
+run_with_timeout() {
+    local seconds="$1"
+    shift
+    "$@" &
+    local command_pid=$!
+    ( sleep "$seconds" && kill -TERM "$command_pid" ) >/dev/null 2>&1 &
+    local watchdog_pid=$!
+    wait "$command_pid"
+    local command_status=$?
+    kill "$watchdog_pid" >/dev/null 2>&1
+    wait "$watchdog_pid" 2>/dev/null
+    return "$command_status"
+}
+
 # Helper to run script and capture its output
 run_script() {
     local script="$1"

@@ -19,19 +19,6 @@ EQUIVALENCE_DIR="$PROJECT_ROOT/tests/compat"
 EQUIVALENCE_GOLDEN_DIR="$EQUIVALENCE_DIR/golden"
 EQUIVALENCE_DRIVER="$EQUIVALENCE_DIR/validator_driver.sh"
 
-# Print the shell commands from TEST_SHELLS, one per line (same rules as test_shell_compat.sh)
-equivalence_shell_list() {
-    local shell_list="${TEST_SHELLS:-bash}"
-    case "$shell_list" in
-        *,*)
-            printf '%s\n' "$shell_list" | tr ',' '\n'
-            ;;
-        *)
-            printf '%s\n' "$shell_list" | tr ' ' '\n'
-            ;;
-    esac | sed -e 's/^ *//' -e 's/ *$//' -e '/^$/d'
-}
-
 # Print the name of an installed UTF-8 locale, or nothing.
 # The UTF-8 golden file records glibc's character classes, so it is only checked on Linux.
 equivalence_utf8_locale() {
@@ -148,4 +135,4 @@ while IFS= read -r equivalence_shell; do
         validators.tsv validator_corpus.txt C
     test_validator_equivalence_in_shell "$equivalence_shell" \
         validators_utf8.tsv validator_corpus_utf8.txt "$equivalence_locale"
-done <<< "$(equivalence_shell_list)"
+done <<< "$(test_shell_list)"
