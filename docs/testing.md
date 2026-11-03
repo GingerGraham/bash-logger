@@ -428,8 +428,10 @@ Current runnable suite files include:
 * `test_runtime_config.sh`
 * `test_script_name_sanitization.sh`
 * `test_sensitive_data.sh`
+* `test_source_guard.sh`
 * `test_toctou_protection.sh`
 * `test_unsafe_newlines.sh`
+* `test_zsh_compat.sh`
 
 ### Test Coverage
 
@@ -580,8 +582,50 @@ capture_streams STDOUT_VAR STDERR_VAR command args
 # Run command with logger sourced
 run_with_logger "init_logger && log_info 'test'"
 
+# Run command with logger sourced under a named shell (may include flags)
+run_with_logger_in_shell "bash --posix" "init_logger && log_info 'test'"
+run_with_logger_in_shell "zsh" "init_logger && log_info 'test'"
+
+# Skip the test if a shell is not installed (fail instead if it is listed
+# in TEST_REQUIRE_SHELLS)
+require_shell zsh || return 0
+
 # Skip a test with reason
 skip_test "logger command not available"
+```
+
+#### Cross-Shell Tests
+
+Suites run in bash. To check behaviour under another shell, run the library in
+a child shell with `run_with_logger_in_shell`, and guard the test with
+`require_shell`:
+
+```bash
+test_example_cross_shell() {
+    start_test "Message is logged in bash, bash --posix and zsh"
+
+    require_shell zsh || return 0
+
+    local shell_command
+    for shell_command in "bash" "bash --posix" "zsh"; do
+        output=$(run_with_logger_in_shell "$shell_command" "init_logger --no-color; log_info hi" 2>&1)
+        assert_contains "$output" "hi" "shell: $shell_command" || return
+    done
+
+    pass_test
+}
+```
+
+Use `|| return 0` after `require_shell`: the skip or failure is already
+recorded, and a non-zero status from the last test in a suite is reported by
+the runner as a suite crash.
+
+When zsh is not installed, these tests skip. Set `TEST_REQUIRE_SHELLS` to a
+space-separated list of shells that must be present, so the tests fail instead
+of silently skipping. CI sets `TEST_REQUIRE_SHELLS=zsh`:
+
+```bash
+TEST_REQUIRE_SHELLS=zsh ./tests/run_tests.sh
 ```
 
 **Example**:
@@ -801,7 +845,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Install zsh
+        run: sudo apt-get update && sudo apt-get install -y zsh
       - name: Run tests
+        env:
+          TEST_REQUIRE_SHELLS: zsh
         run: |
           cd tests
           ./run_tests.sh
@@ -812,6 +860,7 @@ jobs:
 * Bash 4.0 or later
 * Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
 * Optional: `logger` command for journal logging tests
+* Optional: `zsh` for cross-shell tests (required when `TEST_REQUIRE_SHELLS=zsh`)
 * Optional: `bc` for accurate test timing in JUnit XML output (durations show as 0 if unavailable)
 
 **CI Characteristics**:

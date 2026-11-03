@@ -487,13 +487,22 @@ _validate_journal_tag() {
     return 0
 }
 
+# Print the argument in lowercase (internal).
+# Portable replacement for ${var,,}, which bash 3.2 and zsh do not support.
+# Only used during initialisation, config parsing and set_* functions, so the
+# extra process is not on the per-message path.
+_to_lower() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
 # Validate syslog facility value (internal)
 # Returns 0 if valid, 1 otherwise
 _validate_syslog_facility() {
     local facility="$1"
 
     # Normalize facility to lowercase for case-insensitive validation
-    local facility_normalized="${facility,,}"
+    local facility_normalized
+    facility_normalized="$(_to_lower "$facility")"
 
     case "$facility_normalized" in
         kern|user|mail|daemon|auth|syslog|lpr|news|uucp|cron|authpriv|ftp|local0|local1|local2|local3|local4|local5|local6|local7)
@@ -511,7 +520,8 @@ _validate_syslog_facility() {
 # Accepts: true/yes/on/1 -> prints "true"; false/no/off/0 -> prints "false"
 # Returns 0 on success, 1 for unrecognised input (prints nothing)
 _parse_bool_value() {
-    local input="${1,,}"
+    local input
+    input="$(_to_lower "$1")"
     case "$input" in
         true|yes|on|1)   echo "true";  return 0 ;;
         false|no|off|0)  echo "false"; return 0 ;;
@@ -539,6 +549,18 @@ _parse_config_file() {
         return 1
     fi
 
+    # zsh: fill BASH_REMATCH (bash_rematch) with 0-based indexes (ksh_arrays),
+    # scoped to this function only (local_options)
+    if [[ -n "${ZSH_VERSION:-}" ]]; then
+        setopt local_options bash_rematch ksh_arrays
+    fi
+    # Patterns are held in variables: zsh does not match inline regexes that
+    # contain escaped brackets or quotes
+    local section_pattern='^\[([^]]+)\]$'
+    local key_value_pattern='^([^=]+)=(.*)$'
+    local double_quoted_pattern='^"(.*)"$'
+    local single_quoted_pattern="^'(.*)'$"
+
     local line_num=0
     local current_section=""
 
@@ -558,13 +580,13 @@ _parse_config_file() {
         [[ -z "$line" || "$line" =~ ^[#\;] ]] && continue
 
         # Handle section headers [section]
-        if [[ "$line" =~ ^\[([^]]+)\]$ ]]; then
+        if [[ "$line" =~ $section_pattern ]]; then
             current_section="${BASH_REMATCH[1]}"
             continue
         fi
 
         # Parse key = value pairs
-        if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+        if [[ "$line" =~ $key_value_pattern ]]; then
             local key="${BASH_REMATCH[1]}"
             local value="${BASH_REMATCH[2]}"
 
@@ -575,7 +597,7 @@ _parse_config_file() {
             value="${value%"${value##*[![:space:]]}"}"
 
             # Remove surrounding quotes if present
-            if [[ "$value" =~ ^\"(.*)\"$ ]] || [[ "$value" =~ ^\'(.*)\'$ ]]; then
+            if [[ "$value" =~ $double_quoted_pattern ]] || [[ "$value" =~ $single_quoted_pattern ]]; then
                 value="${BASH_REMATCH[1]}"
             fi
 
@@ -586,7 +608,7 @@ _parse_config_file() {
             fi
 
             # Apply configuration based on key (case-insensitive)
-            case "${key,,}" in
+            case "$(_to_lower "$key")" in
                 level|log_level)
                     CURRENT_LOG_LEVEL=$(_get_log_level_value "$value" "$line_num")
                     ;;
@@ -607,7 +629,7 @@ _parse_config_file() {
                     fi
                     ;;
                 journal|use_journal)
-                    case "${value,,}" in
+                    case "$(_to_lower "$value")" in
                         true|yes|1|on)
                             if check_logger_available; then
                                 USE_JOURNAL="true"
@@ -640,13 +662,13 @@ _parse_config_file() {
                     ;;
                 facility|syslog_facility)
                     if _validate_syslog_facility "$value"; then
-                        SYSLOG_FACILITY="${value,,}"
+                        SYSLOG_FACILITY="$(_to_lower "$value")"
                     else
                         echo "  Hint: Skipping invalid syslog facility at line $line_num" >&2
                     fi
                     ;;
                 utc|use_utc)
-                    case "${value,,}" in
+                    case "$(_to_lower "$value")" in
                         true|yes|1|on)
                             USE_UTC="true"
                             ;;
@@ -659,7 +681,7 @@ _parse_config_file() {
                     esac
                     ;;
                 color|colour|colors|colours|use_colors)
-                    case "${value,,}" in
+                    case "$(_to_lower "$value")" in
                         auto)
                             USE_COLORS="auto"
                             ;;
@@ -678,10 +700,10 @@ _parse_config_file() {
                     LOG_STDERR_LEVEL=$(_get_log_level_value "$value" "$line_num")
                     ;;
                 quiet|console_log)
-                    case "${key,,}" in
+                    case "$(_to_lower "$key")" in
                         quiet)
                             # quiet=true means CONSOLE_LOG=false
-                            case "${value,,}" in
+                            case "$(_to_lower "$value")" in
                                 true|yes|1|on)
                                     CONSOLE_LOG="false"
                                     ;;
@@ -694,7 +716,7 @@ _parse_config_file() {
                             esac
                             ;;
                         console_log)
-                            case "${value,,}" in
+                            case "$(_to_lower "$value")" in
                                 true|yes|1|on)
                                     CONSOLE_LOG="true"
                                     ;;
@@ -713,7 +735,7 @@ _parse_config_file() {
                     SCRIPT_NAME=$(_sanitize_script_name "$value")
                     ;;
                 verbose)
-                    case "${value,,}" in
+                    case "$(_to_lower "$value")" in
                         true|yes|1|on)
                             VERBOSE="true"
                             CURRENT_LOG_LEVEL=$LOG_LEVEL_DEBUG
@@ -753,7 +775,7 @@ _parse_config_file() {
                     fi
                     ;;
                 init_message|log_init_message)
-                    case "${value,,}" in
+                    case "$(_to_lower "$value")" in
                         true|yes|1|on)
                             LOG_INIT_MESSAGE="true"
                             ;;
@@ -1164,24 +1186,30 @@ init_logger() {
 
     # First pass: look for config file option and process it first
     # This allows CLI arguments to override config file values
-    local args=("$@")
-    local i=0
-    while [[ $i -lt ${#args[@]} ]]; do
-        case "${args[$i]}" in
-            -c|--config)
-                if [[ $((i+1)) -ge ${#args[@]} ]] || [[ -z "${args[$((i+1))]}" ]]; then
-                    echo "Error: --config requires a file path argument" >&2
-                    return 1
-                fi
-                local config_file="${args[$((i+1))]}"
-                if ! _parse_config_file "$config_file"; then
-                    return 1
-                fi
-                break
-                ;;
+    # Iterates "$@" directly rather than an indexed array, because zsh arrays
+    # are 1-based and bash arrays are 0-based
+    local first_pass_arg
+    local expect_config_path="false"
+    for first_pass_arg in "$@"; do
+        if [[ "$expect_config_path" == "true" ]]; then
+            if [[ -z "$first_pass_arg" ]]; then
+                echo "Error: --config requires a file path argument" >&2
+                return 1
+            fi
+            if ! _parse_config_file "$first_pass_arg"; then
+                return 1
+            fi
+            expect_config_path="false"
+            break
+        fi
+        case "$first_pass_arg" in
+            -c|--config) expect_config_path="true" ;;
         esac
-        i=$((i + 1))
     done
+    if [[ "$expect_config_path" == "true" ]]; then
+        echo "Error: --config requires a file path argument" >&2
+        return 1
+    fi
 
     # Second pass: parse all command line arguments (overrides config file)
     while [[ "$#" -gt 0 ]]; do
@@ -1240,7 +1268,7 @@ init_logger() {
                     return 1
                 fi
                 if _validate_syslog_facility "$2"; then
-                    SYSLOG_FACILITY="${2,,}"
+                    SYSLOG_FACILITY="$(_to_lower "$2")"
                 else
                     echo "  Hint: Keeping existing syslog facility '$SYSLOG_FACILITY'" >&2
                 fi
@@ -1558,7 +1586,7 @@ set_syslog_facility() {
         return 1
     fi
 
-    SYSLOG_FACILITY="${1,,}"
+    SYSLOG_FACILITY="$(_to_lower "$1")"
 
     local message="Syslog facility changed from \"$old_facility\" to \"$SYSLOG_FACILITY\""
     local log_entry
