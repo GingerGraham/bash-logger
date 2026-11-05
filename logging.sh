@@ -598,7 +598,7 @@ _should_use_colors() {
             ;;
         "auto"|*)
             _detect_color_support
-            return $?
+            return "$?"
             ;;
     esac
 }
@@ -1249,7 +1249,8 @@ _parse_config_file() {
 # Convert log level name to numeric value (internal)
 _get_log_level_value() {
     local level_name=""
-    level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+    # LC_ALL=C keeps the mapping ASCII-only: in a Turkish locale 'i' does not map to 'I'
+    level_name="$(printf '%s' "$1" | LC_ALL=C tr '[:lower:]' '[:upper:]')"
     local line_num="${2:-}"
     case "${level_name}" in
         "DEBUG")
@@ -2514,7 +2515,7 @@ log_to_journal() {
     fi
 
     local level_name=""
-    level_name="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+    level_name="$(printf '%s' "$1" | LC_ALL=C tr '[:lower:]' '[:upper:]')"
     shift
     local message="$*"
 

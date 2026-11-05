@@ -25,6 +25,8 @@
 # - log_sensitive text does not stay in shell variables
 # - A logger symlink to busybox is accepted only in a safe directory
 # - A second --config with no value returns an error
+# - --max-line-length and --max-journal-length, a config file BOM, truncating 4-byte
+#   characters, a failing logger, and level names in a Turkish locale
 
 # Run a snippet with logging.sh sourced, under a shell command, with a fixed locale.
 # The snippet runs from a script file (not -c), so the detected script name is the
@@ -569,6 +571,116 @@ printf 'status=%s\n' \"\$?\"
     pass_test
 }
 
+test_posix_max_length_options() {
+    local shell_command="$1"
+    start_test "[$shell_command] --max-line-length and --max-journal-length set their variables"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+init_logger --quiet --max-line-length 50 --max-journal-length 60
+printf "%s|%s\n" "$LOG_MAX_LINE_LENGTH" "$LOG_MAX_JOURNAL_LENGTH"
+' 2>&1)
+    assert_equals "50|60" "$output" || return
+
+    pass_test
+}
+
+test_posix_config_bom() {
+    local shell_command="$1"
+    start_test "[$shell_command] a UTF-8 BOM at the start of a config file is ignored"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    printf '\357\273\277level=debug\n' > "$TEST_DIR/bom.ini"
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "
+init_logger --quiet -c '$TEST_DIR/bom.ini'
+printf '%s\n' \"\$CURRENT_LOG_LEVEL\"
+" 2>&1)
+    assert_equals "7" "$output" || return
+
+    pass_test
+}
+
+test_posix_truncation_four_byte_character() {
+    local shell_command="$1"
+    start_test "[$shell_command] truncation never cuts a 4-byte character in half"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local locale_name
+    locale_name=$(utf8_locale_name)
+    if [[ -z "$locale_name" ]]; then
+        skip_test "no UTF-8 locale installed"
+        return 0
+    fi
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" "$locale_name" '
+init_logger --no-color --format "%m"
+for limit in 18 19 20 21 22 23 24 25; do
+    LOG_MAX_LINE_LENGTH=$limit
+    log_info "$(printf "\360\237\231\202\360\237\231\202\360\237\231\202\360\237\231\202")$(printf "\360\237\231\202\360\237\231\202\360\237\231\202\360\237\231\202")"
+done
+' 2>&1)
+    # A cut character makes the output invalid UTF-8, which iconv rejects
+    if ! printf '%s\n' "$output" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1; then
+        fail_test "Output is not valid UTF-8"
+        return
+    fi
+
+    pass_test
+}
+
+test_posix_journal_failure_reported_once() {
+    local shell_command="$1"
+    start_test "[$shell_command] a failing logger is reported once and disables journal logging"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # LOGGER_PATH points at a command that always fails
+    printf '#!/bin/sh\nexit 1\n' > "$TEST_DIR/failing_logger"
+    chmod +x "$TEST_DIR/failing_logger"
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "
+init_logger --no-color --format '%m'
+LOGGER_PATH='$TEST_DIR/failing_logger'
+USE_JOURNAL=true
+log_info one
+printf 'status=%s use=%s\n' \"\$?\" \"\$USE_JOURNAL\"
+USE_JOURNAL=true
+log_info two
+" 2>&1)
+    assert_contains "$output" "status=1 use=false" || return
+    assert_equals "1" "$(printf '%s\n' "$output" | grep -c 'logger command failed')" \
+        "The failure should be reported once" || return
+
+    pass_test
+}
+
+test_posix_levels_in_turkish_locale() {
+    local shell_command="$1"
+    start_test "[$shell_command] level names work in a Turkish locale"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    if ! locale -a 2>/dev/null | grep -qiE '^tr_TR\.utf-?8$'; then
+        skip_test "tr_TR.UTF-8 locale not installed"
+        return 0
+    fi
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" tr_TR.UTF-8 '
+init_logger --quiet --level critical
+printf "%s\n" "$CURRENT_LOG_LEVEL"
+' 2>&1)
+    assert_equals "2" "$output" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -616,4 +728,9 @@ while IFS= read -r posix_shell; do
     test_posix_busybox_logger_symlink "$posix_shell"
     test_posix_second_config_without_value "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
+    test_posix_max_length_options "$posix_shell"
+    test_posix_config_bom "$posix_shell"
+    test_posix_truncation_four_byte_character "$posix_shell"
+    test_posix_journal_failure_reported_once "$posix_shell"
+    test_posix_levels_in_turkish_locale "$posix_shell"
 done <<< "$(test_shell_list)"
