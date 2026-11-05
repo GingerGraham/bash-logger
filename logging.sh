@@ -8,7 +8,7 @@
 #
 # Supported shells: bash 3.2+ (including --posix), zsh, dash and busybox ash.
 # The code is POSIX sh plus "local" (Issue #143). Shell-specific code is used only
-# behind BASH_VERSION/ZSH_VERSION checks; see docs/shell-compatibility.md.
+# behind a check of the running shell; see docs/shell-compatibility.md.
 #
 # shellcheck disable=SC2034
 # Note: SC2034 (unused variable) is disabled because this script is designed to be
@@ -71,6 +71,16 @@ _is_readonly() {
         | grep -E "^(declare|typeset|readonly|export)( -[a-zA-Z]+)* ${1}=" >/dev/null
 }
 
+# The shell running this file: "bash", "zsh", or empty for any other shell (internal).
+# Set on every source. A version variable alone is not enough, because it can be inherited
+# from the environment, so the check also looks for a builtin only that shell has.
+_LOGGER_SHELL_FAMILY=""
+if [ -n "${BASH_VERSION:-}" ] && command -v shopt >/dev/null 2>&1; then
+    _LOGGER_SHELL_FAMILY="bash"
+elif [ -n "${ZSH_VERSION:-}" ] && command -v emulate >/dev/null 2>&1; then
+    _LOGGER_SHELL_FAMILY="zsh"
+fi
+
 # Control characters used by the sanitizers, the config parser and the color constants.
 # POSIX sh has no $'...' quoting, so they are produced with printf once, at source time.
 # They are readonly so a later assignment cannot weaken message sanitization.
@@ -119,7 +129,7 @@ _LOGGER_UTF8_PROBE=""
 # busybox ash counts characters when built with Unicode support, but its printf
 # precision counts bytes, so it is treated as a byte shell for truncation.
 _shell_counts_characters() {
-    [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ]
+    [ -n "$_LOGGER_SHELL_FAMILY" ]
 }
 
 # Return 0 if the locale environment selects UTF-8 (internal).
@@ -1605,11 +1615,11 @@ _format_log_message_into() {
 #         script. It is the shell's name when commands come from -c or stdin.
 _find_caller_script() {
     _LOGGER_CALLER_PATH=""
-    if [ -n "${BASH_VERSION:-}" ]; then
+    if [ "$_LOGGER_SHELL_FAMILY" = "bash" ]; then
         # BASH_SOURCE is only read in bash
         # shellcheck disable=SC3028,SC3054
         _LOGGER_CALLER_PATH="${BASH_SOURCE[2]:-}"
-    elif [ -n "${ZSH_VERSION:-}" ]; then
+    elif [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
         emulate -L zsh
         # funcfiletrace is a zsh array
         # shellcheck disable=SC2154,SC3054
@@ -2491,7 +2501,7 @@ log_to_journal() {
 # POSIX sh has no reliable way to tell, so this check only runs in bash.
 # BASH_SOURCE is only read in bash
 # shellcheck disable=SC3028,SC3054
-if [ -n "${BASH_VERSION:-}" ] && [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+if [ "$_LOGGER_SHELL_FAMILY" = "bash" ] && [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     printf '%s\n' "This script is designed to be sourced by other scripts, not executed directly."
     printf '%s\n' "Usage: source logging.sh"
     exit 1

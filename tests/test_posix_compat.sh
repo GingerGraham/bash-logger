@@ -426,6 +426,33 @@ test_posix_lint_check() {
     pass_test
 }
 
+test_posix_version_variables_from_environment() {
+    local shell_command="$1"
+    start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local snippet_file="$TEST_DIR/version_env.sh"
+    printf '%s\n' ". '$PROJECT_ROOT/logging.sh'" \
+        "init_logger --no-color --format '%m' --max-line-length 20" \
+        "log_info abcdefghijklmnopqrstuvwxyz0123456789" \
+        'printf "status=%s level=%s\n" "$?" "$LOG_LEVEL_DEBUG"' \
+        '( LOG_LEVEL_DEBUG=9 ) 2>/dev/null && printf "assignable\n"' > "$snippet_file"
+    local output variable
+    for variable in ZSH_VERSION BASH_VERSION; do
+        case "${shell_command%% *}:$variable" in
+            # The shell sets this one itself
+            bash:BASH_VERSION|zsh:ZSH_VERSION) continue ;;
+        esac
+        # shellcheck disable=SC2086  # word splitting of shell_command is intended
+        output=$(env -i PATH="$PATH" LC_ALL=C "$variable=5.9" $shell_command "$snippet_file" 2>&1 </dev/null)
+        assert_equals "abcdef...[truncated]
+status=0 level=7" "$output" "$variable from the environment" || return
+    done
+
+    pass_test
+}
+
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
@@ -440,4 +467,5 @@ while IFS= read -r posix_shell; do
     test_posix_tr_failure_fallback "$posix_shell"
     test_posix_probe_ignores_environment "$posix_shell"
     test_posix_echo_option_messages "$posix_shell"
+    test_posix_version_variables_from_environment "$posix_shell"
 done <<< "$(test_shell_list)"
