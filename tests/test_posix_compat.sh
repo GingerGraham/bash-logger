@@ -16,6 +16,10 @@
 # - Sourcing and logging under set -eu does not exit the caller
 # - Running logging.sh directly in bash prints the usage message
 # - scripts/check-posix-compat.sh accepts logging.sh and rejects bash-only syntax
+# - A failing tr falls back to the in-shell replacement for long messages
+# - busybox in a UTF-8 locale still truncates by bytes (_text_length), and the
+#   _LOGGER_UTF8_PROBE value cannot be set through the environment
+# - Messages -n, -e and -E are logged as written
 
 # Run a snippet with logging.sh sourced, under a shell command, with a fixed locale.
 # The snippet runs from a script file (not -c), so the detected script name is the
@@ -248,6 +252,141 @@ log_info 'abcdefghijklmnopqrstuvwxyz'" 2>&1 </dev/null)
     pass_test
 }
 
+# Print text of a length: 63 characters then a newline, repeated, cut to the length
+make_multiline_text() {
+    awk -v length_wanted="$1" 'BEGIN {
+        text = ""
+        line = 0
+        while (length(text) < length_wanted) {
+            for (j = 0; j < 63; j++) text = text sprintf("%c", 97 + (line + j) % 26)
+            text = text "\n"
+            line++
+        }
+        printf "%s", substr(text, 1, length_wanted)
+    }'
+}
+
+test_posix_tr_failure_fallback() {
+    local shell_command="$1"
+    start_test "[$shell_command] a failing tr does not lose or skip sanitizing a long message"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Long enough for the tr path: above 2,048 characters, or 16,384 in bash and zsh
+    local message_size=3000
+    if shell_counts_characters "$shell_command"; then
+        message_size=17000
+    fi
+    local message_file="$TEST_DIR/message.txt"
+    make_multiline_text "$message_size" > "$message_file"
+
+    local marker="$TEST_DIR/tr-called"
+    local log_setup="init_logger --quiet --no-color --format '%m' --max-line-length 0"
+    local read_message="message=\$(cat '$message_file')"
+
+    run_snippet_in_shell "$shell_command" C "$log_setup --log '$TEST_DIR/working.log'
+$read_message
+log_info \"\$message\"" >/dev/null 2>&1
+
+    # tr is replaced after init_logger, so only the sanitizer can call it
+    run_snippet_in_shell "$shell_command" C "$log_setup --log '$TEST_DIR/broken.log'
+$read_message
+tr() { : > '$marker'; return 127; }
+log_info \"\$message\"" >/dev/null 2>&1
+
+    assert_file_exists "$marker" "the failing tr was not called" || return
+    local working_line
+    local broken_line
+    working_line=$(tail -1 "$TEST_DIR/working.log")
+    broken_line=$(tail -1 "$TEST_DIR/broken.log")
+    assert_equals "$working_line" "$broken_line" "log line with a failing tr" || return
+    assert_equals "2" "$(wc -l < "$TEST_DIR/broken.log" | tr -d ' ')" \
+        "one init line and one message line" || return
+
+    pass_test
+}
+
+test_posix_busybox_utf8_byte_length() {
+    start_test "busybox sh in a UTF-8 locale truncates multi-byte text by bytes"
+
+    require_shell busybox || return 0
+    local utf8_locale
+    utf8_locale=$(utf8_locale_name)
+    if [[ -z "$utf8_locale" ]]; then
+        skip_test "no UTF-8 locale installed"
+        return 0
+    fi
+
+    # "a" and 3,000 two-byte characters: 6,001 bytes but 3,001 characters, so a
+    # character count would fit the 4,096 limit. 4,096 - 14 (suffix) = 4,082 bytes is
+    # "a", 2,040 characters and half of the next, which is removed.
+    local message="a"
+    local expected="a"
+    local index=0
+    while [[ $index -lt 3000 ]]; do
+        message="${message}é"
+        if [[ $index -lt 2040 ]]; then
+            expected="${expected}é"
+        fi
+        index=$((index + 1))
+    done
+    expected="${expected}...[truncated]"
+
+    local output
+    output=$(run_snippet_in_shell "busybox sh" "$utf8_locale" \
+        "init_logger --no-color --format '%m'; log_info '$message'" 2>&1)
+    assert_equals "$expected" "$output" "without an environment probe value" || return
+
+    # A probe value from the environment (2 characters, as if the shell counted bytes)
+    # must be cleared at source time, or the byte count would be skipped
+    local snippet_file="$TEST_DIR/probe.sh"
+    printf '%s\n' ". '$PROJECT_ROOT/logging.sh'" \
+        "init_logger --no-color --format '%m'; log_info '$message'" > "$snippet_file"
+    output=$(env -i PATH="$PATH" LC_ALL="$utf8_locale" _LOGGER_UTF8_PROBE="ab" \
+        busybox sh "$snippet_file" 2>&1 </dev/null)
+    assert_equals "$expected" "$output" "with _LOGGER_UTF8_PROBE=ab in the environment" || return
+
+    pass_test
+}
+
+test_posix_probe_ignores_environment() {
+    local shell_command="$1"
+    start_test "[$shell_command] _LOGGER_UTF8_PROBE is not taken from the environment"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$PATH" LC_ALL=C _LOGGER_UTF8_PROBE="ab" \
+        $shell_command -c ". '$PROJECT_ROOT/logging.sh'; printf '[%s]\n' \"\$_LOGGER_UTF8_PROBE\"" \
+        2>&1 </dev/null)
+
+    assert_equals "[]" "$output" || return
+
+    pass_test
+}
+
+test_posix_echo_option_messages() {
+    local shell_command="$1"
+    start_test "[$shell_command] messages -n, -e and -E are logged as written"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # bash before Issue #143 logged these as empty lines, because the message went
+    # through echo; the sanitizing golden corpus leaves them out for that reason
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C \
+        "init_logger --no-color --format '[%m]'; log_info '-n'; log_info '-e'; log_info '-E'; \
+log_info '-n -e text'" 2>&1)
+
+    assert_equals "[-n]
+[-e]
+[-E]
+[-n -e text]" "$output" || return
+
+    pass_test
+}
+
 test_posix_executed_directly() {
     start_test "Running logging.sh directly in bash prints the usage message"
 
@@ -290,6 +429,7 @@ test_posix_lint_check() {
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
+test_posix_busybox_utf8_byte_length
 while IFS= read -r posix_shell; do
     test_posix_caller_detection "$posix_shell"
     test_posix_truncation_bytes "$posix_shell"
@@ -297,4 +437,7 @@ while IFS= read -r posix_shell; do
     test_posix_ansi_constants "$posix_shell"
     test_posix_init_logger_args "$posix_shell"
     test_posix_set_e_set_u "$posix_shell"
+    test_posix_tr_failure_fallback "$posix_shell"
+    test_posix_probe_ignores_environment "$posix_shell"
+    test_posix_echo_option_messages "$posix_shell"
 done <<< "$(test_shell_list)"
