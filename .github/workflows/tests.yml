@@ -76,7 +76,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     name: Per-message Benchmark
-    timeout-minutes: 20
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
@@ -87,8 +87,11 @@ jobs:
       - name: Install zsh, dash and busybox
         run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
 
-      # The base branch's logging.sh is the bash baseline; the job fails if bash is slower
-      # than the baseline by more than the timing-noise allowance in bench-logging.sh
+      # The base branch's logging.sh is the baseline in every shell where it runs (shells it
+      # cannot run in are reported as "baseline unavailable"). The job fails if a run fails,
+      # if a scenario is slower than the baseline by more than --max-ratio (default 1.15,
+      # ignored under a 100 microsecond difference), or if lines-256k / lines-16k exceeds
+      # --max-scaling (default 32; linear growth is 16). Every scenario runs, 5 rounds each.
       - name: Get baseline logging.sh
         env:
           BASE_REF: ${{ github.base_ref || 'main' }}
@@ -97,7 +100,7 @@ jobs:
       - name: Run benchmark
         shell: bash
         run: |
-          scripts/bench-logging.sh --rounds 5 --baseline "$RUNNER_TEMP/baseline-logging.sh" \
+          scripts/bench-logging.sh --baseline "$RUNNER_TEMP/baseline-logging.sh" \
             bash "bash --posix" zsh dash "busybox sh" | tee bench-results.txt
 
       - name: Upload benchmark results
