@@ -23,6 +23,7 @@
 # - Sourcing from inside a function keeps the constants (zsh readonly is local there)
 # - A trap handler that logs does not replace the message in progress
 # - log_sensitive text does not stay in shell variables
+# - A logger symlink to busybox is accepted only in a safe directory
 
 # Run a snippet with logging.sh sourced, under a shell command, with a fixed locale.
 # The snippet runs from a script file (not -c), so the detected script name is the
@@ -496,6 +497,58 @@ set | grep -c hunter2-secret
     pass_test
 }
 
+test_posix_busybox_logger_symlink() {
+    local shell_command="$1"
+    start_test "[$shell_command] a logger symlink to busybox in a safe directory is accepted"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local system_logger
+    system_logger=$(command -v logger 2>/dev/null)
+    case "$system_logger" in
+        /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger) ;;
+        *)
+            skip_test "logger is not in a safe directory"
+            return 0
+            ;;
+    esac
+
+    # readlink reports what it would for a busybox applet symlink
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() { printf "%s\n" /usr/bin/busybox; }
+check_logger_available
+printf "%s|%s\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_equals "0|$system_logger" "$output" || return
+
+    # The same symlink outside a safe directory is still rejected
+    mkdir -p "$TEST_DIR/unsafe_bin"
+    ln -sf "$system_logger" "$TEST_DIR/unsafe_bin/logger"
+    output=$(run_snippet_in_shell "$shell_command" C "
+PATH='$TEST_DIR/unsafe_bin':\$PATH
+readlink() { printf '%s\n' /usr/bin/busybox; }
+check_logger_available
+printf 'status=%s\n' \"\$?\"
+" 2>&1)
+    assert_contains "$output" "status=1" || return
+
+    # A link in another directory on the way to busybox could be changed later
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() {
+    case "$1" in
+        -f) printf "%s\n" /usr/bin/busybox ;;
+        *) printf "%s\n" /tmp/elsewhere/logger ;;
+    esac
+}
+check_logger_available 2>/dev/null
+printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_equals "status=1 path=[]" "$output" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -540,5 +593,6 @@ while IFS= read -r posix_shell; do
     test_posix_source_in_function "$posix_shell"
     test_posix_trap_keeps_message "$posix_shell"
     test_posix_message_not_kept_in_variables "$posix_shell"
+    test_posix_busybox_logger_symlink "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
 done <<< "$(test_shell_list)"

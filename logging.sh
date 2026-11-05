@@ -640,9 +640,31 @@ _find_and_validate_logger() {
     fi
 
     # Resolve any symlinks to get the real path
+    local logger_found="$logger_candidate"
     if command -v readlink >/dev/null 2>&1; then
         logger_candidate=$(readlink -f "$logger_candidate" 2>/dev/null || printf '%s\n' "$logger_candidate")
     fi
+
+    # busybox selects the applet from the name it is run as, so a logger symlink to a busybox
+    # in a safe directory has to be run through the symlink, which must also be in one. It must
+    # point straight at busybox: a link in another directory along the way could be changed
+    # after this check, and the symlink is what runs on every message.
+    case "$logger_candidate" in
+        /bin/busybox|/usr/bin/busybox|/sbin/busybox|/usr/sbin/busybox)
+            case "$logger_found" in
+                /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger)
+                    local link_target=""
+                    link_target=$(readlink "$logger_found" 2>/dev/null)
+                    case "$link_target" in
+                        /bin/busybox|/usr/bin/busybox|/sbin/busybox|/usr/sbin/busybox|\
+                        busybox|../bin/busybox|../../bin/busybox)
+                            logger_candidate="$logger_found"
+                            ;;
+                    esac
+                    ;;
+            esac
+            ;;
+    esac
 
     # Validate logger is in a safe system location
     # Accept: /bin, /usr/bin, /usr/local/bin, /sbin, /usr/sbin
