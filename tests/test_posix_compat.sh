@@ -923,10 +923,27 @@ status=0 level=7" "$output" "$variable from the environment" || return
     pass_test
 }
 
+test_run_with_timeout_stops_process_tree() {
+    start_test "run_with_timeout stops descendants, including ones that ignore TERM"
+
+    local started_at=$SECONDS
+    local output
+    output=$(run_with_timeout 1 bash -c 'trap "" TERM; sleep 30; echo finished' 2>/dev/null)
+    local elapsed=$((SECONDS - started_at))
+    assert_equals "" "$output" || return
+    if [[ "$elapsed" -ge 15 ]]; then
+        fail_test "Took ${elapsed}s to stop"
+        return
+    fi
+
+    pass_test
+}
+
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
 test_posix_busybox_utf8_byte_length
+test_run_with_timeout_stops_process_tree
 while IFS= read -r posix_shell; do
     test_posix_caller_detection "$posix_shell"
     test_posix_truncation_bytes "$posix_shell"
