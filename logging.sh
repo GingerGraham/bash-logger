@@ -947,10 +947,18 @@ _parse_config_file() {
                 ;;
         esac
 
-        # Parse key = value pairs
+        # Parse key = value pairs: the key is everything before the first "=" and must
+        # not be empty
         case "$line" in
-            [!=]*=*) ;;
+            '='*)
+                # Empty key
+                printf '%s\n' "Warning: Invalid syntax at line $line_num: $line" >&2
+                continue
+                ;;
+            *=*)
+                ;;
             *)
+                # No "=" at all
                 printf '%s\n' "Warning: Invalid syntax at line $line_num: $line" >&2
                 continue
                 ;;
