@@ -140,6 +140,10 @@ _LOGGER_TEXT_LENGTH=""
 _LOGGER_COLOR=""
 _LOGGER_PRIORITY=""
 
+# Result variable of _find_caller_script. Set here so that zsh with warn_create_global does
+# not warn when init_logger first sets it.
+_LOGGER_CALLER_PATH=""
+
 # Which builtin _current_timestamp_into uses, chosen by testing it here: bash 3.2 has no
 # printf time format. Set on every source, so a value from the environment is not used.
 _LOGGER_TIME_BUILTIN=""
