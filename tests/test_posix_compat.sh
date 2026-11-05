@@ -26,6 +26,8 @@
 # - A logger symlink to busybox is accepted only in a safe directory
 # - A second --config with no value returns an error
 # - CONFIG notices follow the stderr level
+# - Timestamps match date, in local time, in UTC and with TZ changed or readonly, and use
+#   the builtin only in bash 4.2+ and zsh
 # - --max-line-length and --max-journal-length, a config file BOM, truncating 4-byte
 #   characters, a failing logger, and level names in a Turkish locale
 
@@ -592,6 +594,150 @@ end" "$output" || return
     pass_test
 }
 
+test_posix_timestamp_matches_date() {
+    local shell_command="$1"
+    start_test "[$shell_command] timestamps match date in local time and UTC"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # A fixed offset needs no time zone data. Each check is tried again if it fails, because
+    # the second can change during it: bash reads a coarse clock that can be one tick behind
+    # date, so its second can even look earlier.
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+stamp="+%Y-%m-%d %H:%M:%S"
+check() {
+    label="$1"; shift
+    for attempt in 1 2 3; do
+        before=$("$@" "$stamp")
+        logged=$(log_info x)
+        after=$("$@" "$stamp")
+        if [ "$logged" = "$before" ] || [ "$logged" = "$after" ]; then
+            printf "%s ok\n" "$label"
+            return 0
+        fi
+    done
+    printf "%s MISMATCH [%s] [%s] [%s]\n" "$label" "$before" "$logged" "$after"
+}
+init_logger --no-color --format "%d"
+check local date
+set_timezone_utc true >/dev/null
+check utc date -u
+set_timezone_utc false >/dev/null
+export TZ=ZZZ-5
+check offset date
+set_timezone_utc true >/dev/null
+check offset-utc date -u
+set_timezone_utc false >/dev/null
+check offset-again date
+TZ=ZZZ+3
+check offset-changed date
+unset TZ
+check unset date
+' 2>&1)
+    assert_equals "local ok
+utc ok
+offset ok
+offset-utc ok
+offset-again ok
+offset-changed ok
+unset ok" "$output" || return
+
+    pass_test
+}
+
+test_posix_timestamp_readonly_tz() {
+    local shell_command="$1"
+    start_test "[$shell_command] UTC timestamps work when the caller made TZ readonly"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local snippet_file="$TEST_DIR/readonly_tz.sh"
+    printf '%s\n' \
+        "export TZ=ZZZ-5" \
+        "readonly TZ" \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        "init_logger --no-color --utc --format '%d'" \
+        'for attempt in 1 2 3; do' \
+        '    before=$(date -u "+%Y-%m-%d %H:%M:%S")' \
+        '    logged=$(log_info x)' \
+        '    after=$(date -u "+%Y-%m-%d %H:%M:%S")' \
+        '    if [ "$logged" = "$before" ] || [ "$logged" = "$after" ]; then echo ok; exit 0; fi' \
+        'done' \
+        'echo "bad [$logged] [$before]"' \
+        > "$snippet_file"
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$PATH" LC_ALL=C $shell_command "$snippet_file" 2>&1 </dev/null)
+    assert_equals "ok" "$output" || return
+
+    pass_test
+}
+
+test_posix_timestamp_builtin_and_fallback() {
+    local shell_command="$1"
+    start_test "[$shell_command] timestamps use the builtin in bash 4.2+ and zsh, and date otherwise"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # date prints a marker, which shows which path made the timestamp
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+date() { printf "from-date\n"; }
+init_logger --no-color --format "%d"
+log_info x
+_LOGGER_TIME_BUILTIN=""
+log_info x
+printf "%s\n" "builtin=$_LOGGER_TIME_BUILTIN"
+' 2>&1)
+
+    local expected_first="from-date"
+    local actual_bash_major
+    case "${shell_command%% *}" in
+        zsh)
+            expected_first=""
+            ;;
+        bash)
+            actual_bash_major=$(bash -c 'printf "%s" "$((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1]))"')
+            if [[ "$actual_bash_major" -ge 402 ]]; then
+                expected_first=""
+            fi
+            ;;
+    esac
+    local first_line second_line
+    first_line=$(printf '%s\n' "$output" | sed -n 1p)
+    second_line=$(printf '%s\n' "$output" | sed -n 2p)
+    if [[ -z "$expected_first" ]]; then
+        assert_not_equals "from-date" "$first_line" "builtin should be used" || return
+    else
+        assert_equals "from-date" "$first_line" "date should be used" || return
+    fi
+    assert_equals "from-date" "$second_line" "date is the fallback" || return
+
+    pass_test
+}
+
+test_posix_timestamp_ignores_environment() {
+    local shell_command="$1"
+    start_test "[$shell_command] the timestamp method cannot be set through the environment"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local snippet_file="$TEST_DIR/env_time.sh"
+    printf '%s\n' ". '$PROJECT_ROOT/logging.sh'" \
+        "init_logger --no-color --format '%d'" "log_info x" > "$snippet_file"
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$PATH" LC_ALL=C _LOGGER_TIME_BUILTIN=nonsense _LOGGER_TIMESTAMP=forged \
+        $shell_command "$snippet_file" 2>&1 </dev/null)
+    case "$output" in
+        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\ [0-9][0-9]:[0-9][0-9]:[0-9][0-9]) ;;
+        *) fail_test "Unexpected timestamp: $output"; return ;;
+    esac
+
+    pass_test
+}
+
 test_posix_max_length_options() {
     local shell_command="$1"
     start_test "[$shell_command] --max-line-length and --max-journal-length set their variables"
@@ -702,6 +848,54 @@ printf "%s\n" "$CURRENT_LOG_LEVEL"
     pass_test
 }
 
+test_posix_utc_from_epoch() {
+    local shell_command="$1"
+    start_test "[$shell_command] UTC timestamps are calculated correctly from the epoch"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Includes leap days, century years with and without a leap day, and year ends
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+check() {
+    _utc_timestamp_from_epoch "$1"
+    printf "%s %s\n" "$1" "$_LOGGER_TIMESTAMP"
+}
+check 0
+check 59
+check 86399
+check 86400
+check 68169600
+check 951782400
+check 951868799
+check 951868800
+check 1709251199
+check 1735689599
+check 1735689600
+check 4107542399
+check 4107542400
+check 4102444800
+check 32503680000
+' 2>&1)
+    assert_equals "0 1970-01-01 00:00:00
+59 1970-01-01 00:00:59
+86399 1970-01-01 23:59:59
+86400 1970-01-02 00:00:00
+68169600 1972-02-29 00:00:00
+951782400 2000-02-29 00:00:00
+951868799 2000-02-29 23:59:59
+951868800 2000-03-01 00:00:00
+1709251199 2024-02-29 23:59:59
+1735689599 2024-12-31 23:59:59
+1735689600 2025-01-01 00:00:00
+4107542399 2100-02-28 23:59:59
+4107542400 2100-03-01 00:00:00
+4102444800 2100-01-01 00:00:00
+32503680000 3000-01-01 00:00:00" "$output" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -749,7 +943,12 @@ while IFS= read -r posix_shell; do
     test_posix_busybox_logger_symlink "$posix_shell"
     test_posix_second_config_without_value "$posix_shell"
     test_posix_config_notice_stream "$posix_shell"
+    test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
+    test_posix_timestamp_matches_date "$posix_shell"
+    test_posix_timestamp_readonly_tz "$posix_shell"
+    test_posix_timestamp_builtin_and_fallback "$posix_shell"
+    test_posix_timestamp_ignores_environment "$posix_shell"
     test_posix_max_length_options "$posix_shell"
     test_posix_config_bom "$posix_shell"
     test_posix_truncation_four_byte_character "$posix_shell"

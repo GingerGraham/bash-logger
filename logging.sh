@@ -143,6 +143,21 @@ _LOGGER_INTEGER=""
 _LOGGER_TEXT_LENGTH=""
 _LOGGER_COLOR=""
 _LOGGER_PRIORITY=""
+
+# Which builtin _current_timestamp_into uses, chosen by testing it here: bash 3.2 has no
+# printf time format. Set on every source, so a value from the environment is not used.
+_LOGGER_TIME_BUILTIN=""
+if [ "$_LOGGER_SHELL_FAMILY" = "bash" ]; then
+    # printf -v and its time format only run in bash
+    # shellcheck disable=SC3045
+    if printf -v _LOGGER_TIMESTAMP '%(%Y)T' 0 2>/dev/null && [ -n "$_LOGGER_TIMESTAMP" ]; then # bash32-compat: ignore
+        _LOGGER_TIME_BUILTIN="bash"
+    fi
+    _LOGGER_TIMESTAMP=""
+elif [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
+    _LOGGER_TIME_BUILTIN="zsh"
+fi
+
 # Byte classes used by _text_prefix in shells that truncate by bytes. They are made on
 # first use and inserted into a sed script, so they are cleared here: a value taken
 # from the environment could otherwise inject sed commands.
@@ -1612,6 +1627,84 @@ _format_log_message() {
     printf '%s\n' "$_LOGGER_TEXT"
 }
 
+# Set _LOGGER_TIMESTAMP to the current time, in UTC when USE_UTC is true (internal).
+# Starting date is most of the cost of a message, so bash 4.2+ and zsh use their builtins.
+# Any other shell, or a builtin result that fails the checks below, uses date.
+_current_timestamp_into() {
+    _LOGGER_TIMESTAMP=""
+    case "$_LOGGER_TIME_BUILTIN" in
+        bash) _bash_timestamp_into ;;
+        zsh) _zsh_timestamp_into ;;
+    esac
+    case "$_LOGGER_TIMESTAMP" in
+        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' '[0-9][0-9]:[0-9][0-9]:[0-9][0-9]) return 0 ;;
+    esac
+    if [ "$USE_UTC" = "true" ]; then
+        _LOGGER_TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S')
+    else
+        _LOGGER_TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+    fi
+}
+
+# Set _LOGGER_TIMESTAMP to the UTC date and time of seconds since the epoch (internal).
+# The arithmetic converts days to a calendar date (Howard Hinnant's civil_from_days). It avoids
+# changing TZ: an assignment to TZ fails if the caller made it readonly, which exits the script
+# under set -e and in POSIX mode, and in zsh it only reaches localtime if exported.
+_utc_timestamp_from_epoch() {
+    local epoch="$1"
+    local shifted_days="$((epoch / 86400 + 719468))"
+    local second_of_day="$((epoch % 86400))"
+    local era="$((shifted_days / 146097))"
+    local day_of_era="$((shifted_days - era * 146097))"
+    local year_of_era="$(((day_of_era - day_of_era / 1460 + day_of_era / 36524 - day_of_era / 146096) / 365))"
+    local day_of_year="$((day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100)))"
+    local shifted_month="$(((5 * day_of_year + 2) / 153))"
+    local day="$((day_of_year - (153 * shifted_month + 2) / 5 + 1))"
+    local month="$((shifted_month < 10 ? shifted_month + 3 : shifted_month - 9))"
+    local year="$((year_of_era + era * 400 + (month <= 2 ? 1 : 0)))"
+    local hour="$((second_of_day / 3600))"
+    local minute="$((second_of_day % 3600 / 60))"
+    local second="$((second_of_day % 60))"
+    case "$month" in ?) month="0$month" ;; esac
+    case "$day" in ?) day="0$day" ;; esac
+    case "$hour" in ?) hour="0$hour" ;; esac
+    case "$minute" in ?) minute="0$minute" ;; esac
+    case "$second" in ?) second="0$second" ;; esac
+    _LOGGER_TIMESTAMP="${year}-${month}-${day} ${hour}:${minute}:${second}"
+}
+
+# Set _LOGGER_TIMESTAMP with the bash printf time format (internal).
+_bash_timestamp_into() {
+    if [ "$USE_UTC" = "true" ]; then
+        local epoch=""
+        # printf -v and its time format only run in bash
+        # shellcheck disable=SC3045
+        printf -v epoch '%(%s)T' -1 2>/dev/null # bash32-compat: ignore
+        if _is_digits "$epoch"; then
+            _utc_timestamp_from_epoch "$epoch"
+        fi
+    else
+        # shellcheck disable=SC3045
+        printf -v _LOGGER_TIMESTAMP '%(%Y-%m-%d %H:%M:%S)T' -1 2>/dev/null # bash32-compat: ignore
+    fi
+}
+
+# Set _LOGGER_TIMESTAMP with zsh prompt expansion, which needs no module (internal).
+# This syntax is a parse error in some POSIX shells, so it is in strings passed to eval.
+# The strings are constants: no caller data reaches eval.
+_zsh_timestamp_into() {
+    emulate -L zsh
+    if [ "$USE_UTC" = "true" ]; then
+        local epoch=""
+        eval 'epoch=${(%):-%D{%s}}'
+        if _is_digits "$epoch"; then
+            _utc_timestamp_from_epoch "$epoch"
+        fi
+    else
+        eval '_LOGGER_TIMESTAMP=${(%):-%D{%Y-%m-%d %H:%M:%S}}'
+    fi
+}
+
 # Set _LOGGER_TEXT to the formatted log entry (internal).
 # Same result as _format_log_message, without a subshell for the caller.
 _format_log_message_into() {
@@ -1622,12 +1715,12 @@ _format_log_message_into() {
     local current_date=""
     local timezone_str=""
     if [ "$USE_UTC" = "true" ]; then
-        current_date=$(date -u '+%Y-%m-%d %H:%M:%S')  # UTC time
         timezone_str="UTC"
     else
-        current_date=$(date '+%Y-%m-%d %H:%M:%S')     # Local time
         timezone_str="LOCAL"
     fi
+    _current_timestamp_into
+    current_date="$_LOGGER_TIMESTAMP"
 
     # Expand format tokens in a single left-to-right pass.
     # Each %X token is replaced once and inserted values are never re-scanned,
