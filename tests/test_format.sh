@@ -130,7 +130,7 @@ test_format_script_name() {
 
     # Run in a named script
     cat > "$TEST_DIR/test_script.sh" << 'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 source "$1/logging.sh"
 init_logger --quiet --format "[%s] %m"
 LOG_FILE="$2"
@@ -325,7 +325,7 @@ test_format_does_not_affect_journal_output() {
     local stub_capture="$TEST_DIR/journal_capture.txt"
     local stub_logger="$TEST_DIR/stub_logger.sh"
     cat > "$stub_logger" << 'STUB'
-#!/bin/bash
+#!/usr/bin/env bash
 echo "$*" >> "$STUB_CAPTURE_FILE"
 STUB
     chmod +x "$stub_logger"
