@@ -128,6 +128,16 @@ if ! _is_readonly _LOGGER_ESC; then
         _LOGGER_UTF8_CONTROLS _LOGGER_NAME_CHARACTERS
 fi
 
+# Result variables of the *_into helpers. They start empty so that a value from the
+# environment is never read, and _log_message restores them after each message.
+_LOGGER_TEXT=""
+_LOGGER_TIMESTAMP=""
+_LOGGER_REPLACED=""
+_LOGGER_PREFIX=""
+_LOGGER_INTEGER=""
+_LOGGER_TEXT_LENGTH=""
+_LOGGER_COLOR=""
+_LOGGER_PRIORITY=""
 # Byte classes used by _text_prefix in shells that truncate by bytes. They are made on
 # first use and inserted into a sed script, so they are cleared here: a value taken
 # from the environment could otherwise inject sed commands.
@@ -2310,20 +2320,47 @@ _log_to_console() {
 
 # Function to log messages with different severity levels (internal)
 _log_message() {
+    # Skip logging if message level is more verbose than current log level
+    # With syslog-style levels, HIGHER values are LESS severe (more verbose)
+    # force_show=true ($7) bypasses this filter (used by log_init to always show)
+    if [ "${7:-false}" != "true" ] && [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
+        return 0
+    fi
+
+    # The *_into helpers return results in global variables. Restoring them afterwards means:
+    #   * a trap handler that logs while another message is in progress cannot replace it
+    #   * no message text, including log_sensitive text, stays in the shell's variables
+    local saved_text="$_LOGGER_TEXT"
+    local saved_timestamp="$_LOGGER_TIMESTAMP"
+    local saved_replaced="$_LOGGER_REPLACED"
+    local saved_prefix="$_LOGGER_PREFIX"
+    local saved_integer="$_LOGGER_INTEGER"
+    local saved_text_length="$_LOGGER_TEXT_LENGTH"
+    local saved_color="$_LOGGER_COLOR"
+    local saved_priority="$_LOGGER_PRIORITY"
+    local write_status=0
+
+    _write_log_message "$@" || write_status=$?
+
+    _LOGGER_TEXT="$saved_text"
+    _LOGGER_TIMESTAMP="$saved_timestamp"
+    _LOGGER_REPLACED="$saved_replaced"
+    _LOGGER_PREFIX="$saved_prefix"
+    _LOGGER_INTEGER="$saved_integer"
+    _LOGGER_TEXT_LENGTH="$saved_text_length"
+    _LOGGER_COLOR="$saved_color"
+    _LOGGER_PRIORITY="$saved_priority"
+    return "$write_status"
+}
+
+# Write one message to the console, log file and journal (internal)
+_write_log_message() {
     local level_name="$1"
     local level_value="$2"
     local message="$3"
     local skip_file="${4:-false}"
     local skip_journal="${5:-false}"
     local force_journal="${6:-false}"
-    local force_show="${7:-false}"
-
-    # Skip logging if message level is more verbose than current log level
-    # With syslog-style levels, HIGHER values are LESS severe (more verbose)
-    # force_show=true bypasses this filter (used by log_init to always show)
-    if [ "$force_show" != "true" ] && [ "$level_value" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
-        return 0
-    fi
 
     # The helpers below set _LOGGER_TEXT instead of printing, so no subshell is started
     # for each step of every message

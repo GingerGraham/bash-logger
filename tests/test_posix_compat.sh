@@ -21,6 +21,8 @@
 #   _LOGGER_UTF8_PROBE value cannot be set through the environment
 # - Messages -n, -e and -E are logged as written
 # - Sourcing from inside a function keeps the constants (zsh readonly is local there)
+# - A trap handler that logs does not replace the message in progress
+# - log_sensitive text does not stay in shell variables
 
 # Run a snippet with logging.sh sourced, under a shell command, with a fixed locale.
 # The snippet runs from a script file (not -c), so the detected script name is the
@@ -454,6 +456,46 @@ in_function.sh|INFO|outside 7" "$output" || return
     pass_test
 }
 
+test_posix_trap_keeps_message() {
+    local shell_command="$1"
+    start_test "[$shell_command] a trap that logs does not replace the message in progress"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # The signal arrives while sed strips the message, so the handler runs before the
+    # result reaches the rest of _log_message
+    local output
+    output=$(run_with_timeout 20 run_snippet_in_shell "$shell_command" C '
+init_logger --no-color --format "%m"
+trap "log_warn handler" USR1
+sed() { kill -USR1 $$; sleep 1; command sed "$@"; }
+log_info "$(printf "\033[1mkept\033[0m")"
+' 2>&1)
+
+    assert_contains "$output" "kept" || return
+
+    pass_test
+}
+
+test_posix_message_not_kept_in_variables() {
+    local shell_command="$1"
+    start_test "[$shell_command] log_sensitive text does not stay in shell variables"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+init_logger --no-color >/dev/null
+log_sensitive "hunter2-secret" >/dev/null
+:
+set | grep -c hunter2-secret
+' 2>&1)
+
+    assert_equals "0" "$output" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -496,5 +538,7 @@ while IFS= read -r posix_shell; do
     test_posix_probe_ignores_environment "$posix_shell"
     test_posix_echo_option_messages "$posix_shell"
     test_posix_source_in_function "$posix_shell"
+    test_posix_trap_keeps_message "$posix_shell"
+    test_posix_message_not_kept_in_variables "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
 done <<< "$(test_shell_list)"
