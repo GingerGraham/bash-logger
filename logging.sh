@@ -110,6 +110,9 @@ _LOGGER_UTF8_LEAD=""
 _LOGGER_UTF8_LEAD3=""
 _LOGGER_UTF8_LEAD4=""
 _LOGGER_UTF8_CONTINUATION=""
+# A two-byte character that _text_length uses to check whether ${#} counts bytes.
+# Cleared so that a value from the environment cannot change the result of that check.
+_LOGGER_UTF8_PROBE=""
 
 # Return 0 if the shell's string operations work on characters (internal).
 # bash and zsh count characters in a multi-byte locale. dash always counts bytes.
@@ -351,6 +354,15 @@ _text_length() {
         return 0
     fi
     if [ $((_LOGGER_TEXT_LENGTH * 4)) -le "$limit" ]; then
+        return 0
+    fi
+    # A shell that counts this two-byte character as 2 already counts bytes (dash, and
+    # busybox outside a UTF-8 locale), so no process is needed. Checked on every call
+    # because busybox follows changes to the locale variables.
+    if [ -z "$_LOGGER_UTF8_PROBE" ]; then
+        _LOGGER_UTF8_PROBE=$(printf '\303\251')
+    fi
+    if [ "${#_LOGGER_UTF8_PROBE}" -eq 2 ]; then
         return 0
     fi
     local byte_count=""
@@ -1397,6 +1409,49 @@ _strip_ansi_codes_into() {
         -e "s/${esc}[^[]//g")
 }
 
+# Set _LOGGER_REPLACED to text with newline, carriage return and tab replaced by spaces
+# (internal). This runs before truncation and a message can be large (for example captured
+# command output), so the cost must not grow with the square of the message length.
+#   Long text with something to replace: one tr process. Above the limits below, this is
+#     cheaper than the in-shell replacement, including zsh pattern substitution.
+#   bash and zsh otherwise: pattern substitution
+#   other shells otherwise, or if tr fails: the _replace_all loop, which is quadratic but
+#     needs no external command
+_replace_line_control_chars() {
+    local text="$1"
+    local tr_above_length=2048
+    if _shell_counts_characters; then
+        tr_above_length=16384
+    fi
+    if [ "${#text}" -gt "$tr_above_length" ]; then
+        case "$text" in
+            *"$_LOGGER_NEWLINE"*|*"$_LOGGER_CR"*|*"$_LOGGER_TAB"*) ;;
+            *)
+                _LOGGER_REPLACED="$text"
+                return 0
+                ;;
+        esac
+        # tr leaves no trailing newline for command substitution to remove
+        if _LOGGER_REPLACED=$(printf '%s' "$text" | LC_ALL=C tr '\n\r\t' '   '); then
+            return 0
+        fi
+    fi
+    if _shell_counts_characters; then
+        # Pattern substitution only runs in bash and zsh
+        # shellcheck disable=SC3060
+        text="${text//$_LOGGER_NEWLINE/ }"
+        # shellcheck disable=SC3060
+        text="${text//$_LOGGER_CR/ }"
+        # shellcheck disable=SC3060
+        text="${text//$_LOGGER_TAB/ }"
+        _LOGGER_REPLACED="$text"
+        return 0
+    fi
+    _replace_all "$text" "$_LOGGER_NEWLINE" " "
+    _replace_all "$_LOGGER_REPLACED" "$_LOGGER_CR" " "
+    _replace_all "$_LOGGER_REPLACED" "$_LOGGER_TAB" " "
+}
+
 # Function to sanitize log messages to prevent log injection (internal)
 # Removes control characters that could break log formats or inject fake entries
 _sanitize_log_message() {
@@ -1415,9 +1470,7 @@ _sanitize_log_message_into() {
         # Replace control characters with spaces to prevent log injection
         # These characters can break log formats and enable log injection attacks
         # newline (LF), carriage return (CR) and tab (HT)
-        _replace_all "$message" "$_LOGGER_NEWLINE" " "
-        _replace_all "$_LOGGER_REPLACED" "$_LOGGER_CR" " "
-        _replace_all "$_LOGGER_REPLACED" "$_LOGGER_TAB" " "
+        _replace_line_control_chars "$message"
         message="$_LOGGER_REPLACED"
     fi
 
