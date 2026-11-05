@@ -81,6 +81,21 @@ elif [ -n "${ZSH_VERSION:-}" ] && command -v emulate >/dev/null 2>&1; then
     _LOGGER_SHELL_FAMILY="zsh"
 fi
 
+# Make a variable readonly and global (internal).
+# zsh's readonly declares a new local variable when this file is sourced from inside a
+# function, which leaves the constants empty for the rest of that function and removes
+# them when it returns. typeset -g keeps them global; bash, dash and busybox ash already
+# do that with readonly.
+_logger_readonly() {
+    if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
+        # typeset only runs in zsh
+        # shellcheck disable=SC3044
+        typeset -gr "$@"
+    else
+        readonly "$@"
+    fi
+}
+
 # Control characters used by the sanitizers, the config parser and the color constants.
 # POSIX sh has no $'...' quoting, so they are produced with printf once, at source time.
 # They are readonly so a later assignment cannot weaken message sanitization.
@@ -109,7 +124,7 @@ if ! _is_readonly _LOGGER_ESC; then
     # rather than as ranges such as a-z, because what a range matches depends on the
     # locale in some shells (for example bash 3.2 without globasciiranges).
     _LOGGER_NAME_CHARACTERS='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-'
-    readonly _LOGGER_ESC _LOGGER_BEL _LOGGER_CR _LOGGER_TAB _LOGGER_NEWLINE _LOGGER_BOM \
+    _logger_readonly _LOGGER_ESC _LOGGER_BEL _LOGGER_CR _LOGGER_TAB _LOGGER_NEWLINE _LOGGER_BOM \
         _LOGGER_UTF8_CONTROLS _LOGGER_NAME_CHARACTERS
 fi
 
@@ -399,7 +414,7 @@ _strip_trailing_newlines() {
 # Guard against re-initialization when sourced multiple times
 # Use readonly status instead of emptiness to avoid environment bypass
 if ! _is_readonly BASH_LOGGER_VERSION; then
-    readonly BASH_LOGGER_VERSION="2.7.0"
+    _logger_readonly BASH_LOGGER_VERSION="2.7.0"
 
     # Unset potentially malicious environment variables before setting internal constants
     # Only unset if not already readonly (which would indicate re-sourcing)
@@ -420,18 +435,18 @@ if ! _is_readonly BASH_LOGGER_VERSION; then
 
     # Log levels (following complete syslog standard - higher number = less severe)
     # These are readonly to prevent malicious override after initialization
-    readonly LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
-    readonly LOG_LEVEL_ALERT=1      # Action must be taken immediately
-    readonly LOG_LEVEL_CRITICAL=2   # Critical conditions
-    readonly LOG_LEVEL_ERROR=3      # Error conditions
-    readonly LOG_LEVEL_WARN=4       # Warning conditions
-    readonly LOG_LEVEL_NOTICE=5     # Normal but significant conditions
-    readonly LOG_LEVEL_INFO=6       # Informational messages
-    readonly LOG_LEVEL_DEBUG=7      # Debug information (least severe)
-    readonly LOG_LEVEL_INIT=6       # Initialization messages (maps to INFO for stderr routing)
+    _logger_readonly LOG_LEVEL_EMERGENCY=0  # System is unusable (most severe)
+    _logger_readonly LOG_LEVEL_ALERT=1      # Action must be taken immediately
+    _logger_readonly LOG_LEVEL_CRITICAL=2   # Critical conditions
+    _logger_readonly LOG_LEVEL_ERROR=3      # Error conditions
+    _logger_readonly LOG_LEVEL_WARN=4       # Warning conditions
+    _logger_readonly LOG_LEVEL_NOTICE=5     # Normal but significant conditions
+    _logger_readonly LOG_LEVEL_INFO=6       # Informational messages
+    _logger_readonly LOG_LEVEL_DEBUG=7      # Debug information (least severe)
+    _logger_readonly LOG_LEVEL_INIT=6       # Initialization messages (maps to INFO for stderr routing)
 
     # Aliases for backward compatibility
-    readonly LOG_LEVEL_FATAL=$LOG_LEVEL_EMERGENCY  # Alias for EMERGENCY
+    _logger_readonly LOG_LEVEL_FATAL=$LOG_LEVEL_EMERGENCY  # Alias for EMERGENCY
 fi
 
 # Default settings (these can be overridden by init_logger)
@@ -467,16 +482,16 @@ if [ -z "${COLOR_RESET:-}" ] || ! _is_readonly COLOR_RESET; then
 
     # ANSI color codes, built from the literal escape character in _LOGGER_ESC
     # These are readonly to prevent malicious override after initialization
-    readonly COLOR_RESET="${_LOGGER_ESC}[0m"
-    readonly COLOR_BLUE="${_LOGGER_ESC}[34m"
-    readonly COLOR_GREEN="${_LOGGER_ESC}[32m"
-    readonly COLOR_YELLOW="${_LOGGER_ESC}[33m"
-    readonly COLOR_RED="${_LOGGER_ESC}[31m"
-    readonly COLOR_RED_BOLD="${_LOGGER_ESC}[31;1m"
-    readonly COLOR_WHITE_ON_RED="${_LOGGER_ESC}[37;41m"
-    readonly COLOR_BOLD_WHITE_ON_RED="${_LOGGER_ESC}[1;37;41m"
-    readonly COLOR_PURPLE="${_LOGGER_ESC}[35m"
-    readonly COLOR_CYAN="${_LOGGER_ESC}[36m"
+    _logger_readonly COLOR_RESET="${_LOGGER_ESC}[0m"
+    _logger_readonly COLOR_BLUE="${_LOGGER_ESC}[34m"
+    _logger_readonly COLOR_GREEN="${_LOGGER_ESC}[32m"
+    _logger_readonly COLOR_YELLOW="${_LOGGER_ESC}[33m"
+    _logger_readonly COLOR_RED="${_LOGGER_ESC}[31m"
+    _logger_readonly COLOR_RED_BOLD="${_LOGGER_ESC}[31;1m"
+    _logger_readonly COLOR_WHITE_ON_RED="${_LOGGER_ESC}[37;41m"
+    _logger_readonly COLOR_BOLD_WHITE_ON_RED="${_LOGGER_ESC}[1;37;41m"
+    _logger_readonly COLOR_PURPLE="${_LOGGER_ESC}[35m"
+    _logger_readonly COLOR_CYAN="${_LOGGER_ESC}[36m"
 fi
 
 # Stream output settings
@@ -516,9 +531,9 @@ LOG_MAX_JOURNAL_LENGTH=4096
 # Configuration value validation limits
 # Maximum length for configuration file values (defense against malicious/malformed configs)
 if ! _is_readonly CONFIG_MAX_VALUE_LENGTH; then
-    readonly CONFIG_MAX_VALUE_LENGTH=4096
+    _logger_readonly CONFIG_MAX_VALUE_LENGTH=4096
     # Maximum length for file paths in configuration
-    readonly CONFIG_MAX_PATH_LENGTH=4096
+    _logger_readonly CONFIG_MAX_PATH_LENGTH=4096
 fi
 
 # Function to detect terminal color support (internal)
@@ -639,7 +654,7 @@ _find_and_validate_logger() {
             fi
 
             LOGGER_PATH="$logger_candidate"
-            readonly LOGGER_PATH
+            _logger_readonly LOGGER_PATH
             _LOGGER_DISCOVERY_DONE="true"
             return 0
             ;;

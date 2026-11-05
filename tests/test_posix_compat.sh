@@ -20,6 +20,7 @@
 # - busybox in a UTF-8 locale still truncates by bytes (_text_length), and the
 #   _LOGGER_UTF8_PROBE value cannot be set through the environment
 # - Messages -n, -e and -E are logged as written
+# - Sourcing from inside a function keeps the constants (zsh readonly is local there)
 
 # Run a snippet with logging.sh sourced, under a shell command, with a fixed locale.
 # The snippet runs from a script file (not -c), so the detected script name is the
@@ -426,6 +427,33 @@ test_posix_lint_check() {
     pass_test
 }
 
+test_posix_source_in_function() {
+    local shell_command="$1"
+    start_test "[$shell_command] sourcing from inside a function keeps the constants"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local caller_script="$TEST_DIR/in_function.sh"
+    printf '%s\n' \
+        "setup() {" \
+        "    . '$PROJECT_ROOT/logging.sh'" \
+        "    init_logger --no-color --format '%s|%l|%m'" \
+        "    log_info inside" \
+        "}" \
+        "setup" \
+        'log_info "outside $LOG_LEVEL_DEBUG"' > "$caller_script"
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(run_with_timeout 20 env -i PATH="$PATH" LC_ALL=C \
+        $shell_command "$caller_script" 2>&1 </dev/null)
+
+    assert_equals "in_function.sh|INFO|inside
+in_function.sh|INFO|outside 7" "$output" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -467,5 +495,6 @@ while IFS= read -r posix_shell; do
     test_posix_tr_failure_fallback "$posix_shell"
     test_posix_probe_ignores_environment "$posix_shell"
     test_posix_echo_option_messages "$posix_shell"
+    test_posix_source_in_function "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
 done <<< "$(test_shell_list)"
