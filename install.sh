@@ -108,7 +108,7 @@ Options:
 
 Environment Variables:
     INSTALL_VERSION     Install a specific version instead of the latest release.
-                        Set to a valid release tag (e.g., "v1.0.0").
+                        Set to a valid release tag (e.g., "2.7.0").
 
 Examples:
     # User installation

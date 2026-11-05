@@ -6,7 +6,10 @@ We provide security updates for the following versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 2.5.x   | :white_check_mark: |
+| 3.x     | :white_check_mark: |
+| 2.7.x   | :x:                |
+| 2.6.x   | :x:                |
+| 2.5.x   | :x:                |
 | 2.4.x   | :x:                |
 | 2.3.x   | :x:                |
 | 2.2.x   | :x:                |
@@ -201,6 +204,7 @@ skip initialisation. The check reads `readonly -p` and accepts the output format
 | bash (normal mode)                                   | `declare -r NAME="value"`                         |
 | bash in POSIX mode (`--posix`, `set -o posix`, `sh`) | `readonly NAME="value"`                           |
 | zsh                                                  | `typeset -r NAME=value` or `export -r NAME=value` |
+| dash, busybox ash                                    | `readonly NAME='value'`                           |
 
 ## Known Security Considerations
 
@@ -217,7 +221,7 @@ The following common security concerns are **not** applicable:
 
 bash-logger has **no external dependencies** except:
 
-* Bash 4.0 or later
+* A supported shell: bash 3.2 or later, zsh, dash or busybox ash
 * Standard Unix utilities (cat, grep, wc, date, etc.)
 * Optional: `logger` command for journal integration (part of util-linux)
 

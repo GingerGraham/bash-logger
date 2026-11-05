@@ -53,7 +53,7 @@ demos, and pipeline scripts - exists to support using that file.
 `scripts/check-bash32-compat.sh` rejects bash 4+ syntax and `scripts/check-posix-compat.sh`
 rejects syntax that dash does not support. See [Shell Compatibility](docs/shell-compatibility.md)
 for the few documented differences between shells (script name detection and how truncation
-counts multi-byte characters).
+counts multi-byte characters). Upgrading from 2.x? See [Upgrading to 3.0](docs/upgrading-to-3.0.md).
 
 ## Quick Start
 
@@ -94,6 +94,7 @@ See [Getting Started](docs/getting-started.md) for detailed installation and bas
 * [Examples](docs/examples.md) - Comprehensive usage examples
 * [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 * [Shell Compatibility](docs/shell-compatibility.md) - Supported shells and their differences
+* [Upgrading to 3.0](docs/upgrading-to-3.0.md) - What changed from 2.x
 
 ## Common Use Cases
 

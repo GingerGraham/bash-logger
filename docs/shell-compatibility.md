@@ -42,6 +42,22 @@ The external commands the library uses are the POSIX ones that every target syst
 `date`, `sed`, `tr`, `grep`, `basename`, `dirname`, `mkdir`, `readlink`, `wc` and, for journal
 logging, `logger`.
 
+### Installing on Alpine and other systems without bash
+
+`install.sh` and bpkg are bash scripts. Where bash is not installed, download the file directly
+and source it with `.`:
+
+```sh
+wget https://github.com/GingerGraham/bash-logger/releases/latest/download/logging.sh
+```
+
+### Journal logging on busybox
+
+On Alpine, `logger` is normally a symlink to `busybox`. The library runs it through the symlink,
+as the applet is selected from that name, and accepts it only when the symlink and `busybox` are
+both in a safe directory. busybox `logger` writes to syslog, so messages reach whichever syslog
+daemon the system runs and not the systemd journal.
+
 ## Documented Differences
 
 The library behaves the same in every supported shell, with these exceptions.
@@ -107,12 +123,15 @@ rejected:
 * **A separate `logging-posix.sh`**: two copies of the same security controls would drift apart.
 * **Bash-only fast paths everywhere**: two code paths to test and review for every function.
 
-Shell-specific code is allowed only where a POSIX form cannot give the same result, guarded by
-`BASH_VERSION` or `ZSH_VERSION`:
+Shell-specific code is allowed only where a POSIX form cannot give the same result, or for the
+timestamp, where it removes most of the cost of a message. It is guarded by
+`_LOGGER_SHELL_FAMILY`, which is set when the file is sourced. A `BASH_VERSION` or `ZSH_VERSION`
+inherited from the environment does not change it.
 
 * script name detection (`BASH_SOURCE`, `funcfiletrace`)
 * character-based truncation (`${var:0:n}`) in bash and zsh
 * the executed-directly check in bash
+* timestamps without a process in bash 4.2+ and zsh (see [Timestamps](#timestamps))
 
 Each of these lines has a `shellcheck disable` directive with the reason above it.
 
@@ -134,8 +153,36 @@ earlier code. Two details needed explicit handling:
 Earlier versions passed every message through four or more command substitutions, each of which
 starts a subshell. The internal helpers now set a result variable instead (for example
 `_sanitize_log_message_into` sets `_LOGGER_TEXT`), and ANSI stripping only starts `sed` when the
-message contains an escape character. A plain message now starts one process, for the timestamp
-(`date`), and that process is now most of the cost of each message.
+message contains an escape character.
+
+### Timestamps
+
+Starting `date` is most of the cost of a plain message, so bash 4.2 and later and zsh format the
+time with a builtin and start no process:
+
+* **bash 4.2 and later:** `printf -v name '%(...)T' -1`. The library tests for this when it is
+  sourced, so bash 3.2 uses `date`.
+* **zsh:** prompt expansion (`%D{...}`), which needs no module.
+* **dash and busybox ash:** `date`.
+
+Local time follows `TZ` the way `date` does. For UTC, the library reads the seconds since the epoch
+and calculates the date and time itself, so it never changes `TZ`. If a builtin does not give a
+valid result, the library uses `date`.
+
+bash's builtin reads a coarse clock, so at the moment a second changes, a timestamp can be one
+second behind what `date` prints. The difference lasts a few milliseconds at most.
+
+Tests that replace `date` to fix the time in log lines only affect the shells that still use it.
+
+### Known limitation: zsh signal handlers
+
+zsh 5.9 can crash when a signal handler runs `[` while the script is also in a `[` command. A
+script that uses only `[` and a trap, without this library, crashes the same way. 2.x used `[[`
+in bash and zsh, which zsh does not run the same way, so it did not expose this.
+
+The chance is small for a handler that runs once, such as logging on `SIGTERM` before exiting. In
+a stress test that logged in a loop with a handler that also logged, 5 of 12 runs crashed at about
+50 signals per second. If a zsh script receives frequent signals, avoid logging from its handlers.
 
 ### Long messages
 
@@ -206,6 +253,6 @@ lines of 4 KB and 100 KB, and multi-line messages from 4 KB to 256 KB. Run the s
 
 CI runs every scenario in every shell against the base branch and uploads the results.
 
-The agreed budget for the POSIX conversion was no slowdown on bash. A plain message is now about
-three times faster in bash and zsh than before the conversion, and the cost of a message grows
-about linearly with its size.
+The agreed budget for the POSIX conversion was no slowdown on bash. Compared with 2.7.0, a plain
+message is now about ten times faster in bash 4.2+ and zsh, and the cost of a message grows about
+linearly with its size.

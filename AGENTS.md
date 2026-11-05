@@ -68,7 +68,7 @@ bash-forward preference for `logging.sh`. In that file:
 * Print data with `printf '%s\n'`, never `echo` (dash and zsh `echo` expand backslashes)
 * Initialise every local: `local name=""` (dash's `local` keeps the outer value)
 * Shell-specific code only where no POSIX form gives the same result, behind a
-  `BASH_VERSION` or `ZSH_VERSION` check, with a `shellcheck disable` directive and the reason
+  `_LOGGER_SHELL_FAMILY` check, with a `shellcheck disable` directive and the reason
   on the line above
 * `scripts/check-posix-compat.sh` must pass (zero `SC3xxx` findings from `--shell=dash`)
 * Document any behaviour that differs between shells in
@@ -76,13 +76,8 @@ bash-forward preference for `logging.sh`. In that file:
 
 The guidelines below apply to the other scripts in the repository.
 
-**Supported shells** (in order of priority):
-
-1. POSIX shell (`sh`) — most compatible
-2. Bash (4.x and 5.x)
-3. Zsh
-4. Fish
-5. Other POSIX-compatible shells
+The test suite and `scripts/` target bash 3.2 or later. Fish is supported only for surrounding
+repository tooling, never for `logging.sh`.
 
 **DO:**
 
@@ -136,6 +131,22 @@ trailing punctuation in headings (MD026), first-line heading (MD041).
   * Constants: `UPPERCASE_WITH_UNDERSCORES`
   * Functions: `lowercase_with_underscores`
   * Local variables: `lowercase_with_underscores`
+
+## Runtime Configuration Functions
+
+Every `set_*` function in `logging.sh` reports its change as a `CONFIG` notice. Build the entry
+with `_format_log_message "CONFIG" "$message"`, then send it through the shared helpers instead
+of writing `printf` blocks in the function:
+
+* `_log_set_config_to_console "$log_entry" [color]` — console copy, routed like a NOTICE message
+  so it follows `LOG_STDERR_LEVEL`. The color defaults to purple; pass `$COLOR_RED` to warn when
+  enabling an unsafe mode.
+* `_log_set_config_to_file "$log_entry"` — log file copy, without colors. Does nothing when
+  `LOG_FILE` is empty.
+* `_write_to_journal "notice" ...` — journal copy, when journal logging is enabled.
+
+When adding a `set_*` function, add it to the `CONFIG` notice tests in
+`tests/test_runtime_config.sh`, which check every function's console stream and log file line.
 
 ## Pre-PR Checklist
 

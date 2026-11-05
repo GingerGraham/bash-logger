@@ -65,7 +65,7 @@ Contributors are not required to use any AI tooling. Human review and maintainer
 * Use 4 spaces for indentation (no tabs)
 * Keep lines under 100 characters where reasonable
 * Use meaningful variable names
-* Prefer `[[ ]]` over `[ ]` for conditionals
+* In `logging.sh`, use POSIX sh plus `local` (`[ ]` and `case`, not `[[ ]]`). In tests and `scripts/`, prefer `[[ ]]`
 * Quote variables unless you specifically need word splitting
 * Follow existing naming conventions in the codebase
 

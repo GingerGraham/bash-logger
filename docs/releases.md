@@ -16,7 +16,7 @@ When commits are pushed to the `main` branch:
 2. **Determine version** - Calculates the next version based on commit types:
    * `feat:` → Minor version bump (0.9.0 → 0.10.0)
    * `fix:`, `perf:`, `refactor:` → Patch version bump (0.9.0 → 0.9.1)
-   * `BREAKING CHANGE:` in commit footer → Major version bump (0.9.0 → 1.0.0)
+   * `!` after the type (`feat!:`) or `BREAKING CHANGE:` in commit footer → Major version bump (0.9.0 → 1.0.0)
    * `docs:`, `style:`, `test:`, `chore:`, `ci:` → No release
 3. **Update files** - Automatically updates:
    * `BASH_LOGGER_VERSION` in [logging.sh](../logging.sh)
@@ -129,12 +129,12 @@ git commit -m "docs: update getting started guide"
 
 ### Release Types
 
-| Commit Type               | Version Change | Example            |
-| ------------------------- | -------------- | ------------------ |
-| `feat:`                   | Minor (0.x.0)  | 0.9.0 → 0.10.0     |
-| `fix:`, `perf:`           | Patch (0.0.x)  | 0.9.0 → 0.9.1      |
-| `BREAKING CHANGE:` footer | Major (x.0.0)  | 0.9.0 → 1.0.0      |
-| `docs:`, `chore:`, etc.   | None           | No release created |
+| Commit Type                       | Version Change | Example            |
+| --------------------------------- | -------------- | ------------------ |
+| `feat:`                           | Minor (0.x.0)  | 0.9.0 → 0.10.0     |
+| `fix:`, `perf:`                   | Patch (0.0.x)  | 0.9.0 → 0.9.1      |
+| `feat!:`, `BREAKING CHANGE:`      | Major (x.0.0)  | 0.9.0 → 1.0.0      |
+| `docs:`, `chore:`, etc.           | None           | No release created |
 
 ## Checking Version Information
 
