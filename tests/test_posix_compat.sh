@@ -24,6 +24,7 @@
 # - A trap handler that logs does not replace the message in progress
 # - log_sensitive text does not stay in shell variables
 # - A logger symlink to busybox is accepted only in a safe directory
+# - A second --config with no value returns an error
 
 # Run a snippet with logging.sh sourced, under a shell command, with a fixed locale.
 # The snippet runs from a script file (not -c), so the detected script name is the
@@ -549,6 +550,25 @@ printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
     pass_test
 }
 
+test_posix_second_config_without_value() {
+    local shell_command="$1"
+    start_test "[$shell_command] a second --config with no value returns an error"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    printf 'level=info\n' > "$TEST_DIR/second.ini"
+    local output
+    output=$(run_with_timeout 20 run_snippet_in_shell "$shell_command" C "
+init_logger -c '$TEST_DIR/second.ini' -c
+printf 'status=%s\n' \"\$?\"
+" 2>&1)
+
+    assert_contains "$output" "requires a value" || return
+    assert_contains "$output" "status=1" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -594,5 +614,6 @@ while IFS= read -r posix_shell; do
     test_posix_trap_keeps_message "$posix_shell"
     test_posix_message_not_kept_in_variables "$posix_shell"
     test_posix_busybox_logger_symlink "$posix_shell"
+    test_posix_second_config_without_value "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
 done <<< "$(test_shell_list)"

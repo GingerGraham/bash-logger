@@ -1741,7 +1741,8 @@ init_logger() {
     while [ "$#" -gt 0 ]; do
         case $1 in
             -c|--config)
-                # Already processed in first pass, which also rejected a missing path
+                # Already processed in first pass, which only checks the first --config
+                _require_option_value "$@" || return 1
                 shift 2
                 ;;
             --color|--colour)
