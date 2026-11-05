@@ -36,6 +36,7 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
   * [Adding Tests to Existing Suite](#adding-tests-to-existing-suite)
 * [Debugging Failed Tests](#debugging-failed-tests)
 * [Continuous Integration](#continuous-integration)
+  * [Comparing with the Previous Major Release](#comparing-with-the-previous-major-release)
 * [Related Documentation](#related-documentation)
 
 ## Overview
@@ -913,6 +914,38 @@ jobs:
 The CI workflow also runs the full suite on macOS under `/bin/bash` 3.2 with the BSD userland
 (`test-macos-bash32` in `.github/workflows/tests.yml`). Write tests so they run on both: avoid
 Bash 4+ syntax, and avoid GNU-only options such as `date +%s%N` or `sed -i` without a suffix.
+
+Other jobs in the same workflow:
+
+* `test-bash-versions` runs the suite in the `bash:4.2`, `bash:4.4` and `bash:5.1` Docker
+  images (the RHEL 7, RHEL 8 and Ubuntu 22.04 era versions). The images are Alpine based, so
+  the tests run with musl and BusyBox tools, and the stub scripts they write must not assume
+  `/bin/bash` or GNU `sed`.
+* `test-alpine` runs the suite on `alpine:latest` with every supported shell, using the real
+  BusyBox and musl of a default Alpine system.
+* `compare-with-release` runs `scripts/compare-with-release.py`, described below.
+
+### Comparing with the Previous Major Release
+
+`scripts/compare-with-release.py` runs consumer-style scripts against `logging.sh` from the
+last release of the previous major version and against the working copy. It covers 45 bash
+option and locale modes, 38 zsh modes, and 58 API scenarios under bash, `bash --posix`
+and zsh, and compares stdout, stderr, log files and exit status.
+
+```bash
+python3 -I scripts/compare-with-release.py
+```
+
+The release to compare with, and the differences that are allowed, are in
+`scripts/compare-with-release.json`. Each allowed difference names its section of the upgrade
+guide. When a change alters behaviour on purpose, document it in the upgrade guide, then add a
+narrow scenario for it and allow only that scenario. Do not allow a whole shell mode.
+
+Options: `--filter TEXT` runs only cases whose `shell/case` name contains `TEXT`,
+`--json-out FILE` writes both outputs of every difference, and `--strict` fails when zsh or a
+locale is missing. Full coverage needs the `en_GB.UTF-8`, `tr_TR.UTF-8` and
+`de_DE.ISO-8859-1` locales; on Fedora, install `glibc-langpack-en`, `glibc-langpack-tr` and
+`glibc-langpack-de`.
 
 **CI Characteristics**:
 

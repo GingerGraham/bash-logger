@@ -1,0 +1,331 @@
+{
+  "baseline_version": "2.7.0",
+  "upgrade_guide": "docs/upgrading-to-3.0.md",
+  "baseline_rewrites": [
+    {
+      "shells": [
+        "zsh"
+      ],
+      "pattern": "(\\[|script_name='|initialized by )unknown",
+      "replacement": "\\1script.sh",
+      "except_cases": [
+        "x:no-init",
+        "x:no-init-strict",
+        "x:unknown-opt",
+        "x:config-missing",
+        "x:errexit-in-if"
+      ],
+      "reason": "zsh now detects the script name, where 2.x showed unknown. The excepted cases log before init_logger succeeds, so both versions show unknown.",
+      "guide": "#changes-in-zsh-only"
+    }
+  ],
+  "allowed_differences": [
+    {
+      "shells": [
+        "bash"
+      ],
+      "case": "ifs-digit",
+      "outputs": [
+        "stderr"
+      ],
+      "reason": "No 'return: numeric argument required' errors when IFS contains digits",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:echo-option-messages",
+      "outputs": [
+        "stdout",
+        "log"
+      ],
+      "reason": "Messages -n, -e and -E (and - in zsh) are logged",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:missing-option-value",
+      "outputs": [
+        "stdout",
+        "stderr",
+        "status"
+      ],
+      "reason": "A missing option value is an error; 2.x looped forever in bash",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:second-config-no-value",
+      "outputs": [
+        "stdout",
+        "stderr",
+        "status"
+      ],
+      "reason": "A second --config with no value is an error",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:bad-max",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "A line limit that is invalid octal disables truncation; zsh reads a leading 0 as octal",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:direct-var-limit",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "A line limit that is invalid octal disables truncation; zsh reads a leading 0 as octal",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:logfile-removed",
+      "outputs": [
+        "stderr"
+      ],
+      "reason": "A failed log file write prints one error",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:logfile-removed-strict",
+      "outputs": [
+        "stderr"
+      ],
+      "reason": "A failed log file write prints one error; set -u works in zsh",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:direct-var-level",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "Levels must be plain numbers",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix"
+      ],
+      "case": "x:backslash-message-xpg-echo",
+      "outputs": [
+        "stdout",
+        "log"
+      ],
+      "reason": "shopt -s xpg_echo no longer affects messages",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:turkish-level-names",
+      "outputs": [
+        "stdout"
+      ],
+      "reason": "Level names work in a Turkish locale",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:replaced-date-command",
+      "outputs": [
+        "stdout"
+      ],
+      "reason": "Timestamps do not start date in bash 4.2+ and zsh",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:config-notice-stderr-level",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "CONFIG notices follow the stderr level",
+      "guide": "#config-notices"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:config-notice-write-failure",
+      "outputs": [
+        "stdout",
+        "stderr",
+        "status"
+      ],
+      "reason": "A failed log file write from a set_* function is reported and does not exit under set -e",
+      "guide": "#config-notices"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "x:backslash-message",
+      "outputs": [
+        "stdout",
+        "log"
+      ],
+      "reason": "Backslash sequences in messages are logged as written",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "x:backslash-message-xpg-echo",
+      "outputs": [
+        "stdout",
+        "log"
+      ],
+      "reason": "Backslash sequences in messages are logged as written",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "no_unset",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "set -u works",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "strict",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "set -u works",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "x:no-init-strict",
+      "outputs": [
+        "stderr"
+      ],
+      "reason": "set -u works",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "x:no-args-u",
+      "outputs": [
+        "stderr"
+      ],
+      "reason": "set -u works",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "glob_subst",
+      "outputs": [
+        "stdout",
+        "log"
+      ],
+      "reason": "setopt glob_subst no longer changes messages",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "warn_nested_var",
+      "outputs": [
+        "stderr"
+      ],
+      "reason": "setopt warn_nested_var reports more internal variables",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "x:source-in-function",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "Sourcing from inside a function keeps the constants global",
+      "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "x:preset-readonly",
+      "outputs": [
+        "stderr"
+      ],
+      "reason": "The read-only error for a preset constant names _logger_readonly as its location",
+      "guide": "#internal-names"
+    }
+  ]
+}

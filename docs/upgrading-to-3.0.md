@@ -39,6 +39,8 @@ or renamed.
 * **Level names work in a Turkish locale.** In `tr_TR.UTF-8`, 2.x treated names containing `i`,
   such as `info` and `critical`, as invalid. `--level critical` silently became `INFO`, and
   `log_to_journal info` returned an error.
+* **No shell errors when `IFS` contains digits.** 2.x printed `return: : numeric argument
+  required` for messages in bash when `IFS` contained digits.
 * **Timestamps do not start `date` in bash 4.2+ and zsh.** The output is the same. If your tests
   replace `date` to fix the time in log lines, that no longer has an effect in these shells.
 
@@ -65,6 +67,11 @@ See [Runtime Configuration Notices](output-streams.md#runtime-configuration-noti
   containing `\n` could write a second log line and bypass newline sanitization. A message of
   exactly `-` is also logged now.
 * **`set -u` works.** Sourcing the library under `set -u` or `setopt no_unset` failed in 2.x.
+* **`setopt glob_subst` no longer changes messages.** With that option set, 2.x replaced a `~`
+  at the start of a message with the home directory.
+* **`setopt warn_nested_var` reports more internal variables.** The library keeps intermediate
+  results in `_LOGGER_` variables, and zsh warns each time a function sets one. The warnings
+  need no action.
 * **A leading `0` in a line limit means octal,** as it does in bash. `010` is 8, and `08` disables
   truncation.
 * **Sourcing from inside a function works correctly.** The constants stay global, and the logger
