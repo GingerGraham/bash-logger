@@ -135,25 +135,40 @@ Earlier versions passed every message through four or more command substitutions
 starts a subshell. The internal helpers now set a result variable instead (for example
 `_sanitize_log_message_into` sets `_LOGGER_TEXT`), and ANSI stripping only starts `sed` when the
 message contains an escape character. A plain message now starts one process, for the timestamp
-(`date`).
+(`date`), and that process is now most of the cost of each message.
+
+### Long messages
+
+Newlines, carriage returns and tabs are replaced before truncation, so a large message (for
+example captured command output passed to `log_error`) is sanitized in full. To keep the cost
+roughly linear in the message length:
+
+* Above 2,048 characters in dash and busybox, or 16,384 in bash and zsh, a message that contains
+  one of these characters is passed through one `tr` process.
+* Shorter messages use pattern substitution in bash and zsh, and an in-shell loop in other
+  shells, with no extra process.
+* If `tr` fails, the in-shell replacement is used, so a message is never lost or left
+  unsanitized.
 
 The original helpers (`_sanitize_log_message`, `_strip_ansi_codes`, `_truncate_log_message`,
 `_format_log_message` and others) still print their result, for existing callers and tests.
 
 ## Testing Across Shells
 
-Three suites run `logging.sh` under every shell in `TEST_SHELLS`:
+Four suites run `logging.sh` under every shell in `TEST_SHELLS`:
 
 | Suite                           | What it checks                                                           |
 | ------------------------------- | ------------------------------------------------------------------------ |
 | `test_shell_compat.sh`          | Each scenario in `tests/compat/scenarios/` gives the same output as bash |
 | `test_validator_equivalence.sh` | The validators match the golden results in `tests/compat/golden/`        |
+| `test_sanitize_equivalence.sh`  | Messages are logged exactly as 2.7.0 logged them (golden corpus)         |
 | `test_posix_compat.sh`          | The documented differences above, `set -eu`, and the color bytes         |
 
 ```bash
 TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
 TEST_REQUIRE_SHELLS="zsh dash busybox" \
-    ./tests/run_tests.sh test_shell_compat test_validator_equivalence test_posix_compat
+    ./tests/run_tests.sh test_shell_compat test_validator_equivalence \
+    test_sanitize_equivalence test_posix_compat
 ```
 
 `TEST_SHELLS` defaults to `bash`. Separate commands with commas when a command has flags. CI runs
@@ -170,13 +185,27 @@ sudo dnf install zsh dash busybox
 
 ## Performance
 
-`scripts/bench-logging.sh` reports the time per message for each shell:
+`scripts/bench-logging.sh` reports the median time per message for each shell and scenario:
 
 ```bash
 scripts/bench-logging.sh bash dash "busybox sh" zsh
+scripts/bench-logging.sh --scenario plain --scenario lines-64k dash
 ```
 
-With `--baseline`, it also measures another copy of `logging.sh` under bash and fails when the
-current one is more than 5% slower. CI runs it against the base branch and uploads the results.
-The agreed budget for the POSIX conversion was no slowdown on bash. Measured on Linux with bash
-5.2, the conversion made a plain `log_info` call about three times faster.
+The scenarios cover plain, filtered, console, custom-format, ANSI and UTF-8 messages, single
+lines of 4 KB and 100 KB, and multi-line messages from 4 KB to 256 KB. Run the script with
+`--help` for the list.
+
+* A run that fails, or whose log file does not have the expected number of lines, prints
+  `FAIL` and stops the script.
+* `--baseline FILE` measures another copy of `logging.sh` in every shell and fails when a
+  scenario is more than `--max-ratio` (default 1.15) slower, unless the difference is under
+  100 microseconds. A shell the baseline cannot run in is reported as `baseline unavailable`.
+* `--max-scaling` (default 32) fails when the 256 KB multi-line message costs more than that
+  many times the 16 KB one. Linear growth is 16.
+
+CI runs every scenario in every shell against the base branch and uploads the results.
+
+The agreed budget for the POSIX conversion was no slowdown on bash. A plain message is now about
+three times faster in bash and zsh than before the conversion, and the cost of a message grows
+about linearly with its size.

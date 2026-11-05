@@ -427,6 +427,7 @@ Current runnable suite files include:
 * `test_posix_compat.sh`
 * `test_resource_limits.sh`
 * `test_runtime_config.sh`
+* `test_sanitize_equivalence.sh`
 * `test_script_name_sanitization.sh`
 * `test_sensitive_data.sh`
 * `test_shell_compat.sh`
@@ -642,13 +643,14 @@ TEST_REQUIRE_SHELLS=zsh ./tests/run_tests.sh
 
 #### Shell Matrix Suites
 
-`test_shell_compat.sh`, `test_validator_equivalence.sh` and `test_posix_compat.sh` run the
-library under every shell in `TEST_SHELLS` (default `bash`). Separate commands with commas
-when a command has flags:
+`test_shell_compat.sh`, `test_validator_equivalence.sh`, `test_sanitize_equivalence.sh` and
+`test_posix_compat.sh` run the library under every shell in `TEST_SHELLS` (default `bash`).
+Separate commands with commas when a command has flags:
 
 ```bash
 TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
-    ./tests/run_tests.sh test_shell_compat test_validator_equivalence test_posix_compat
+    ./tests/run_tests.sh test_shell_compat test_validator_equivalence \
+    test_sanitize_equivalence test_posix_compat
 ```
 
 * **`test_shell_compat.sh`** runs each script in `tests/compat/scenarios/` under bash and under
@@ -657,10 +659,17 @@ TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
   `"$LOGGER_ROOT/logging.sh"` and writes any log file to `"$SCENARIO_DIR/test.log"`. A
   `# compat-locale: C.UTF-8` header line runs it in that locale (default `C`). Shell/scenario
   pairs that are expected to differ for now are listed in `tests/compat/known_failures.txt`.
+  `long_multiline.sh` covers line control characters in messages of every size, either side
+  of the lengths where the sanitizer switches to `tr`.
 * **`test_validator_equivalence.sh`** runs the validators over the corpus in
   `tests/compat/golden/` and compares with golden results recorded from the bash regular
   expressions the validators used before the POSIX conversion. Do not regenerate the golden
   files from current code; see `tests/compat/generate_validator_golden.sh`.
+* **`test_sanitize_equivalence.sh`** logs a fixed corpus of messages (line control characters,
+  ANSI sequences, UTF-8, token-like text, and sizes around the `tr` limits) in three modes and
+  compares the log output with golden results recorded from bash at 2.7.0, before the POSIX
+  conversion. See `tests/compat/generate_sanitize_golden.sh`; it leaves out the messages
+  `-n`, `-e` and `-E`, which 2.7.0 logged as empty lines.
 * **`test_posix_compat.sh`** checks the behaviour documented in
   [Shell Compatibility](shell-compatibility.md).
 
