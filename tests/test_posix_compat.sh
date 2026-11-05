@@ -25,6 +25,7 @@
 # - log_sensitive text does not stay in shell variables
 # - A logger symlink to busybox is accepted only in a safe directory
 # - A second --config with no value returns an error
+# - CONFIG notices follow the stderr level
 # - --max-line-length and --max-journal-length, a config file BOM, truncating 4-byte
 #   characters, a failing logger, and level names in a Turkish locale
 
@@ -571,6 +572,26 @@ printf 'status=%s\n' \"\$?\"
     pass_test
 }
 
+test_posix_config_notice_stream() {
+    local shell_command="$1"
+    start_test "[$shell_command] CONFIG notices follow the stderr level"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+init_logger --no-color --format "%l %m"
+set_log_format "%l" 2>/dev/null
+init_logger --no-color --format "%l %m" --stderr-level DEBUG
+set_log_format "%l" >/dev/null 2>&1
+printf "end\n"
+' 2>/dev/null)
+    assert_equals "CONFIG
+end" "$output" || return
+
+    pass_test
+}
+
 test_posix_max_length_options() {
     local shell_command="$1"
     start_test "[$shell_command] --max-line-length and --max-journal-length set their variables"
@@ -727,6 +748,7 @@ while IFS= read -r posix_shell; do
     test_posix_message_not_kept_in_variables "$posix_shell"
     test_posix_busybox_logger_symlink "$posix_shell"
     test_posix_second_config_without_value "$posix_shell"
+    test_posix_config_notice_stream "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
     test_posix_max_length_options "$posix_shell"
     test_posix_config_bom "$posix_shell"

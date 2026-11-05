@@ -42,6 +42,11 @@
 #     - set_unsafe_allow_newlines <true|false> : Allow newlines in log messages (NOT RECOMMENDED)
 #     - set_unsafe_allow_ansi_codes <true|false> : Allow ANSI codes in log messages (NOT RECOMMENDED)
 #
+#   Each set_* function announces the change with a CONFIG notice, whatever the log level.
+#   On the console it goes to the same stream as a NOTICE message: stderr when the stderr
+#   level is NOTICE, INFO or DEBUG, otherwise stdout. When LOG_FILE is set, the notice is
+#   also appended to it without colors, even with --quiet. The journal receives it when enabled.
+#
 # Internal Functions (prefixed with _):
 #   Functions prefixed with underscore (_) are internal implementation details
 #   and should not be called directly by consuming scripts.
@@ -1955,6 +1960,41 @@ init_logger() {
     return 0
 }
 
+# Print a set_* function's CONFIG notice to the console (internal)
+# Routed like a NOTICE message, so it follows LOG_STDERR_LEVEL instead of always using stdout.
+# Arguments: $1 = formatted log entry, $2 = color (optional, defaults to COLOR_PURPLE)
+_log_set_config_to_console() {
+    local log_entry="$1"
+    local log_entry_color="${2:-$COLOR_PURPLE}"
+
+    if [ "$CONSOLE_LOG" != "true" ]; then
+        return 0
+    fi
+
+    local output="${log_entry}"
+    if _should_use_colors; then
+        output="${log_entry_color}${log_entry}${COLOR_RESET}"
+    fi
+
+    if _should_use_stderr "$LOG_LEVEL_NOTICE"; then
+        printf '%s\n' "${output}" >&2
+    else
+        printf '%s\n' "${output}"
+    fi
+    return 0
+}
+
+# Append a set_* function's CONFIG notice to the log file (internal)
+# Written without colors, whatever the console, stderr level or log level settings.
+# Does nothing when LOG_FILE is empty.
+# Arguments: $1 = formatted log entry
+_log_set_config_to_file() {
+    if [ -n "$LOG_FILE" ]; then
+        _append_to_log_file "$1"
+    fi
+    return 0
+}
+
 # Function to change log level after initialization
 set_log_level() {
     local level="$1"
@@ -1969,19 +2009,8 @@ set_log_level() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Always log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -1996,19 +2025,8 @@ set_timezone_utc() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Always log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -2023,19 +2041,8 @@ set_log_format() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Always log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -2059,19 +2066,8 @@ set_journal_logging() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Log to journal if it was previously enabled or just being enabled
     # Only attempt journal write when logger path is set
@@ -2093,19 +2089,8 @@ set_journal_tag() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Log to journal if enabled, using the old tag
     _write_to_journal "notice" "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
@@ -2125,19 +2110,8 @@ set_syslog_facility() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Always log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -2172,19 +2146,8 @@ set_color_mode() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -2200,19 +2163,8 @@ set_script_name() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        if _should_use_colors; then
-            printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-        else
-            printf '%s\n' "${log_entry}"
-        fi
-    fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}"
+    _log_set_config_to_file "${log_entry}"
 
     # Always log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -2240,28 +2192,13 @@ set_unsafe_allow_newlines() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        # Use warning color if enabling unsafe mode
-        if [ "$LOG_UNSAFE_ALLOW_NEWLINES" = "true" ]; then
-            if _should_use_colors; then
-                printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
-            else
-                printf '%s\n' "${log_entry}"
-            fi
-        else
-            if _should_use_colors; then
-                printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-            else
-                printf '%s\n' "${log_entry}"
-            fi
-        fi
+    # Use warning color if enabling unsafe mode
+    local log_entry_color=""
+    if [ "$LOG_UNSAFE_ALLOW_NEWLINES" = "true" ]; then
+        log_entry_color="${COLOR_RED}"
     fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}" "${log_entry_color}"
+    _log_set_config_to_file "${log_entry}"
 
     # Always log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -2289,28 +2226,13 @@ set_unsafe_allow_ansi_codes() {
     local log_entry=""
     log_entry=$(_format_log_message "CONFIG" "$message")
 
-    # Always print to console if enabled
-    if [ "$CONSOLE_LOG" = "true" ]; then
-        # Use warning color if enabling unsafe mode
-        if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
-            if _should_use_colors; then
-                printf '%s\n' "${COLOR_RED}${log_entry}${COLOR_RESET}"
-            else
-                printf '%s\n' "${log_entry}"
-            fi
-        else
-            if _should_use_colors; then
-                printf '%s\n' "${COLOR_PURPLE}${log_entry}${COLOR_RESET}"
-            else
-                printf '%s\n' "${log_entry}"
-            fi
-        fi
+    # Use warning color if enabling unsafe mode
+    local log_entry_color=""
+    if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
+        log_entry_color="${COLOR_RED}"
     fi
-
-    # Always write to log file if set
-    if [ -n "$LOG_FILE" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null
-    fi
+    _log_set_config_to_console "${log_entry}" "${log_entry_color}"
+    _log_set_config_to_file "${log_entry}"
 
     # Always log to journal if enabled
     _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
@@ -2339,6 +2261,23 @@ _log_to_console() {
     else
         printf '%s\n' "${output}"
     fi
+    return 0
+}
+
+# Append a formatted entry to LOG_FILE (internal)
+# A failed write is reported once, and the entry goes to stderr so it is not lost.
+_append_to_log_file() {
+    { printf '%s\n' "$1" >> "$LOG_FILE"; } 2>/dev/null || {
+        # Only print the error once to avoid spam
+        if [ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]; then
+            printf '%s\n' "ERROR: Failed to write to log file" >&2
+            printf '%s\n' "  Hint: Check file permissions, disk space, or if the log file was deleted" >&2
+            LOGGER_FILE_ERROR_REPORTED="yes"
+        fi
+
+        # Print the original message to stderr to not lose it
+        printf '%s\n' "$1" >&2
+    }
     return 0
 }
 
@@ -2408,17 +2347,7 @@ _write_log_message() {
     # If LOG_FILE is set and not empty, append to the log file (without colors)
     # Skip writing to the file if skip_file is true
     if [ -n "$LOG_FILE" ] && [ "$skip_file" != "true" ]; then
-        { printf '%s\n' "${log_entry}" >> "$LOG_FILE"; } 2>/dev/null || {
-            # Only print the error once to avoid spam
-            if [ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]; then
-                printf '%s\n' "ERROR: Failed to write to log file" >&2
-                printf '%s\n' "  Hint: Check file permissions, disk space, or if the log file was deleted" >&2
-                LOGGER_FILE_ERROR_REPORTED="yes"
-            fi
-
-            # Print the original message to stderr to not lose it
-            printf '%s\n' "${log_entry}" >&2
-        }
+        _append_to_log_file "${log_entry}"
     fi
 
     # If journal logging is enabled or force_journal is true, log to the system journal.
