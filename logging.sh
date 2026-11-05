@@ -125,12 +125,8 @@ if ! _is_readonly _LOGGER_ESC; then
         '\0302\0222' '\0302\0223' '\0302\0224' '\0302\0225' '\0302\0226' '\0302\0227' \
         '\0302\0230' '\0302\0231' '\0302\0232' '\0302\0233' '\0302\0234' '\0302\0235' \
         '\0302\0236' '\0302\0237' '\0342\0200\0250' '\0342\0200\0251')
-    # Characters allowed in script names and sanitized journal tags. Listed one by one
-    # rather than as ranges such as a-z, because what a range matches depends on the
-    # locale in some shells (for example bash 3.2 without globasciiranges).
-    _LOGGER_NAME_CHARACTERS='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-'
     _logger_readonly _LOGGER_ESC _LOGGER_BEL _LOGGER_CR _LOGGER_TAB _LOGGER_NEWLINE _LOGGER_BOM \
-        _LOGGER_UTF8_CONTROLS _LOGGER_NAME_CHARACTERS
+        _LOGGER_UTF8_CONTROLS
 fi
 
 # Result variables of the *_into helpers. They start empty so that a value from the
@@ -307,16 +303,20 @@ _replace_all() {
 # Set _LOGGER_REPLACED to text with every character that is not a letter, digit,
 # period, underscore or hyphen replaced by an underscore (internal).
 # In shells that work on bytes (dash), each byte of a multi-byte character is replaced.
+# The allowed characters are listed one by one rather than as ranges such as a-z, because
+# what a range matches depends on the locale in some shells (for example bash 3.2 without
+# globasciiranges). They are written unquoted in each pattern: busybox 1.37 with musl
+# treated a backslash as allowed when the list came from a quoted variable containing "-".
 _replace_unsafe_name_characters() {
     local remaining="$1"
     local result=""
     local safe_prefix=""
     while :; do
         case "$remaining" in
-            *[!"$_LOGGER_NAME_CHARACTERS"]*) ;;
+            *[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]*) ;;
             *) break ;;
         esac
-        safe_prefix="${remaining%%[!"$_LOGGER_NAME_CHARACTERS"]*}"
+        safe_prefix="${remaining%%[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]*}"
         result="${result}${safe_prefix}_"
         remaining="${remaining#"$safe_prefix"}"
         remaining="${remaining#?}"
