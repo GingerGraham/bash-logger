@@ -26,8 +26,8 @@ What actually happened.
 
 ## Environment
 
-* **Bash Version**: (output of `bash --version`)
-* **Shell**: (bash/zsh/sh - output of `echo $SHELL`)
+* **Shell**: (the shell that runs the script: bash, zsh, dash or busybox ash)
+* **Shell Version**: (for example the output of `bash --version` or `zsh --version`)
 * **OS**: (e.g., Ubuntu 22.04, macOS 13, RHEL 9, etc.)
 * **bash-logger Version**: (check `echo "$BASH_LOGGER_VERSION"` or git commit)
 * **Installation Method**: (sourced directly, copied, package manager, etc.)

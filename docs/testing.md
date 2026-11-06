@@ -36,6 +36,7 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
   * [Adding Tests to Existing Suite](#adding-tests-to-existing-suite)
 * [Debugging Failed Tests](#debugging-failed-tests)
 * [Continuous Integration](#continuous-integration)
+  * [Comparing with the Previous Major Release](#comparing-with-the-previous-major-release)
 * [Related Documentation](#related-documentation)
 
 ## Overview
@@ -424,13 +425,17 @@ Current runnable suite files include:
 * `test_mixed_sanitization_modes.sh`
 * `test_output.sh`
 * `test_path_traversal.sh`
+* `test_posix_compat.sh`
 * `test_resource_limits.sh`
 * `test_runtime_config.sh`
+* `test_sanitize_equivalence.sh`
 * `test_script_name_sanitization.sh`
 * `test_sensitive_data.sh`
+* `test_shell_compat.sh`
 * `test_source_guard.sh`
 * `test_toctou_protection.sh`
 * `test_unsafe_newlines.sh`
+* `test_validator_equivalence.sh`
 * `test_zsh_compat.sh`
 
 ### Test Coverage
@@ -592,6 +597,15 @@ require_shell zsh || return 0
 
 # Skip a test with reason
 skip_test "logger command not available"
+
+# Print the shells in TEST_SHELLS, one per line (default: bash)
+test_shell_list
+
+# Return 0 for shells whose string operations count characters (bash, zsh)
+shell_counts_characters "busybox sh"
+
+# Run a command and stop it after a number of seconds (works on macOS)
+run_with_timeout 30 some_command args
 ```
 
 #### Cross-Shell Tests
@@ -622,11 +636,43 @@ the runner as a suite crash.
 
 When zsh is not installed, these tests skip. Set `TEST_REQUIRE_SHELLS` to a
 space-separated list of shells that must be present, so the tests fail instead
-of silently skipping. CI sets `TEST_REQUIRE_SHELLS=zsh`:
+of silently skipping. CI sets `TEST_REQUIRE_SHELLS="zsh dash busybox"`:
 
 ```bash
 TEST_REQUIRE_SHELLS=zsh ./tests/run_tests.sh
 ```
+
+#### Shell Matrix Suites
+
+`test_shell_compat.sh`, `test_validator_equivalence.sh`, `test_sanitize_equivalence.sh` and
+`test_posix_compat.sh` run the library under every shell in `TEST_SHELLS` (default `bash`).
+Separate commands with commas when a command has flags:
+
+```bash
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
+    ./tests/run_tests.sh test_shell_compat test_validator_equivalence \
+    test_sanitize_equivalence test_posix_compat
+```
+
+* **`test_shell_compat.sh`** runs each script in `tests/compat/scenarios/` under bash and under
+  each other shell, and compares stdout, stderr, the log file and the exit status (timestamps
+  masked). To cover new behaviour, add a scenario: a short POSIX sh script that sources
+  `"$LOGGER_ROOT/logging.sh"` and writes any log file to `"$SCENARIO_DIR/test.log"`. A
+  `# compat-locale: C.UTF-8` header line runs it in that locale (default `C`). Shell/scenario
+  pairs that are expected to differ for now are listed in `tests/compat/known_failures.txt`.
+  `long_multiline.sh` covers line control characters in messages of every size, either side
+  of the lengths where the sanitizer switches to `tr`.
+* **`test_validator_equivalence.sh`** runs the validators over the corpus in
+  `tests/compat/golden/` and compares with golden results recorded from the bash regular
+  expressions the validators used before the POSIX conversion. Do not regenerate the golden
+  files from current code; see `tests/compat/generate_validator_golden.sh`.
+* **`test_sanitize_equivalence.sh`** logs a fixed corpus of messages (line control characters,
+  ANSI sequences, UTF-8, token-like text, and sizes around the `tr` limits) in three modes and
+  compares the log output with golden results recorded from bash at 2.7.0, before the POSIX
+  conversion. See `tests/compat/generate_sanitize_golden.sh`; it leaves out the messages
+  `-n`, `-e` and `-E`, which 2.7.0 logged as empty lines.
+* **`test_posix_compat.sh`** checks the behaviour documented in
+  [Shell Compatibility](shell-compatibility.md).
 
 **Example**:
 
@@ -845,11 +891,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install zsh
-        run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Install zsh, dash and busybox
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
       - name: Run tests
         env:
-          TEST_REQUIRE_SHELLS: zsh
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
+          TEST_REQUIRE_SHELLS: zsh dash busybox
         run: |
           cd tests
           ./run_tests.sh
@@ -860,12 +907,45 @@ jobs:
 * Bash 3.2 or later (the Bash 3.2 that macOS ships as `/bin/bash` is supported)
 * Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
 * Optional: `logger` command for journal logging tests
-* Optional: `zsh` for cross-shell tests (required when `TEST_REQUIRE_SHELLS=zsh`)
+* Optional: `zsh`, `dash` and `busybox` for cross-shell tests (required when listed in
+  `TEST_REQUIRE_SHELLS`)
 * Optional: `bc` for accurate test timing in JUnit XML output (durations show as 0 if unavailable)
 
 The CI workflow also runs the full suite on macOS under `/bin/bash` 3.2 with the BSD userland
 (`test-macos-bash32` in `.github/workflows/tests.yml`). Write tests so they run on both: avoid
 Bash 4+ syntax, and avoid GNU-only options such as `date +%s%N` or `sed -i` without a suffix.
+
+Other jobs in the same workflow:
+
+* `test-bash-versions` runs the suite in the `bash:4.2`, `bash:4.4` and `bash:5.1` Docker
+  images (the RHEL 7, RHEL 8 and Ubuntu 22.04 era versions). The images are Alpine based, so
+  the tests run with musl and BusyBox tools, and the stub scripts they write must not assume
+  `/bin/bash` or GNU `sed`.
+* `test-alpine` runs the suite on `alpine:latest` with every supported shell, using the real
+  BusyBox and musl of a default Alpine system.
+* `compare-with-release` runs `scripts/compare-with-release.py`, described below.
+
+### Comparing with the Previous Major Release
+
+`scripts/compare-with-release.py` runs consumer-style scripts against `logging.sh` from the
+last release of the previous major version and against the working copy. It covers 45 bash
+option and locale modes, 38 zsh modes, and 59 API scenarios under bash, `bash --posix`
+and zsh, and compares stdout, stderr, log files and exit status.
+
+```bash
+python3 -I scripts/compare-with-release.py
+```
+
+The release to compare with, and the differences that are allowed, are in
+`scripts/compare-with-release.json`. Each allowed difference names its section of the upgrade
+guide. When a change alters behaviour on purpose, document it in the upgrade guide, then add a
+narrow scenario for it and allow only that scenario. Do not allow a whole shell mode.
+
+Options: `--filter TEXT` runs only cases whose `shell/case` name contains `TEXT`,
+`--json-out FILE` writes both outputs of every difference, and `--strict` fails when zsh or a
+locale is missing. Full coverage needs the `en_GB.UTF-8`, `tr_TR.UTF-8` and
+`de_DE.ISO-8859-1` locales; on Fedora, install `glibc-langpack-en`, `glibc-langpack-tr` and
+`glibc-langpack-de`.
 
 **CI Characteristics**:
 

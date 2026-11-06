@@ -207,6 +207,10 @@ run_test_suite_with_progress() {
     run_test_suite "$test_file" "$result_file" >"${result_file}.output" 2>&1
     suite_status=$?
 
+    # wait can report 127 ("not a child of this shell") for a worker that has finished,
+    # so the worker also records its own status for the dispatcher to read
+    printf '%s\n' "$suite_status" > "${result_file}.status"
+
     echo -e "${COLOR_BLUE}←${COLOR_RESET} Finished $test_name (exit status $suite_status, $((SECONDS - started_at))s)"
     return "$suite_status"
 }
@@ -546,9 +550,17 @@ main() {
 
         echo ""
         echo -e "${COLOR_BLUE}All test suites dispatched. Waiting for completion...${COLOR_RESET}"
+        local wait_status recorded_status_file
+        suite_idx=0
         for suite_pid in "${suite_pids[@]}"; do
             wait "$suite_pid"
-            suite_statuses+=("$?")
+            wait_status=$?
+            recorded_status_file="$RESULTS_DIR/result_${suite_idx}.txt.status"
+            if [[ "$wait_status" -eq 127 && -s "$recorded_status_file" ]]; then
+                wait_status="$(cat "$recorded_status_file")"
+            fi
+            suite_statuses+=("$wait_status")
+            suite_idx=$((suite_idx + 1))
         done
         echo ""
 

@@ -610,10 +610,13 @@ log_to_journal LEVEL MESSAGE
 * Applies the same sanitisation (newline and ANSI stripping) and truncation rules as all
   other log functions.
 * Console and file output follow the normal `CONSOLE_LOG` and `LOG_FILE` settings.
-* When `logger` is not available (for example when `LOGGER_PATH` is unset or the binary is
-  missing) and the message is at or above `CURRENT_LOG_LEVEL`, a warning is emitted to stderr
-  and the function returns `1` rather than silently discarding the message, regardless of the
-  value of `USE_JOURNAL`.
+* When `logger` is not available or fails validation (for example when the binary is missing,
+  is outside the trusted system directories, or no longer matches the path validated earlier)
+  and the message is at or above `CURRENT_LOG_LEVEL`, a warning is emitted to stderr and the
+  function returns `1` rather than silently discarding the message, regardless of the value of
+  `USE_JOURNAL`.
+* Only a `LOGGER_PATH` that validation locked (made readonly) is run. A value assigned any other
+  way is refused.
 * `log_sensitive` behaviour is unaffected — `log_to_journal` does not change the
   `skip_journal` logic and cannot cause sensitive messages to reach the journal.
 
@@ -1049,6 +1052,11 @@ By default, bash-logger strips ANSI escape sequences from user input to prevent:
 * Window title changes for social engineering
 * Visual spoofing attacks (fake error messages)
 * Terminal emulator exploitation via crafted sequences
+
+It also removes other control characters: the C0 controls other than newline, carriage return
+and tab (such as backspace and BEL), DEL, the C1 controls, U+2028 and U+2029, and the
+bidirectional formatting characters U+202A to U+202E and U+2066 to U+2069. Enabling this unsafe
+mode keeps all of them.
 
 Library-generated ANSI codes for colors and formatting are preserved.
 

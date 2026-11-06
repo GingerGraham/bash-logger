@@ -1,0 +1,2 @@
+# test_shell_compat.sh reports a listed pair as skipped while it still differs, and
+# fails once it matches bash, so remove entries as each area is converted.

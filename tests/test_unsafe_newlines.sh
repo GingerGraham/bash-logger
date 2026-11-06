@@ -346,18 +346,22 @@ echo "1" >> "$counter_file"
 EOF
     chmod +x "$fake_logger"
 
-    # Set LOGGER_PATH to our fake logger
-    # shellcheck disable=SC2034
-    LOGGER_PATH="$fake_logger"
+    # Point LOGGER_PATH at the fake logger and lock it, as validation does: the library
+    # only runs a locked (readonly) logger path. The subshell keeps the lock and the
+    # settings out of the tests that follow.
+    (
+        # shellcheck disable=SC2034  # read by logging.sh
+        readonly LOGGER_PATH="$fake_logger"
 
-    # shellcheck disable=SC2034
-    USE_JOURNAL="true"
-    # shellcheck disable=SC2034
-    CONSOLE_LOG="false"
-    # shellcheck disable=SC2034
-    LOG_FILE=""
+        # shellcheck disable=SC2034
+        USE_JOURNAL="true"
+        # shellcheck disable=SC2034
+        CONSOLE_LOG="false"
+        # shellcheck disable=SC2034
+        LOG_FILE=""
 
-    set_unsafe_allow_newlines "true"
+        set_unsafe_allow_newlines "true"
+    )
 
     # Count how many times logger was called
     local call_count=0

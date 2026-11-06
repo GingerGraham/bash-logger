@@ -73,19 +73,25 @@ Pre-commit hooks run automatically before each commit. They check:
    * Catches `${var,,}`, `declare -A`, `mapfile`, `[[ -v name ]]`, `&>>`, and similar constructs
    * Run it directly with `scripts/check-bash32-compat.sh [file ...]`
 
-3. **MarkdownLint** - Checks and auto-fixes Markdown formatting
+3. **POSIX sh Compatibility** - Rejects syntax that dash and busybox ash do not support in `logging.sh`
+
+   * Runs `shellcheck --shell=dash` and fails on any `SC3xxx` finding
+   * Needs `shellcheck` on `PATH`
+   * Run it directly with `scripts/check-posix-compat.sh [file ...]`
+
+4. **MarkdownLint** - Checks and auto-fixes Markdown formatting
 
    * Automatically fixes formatting issues (blank lines, trailing spaces, etc.)
    * For issues that can't be auto-fixed (line length), you'll need to fix manually
    * Ensures consistent formatting, proper headings, and link validation
    * Runs on all `.md` files
 
-4. **Bash Logger Tests** - Runs the test suite
+5. **Bash Logger Tests** - Runs the test suite
 
    * Verifies all changes pass the test suite
    * Prevents committing broken code
 
-5. **Commit Message Format** - Validates semantic versioning format
+6. **Commit Message Format** - Validates semantic versioning format
    * Ensures commit messages follow the pattern: `<type>(<scope>): <subject>`
    * Enables automated release and version management
    * Provides clear feedback if message format is incorrect

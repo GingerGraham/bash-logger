@@ -9,4 +9,4 @@ deploy:
       
 
 info:
-  description: "Structured Bash/zsh logging library — console, file, and systemd journal targets"
+  description: "Structured logging library for bash, zsh, dash and busybox ash — console, file, and systemd journal targets"

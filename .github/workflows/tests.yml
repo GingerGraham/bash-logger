@@ -17,13 +17,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Install zsh
-        run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Install zsh, dash and busybox
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
 
+      # TEST_SHELLS drives the cross-shell suites (test_shell_compat, test_validator_equivalence,
+      # test_posix_compat). TEST_REQUIRE_SHELLS makes a missing shell fail instead of skip.
       - name: Run tests
         env:
           TEST_PARALLEL_JOBS: 4
-          TEST_REQUIRE_SHELLS: zsh
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
+          TEST_REQUIRE_SHELLS: zsh dash busybox
         run: |
           cd tests
           ./run_tests.sh
@@ -67,3 +70,147 @@ jobs:
         run: |
           cd tests
           ./run_tests.sh
+
+  # bash 4.2, 4.4 and 5.1 cover the RHEL 7, RHEL 8 and Ubuntu 22.04 era versions, which apt
+  # cannot install on the runner. The timestamp code depends on the bash version (4.2 added
+  # the printf time format). The images are Alpine based, so these jobs also use musl and
+  # BusyBox tools; zsh and dash are covered by the jobs above.
+  test-bash-versions:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    name: Run Test Suite (bash ${{ matrix.bash }})
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        bash: ["4.2", "4.4", "5.1"]
+    container:
+      image: bash:${{ matrix.bash }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Confirm bash version
+        env:
+          EXPECTED_BASH: ${{ matrix.bash }}
+        run: |
+          bash --version | head -1
+          bash -c '[ "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" = "$EXPECTED_BASH" ]'
+
+      # Containers run as root, and the permission tests fail as root
+      - name: Run tests as a non-root user
+        run: |
+          adduser -D tester
+          chown -R tester "$GITHUB_WORKSPACE"
+          su tester -s /bin/sh -c 'cd tests && umask 022 &&
+            TEST_PARALLEL_JOBS=4 TEST_SHELLS="bash,bash --posix,busybox sh" \
+            TEST_REQUIRE_SHELLS="busybox" bash ./run_tests.sh'
+
+  # Real BusyBox and musl, as on a default Alpine system, with every supported shell
+  test-alpine:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    name: Run Test Suite (Alpine, musl and BusyBox)
+    timeout-minutes: 45
+    container:
+      image: alpine:latest
+
+    steps:
+      - name: Install bash, zsh and dash
+        run: apk add --no-cache bash zsh dash
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Show shell versions
+        run: |
+          bash --version | head -1
+          zsh --version
+          busybox | head -1
+
+      # Containers run as root, and the permission tests fail as root
+      - name: Run tests as a non-root user
+        run: |
+          adduser -D tester
+          chown -R tester "$GITHUB_WORKSPACE"
+          su tester -s /bin/sh -c 'cd tests && umask 022 &&
+            TEST_PARALLEL_JOBS=4 TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
+            TEST_REQUIRE_SHELLS="zsh dash busybox" bash ./run_tests.sh'
+
+  # Runs consumer-style scripts against the last release of the previous major version and
+  # fails on any difference that scripts/compare-with-release.json does not allow. Every
+  # allowed difference is documented in the upgrade guide.
+  compare-with-release:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    name: Compare with Previous Major Release
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # The bash and zsh locale modes need these locales; --strict fails if one is missing
+      - name: Install zsh and locales
+        run: |
+          sudo apt-get update && sudo apt-get install -y zsh locales
+          sudo locale-gen en_GB.UTF-8 tr_TR.UTF-8
+          sudo localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1
+
+      - name: Compare
+        run: python3 -I scripts/compare-with-release.py --strict --json-out compare-results.json
+
+      - name: Upload differences
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compare-with-release
+          path: compare-results.json
+          retention-days: 30
+
+  benchmark:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    name: Per-message Benchmark
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install zsh, dash and busybox
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
+
+      # The base branch's logging.sh is the baseline in every shell where it runs (shells it
+      # cannot run in are reported as "baseline unavailable"). The job fails if a run fails,
+      # if a scenario is slower than the baseline by more than --max-ratio (default 1.15,
+      # ignored under a 100 microsecond difference), or if lines-256k / lines-16k exceeds
+      # --max-scaling (default 32; linear growth is 16). Every scenario runs, 5 rounds each.
+      - name: Get baseline logging.sh
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: git show "origin/${BASE_REF}:logging.sh" > "$RUNNER_TEMP/baseline-logging.sh"
+
+      - name: Run benchmark
+        shell: bash
+        run: |
+          scripts/bench-logging.sh --baseline "$RUNNER_TEMP/baseline-logging.sh" \
+            bash "bash --posix" zsh dash "busybox sh" | tee bench-results.txt
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: bench-results.txt
+          retention-days: 30

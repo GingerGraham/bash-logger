@@ -57,7 +57,9 @@ pre-commit run markdownlint --all-files
 * 4-space indentation, no tabs
 * Lines ≤ 100 characters
 * Quote all variable expansions: `"$var"` not `$var`
-* `[[ ]]` for bash conditionals; `[ ]` only when POSIX portability is needed
+* `logging.sh` is POSIX sh plus `local`: `[ ]` and `case` only, checked by
+  `scripts/check-posix-compat.sh` (see `docs/shell-compatibility.md`)
+* Other bash scripts: `[[ ]]` for conditionals; `[ ]` only when POSIX portability is needed
 * `$(...)` not backticks
 * `UPPERCASE` for constants/exported vars; `lowercase` for locals and functions
 * When suppressing a ShellCheck warning, add an explanation comment:

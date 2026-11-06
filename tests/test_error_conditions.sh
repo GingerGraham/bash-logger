@@ -52,14 +52,9 @@ test_journal_tag_control_chars() {
     start_test "Config rejects journal tag with control characters"
 
     local config_file="$TEST_DIR/badtag.conf"
-    # shellcheck disable=SC2028
-    cat > "$config_file" << 'EOF'
-[logging]
-tag = bad	tag
-EOF
-    # Insert a tab character in the tag
-    sed -i 's/bad	tag/bad\x09tag/' "$config_file" 2>/dev/null || \
-        perl -pi -e 's/bad\ttag/bad\x09tag/' "$config_file" 2>/dev/null || true
+    # printf writes the tab, so the test does not depend on sed support for \x09:
+    # busybox sed replaced the tab with the literal text "x09"
+    printf '[logging]\ntag = bad\ttag\n' > "$config_file"
 
     init_logger --config "$config_file" 2>"$TEST_STDERR"
 

@@ -1,0 +1,17 @@
+# shellcheck shell=sh
+# Every public log function, at the most verbose level, to console and file
+. "$LOGGER_ROOT/logging.sh"
+init_logger --no-color --level DEBUG --log "$SCENARIO_DIR/test.log"
+printf 'init rc=%s\n' "$?"
+log_debug "debug message"
+log_info "info message"
+log_notice "notice message"
+log_warn "warn message"
+log_error "error message"
+log_critical "critical message"
+log_alert "alert message"
+log_emergency "emergency message"
+log_fatal "fatal message"
+log_init "init message"
+log_sensitive "sensitive message"
+printf 'last rc=%s\n' "$?"

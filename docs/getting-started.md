@@ -56,6 +56,11 @@ bash-logger can be installed in several ways. Choose the method that best fits y
 * `$HOME/.local/lib/bash-logger/logging.sh` - User-specific installation
 * Project directory - Alongside your script
 
+> [!NOTE]
+> The library runs in bash, zsh, dash and busybox ash, but the install script and bpkg need bash. On a system
+> without bash, such as a default Alpine image, use [Manual Installation](#manual-installation).
+> Upgrading from 2.x? See [Upgrading to 3.0](upgrading-to-3.0.md).
+
 ### Using the Install Script
 
 The easiest way to install bash-logger is with the provided installation script. It handles downloading the latest release,
@@ -111,10 +116,10 @@ release tag:
 
 ```bash
 # Install a specific version (user installation)
-INSTALL_VERSION=v1.0.0 bash -c "$(curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh)"
+INSTALL_VERSION=2.7.0 bash -c "$(curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh)"
 
 # Install a specific version (system-wide)
-curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | sudo INSTALL_VERSION=v1.0.0 bash -s -- --system
+curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | sudo INSTALL_VERSION=2.7.0 bash -s -- --system
 ```
 
 For more details on available options, run the install script with the `--help` flag.

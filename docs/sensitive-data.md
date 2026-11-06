@@ -415,7 +415,7 @@ authenticate_user "admin" "$USER_PASSWORD"
 * ✗ Does **not** prevent terminal history logging
 * ✗ Does **not** prevent memory dumps
 * ✗ Does **not** prevent process monitoring
-* ✗ Does **not** clear variables from memory
+* ✗ Does **not** clear your variables from memory (the library clears its own copy of the message)
 
 ### Output Redirection Limitation
 
