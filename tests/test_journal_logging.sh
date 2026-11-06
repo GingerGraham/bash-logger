@@ -43,10 +43,10 @@ test_log_to_journal_forces_write_when_journal_disabled() {
     result=$(bash -c "
         source '$PROJECT_ROOT/logging.sh'
 
-        # Point LOGGER_PATH at the stub before the readonly guard fires.
-        # Sourcing sets LOGGER_PATH='' (not readonly yet); assign our stub
-        # and override the validation helpers so the stub path is accepted.
-        LOGGER_PATH='$STUB_LOGGER'
+        # Point LOGGER_PATH at the stub and lock it, as validation does: the library
+        # only runs a locked (readonly) logger path. Sourcing sets LOGGER_PATH=''
+        # (not readonly yet), and the validation helpers are overridden.
+        LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
         _find_and_validate_logger() { return 0; }
         check_logger_available() { return 0; }
 
@@ -77,7 +77,7 @@ test_log_to_journal_no_double_dispatch_when_journal_enabled() {
     bash -c "
         source '$PROJECT_ROOT/logging.sh'
 
-        LOGGER_PATH='$STUB_LOGGER'
+        LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
         _find_and_validate_logger() { return 0; }
         check_logger_available() { return 0; }
 
@@ -110,7 +110,7 @@ test_log_to_journal_uses_configured_syslog_facility() {
     bash -c "
         source '$PROJECT_ROOT/logging.sh'
 
-        LOGGER_PATH='$STUB_LOGGER'
+        LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
         _find_and_validate_logger() { return 0; }
         check_logger_available() { return 0; }
 
@@ -208,7 +208,7 @@ test_log_to_journal_below_level_is_suppressed() {
     bash -c "
         source '$PROJECT_ROOT/logging.sh'
 
-        LOGGER_PATH='$STUB_LOGGER'
+        LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
         _find_and_validate_logger() { return 0; }
         check_logger_available() { return 0; }
 
@@ -344,7 +344,7 @@ test_log_sensitive_unaffected_by_force_journal() {
     bash -c "
         source '$PROJECT_ROOT/logging.sh'
 
-        LOGGER_PATH='$STUB_LOGGER'
+        LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
         _find_and_validate_logger() { return 0; }
         check_logger_available() { return 0; }
 
@@ -385,7 +385,7 @@ test_log_to_journal_level_aliases() {
         bash -c "
             source '$PROJECT_ROOT/logging.sh'
 
-            LOGGER_PATH='$STUB_LOGGER'
+            LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
             _find_and_validate_logger() { return 0; }
             check_logger_available() { return 0; }
 
@@ -419,7 +419,7 @@ test_log_to_journal_numeric_levels() {
         exit_code=$(bash -c "
             source '$PROJECT_ROOT/logging.sh'
 
-            LOGGER_PATH='$STUB_LOGGER'
+            LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
             _find_and_validate_logger() { return 0; }
             check_logger_available() { return 0; }
 
@@ -489,7 +489,7 @@ test_log_to_journal_retries_discovery_after_failed_init() {
         # found or not trusted (LOGGER_PATH='').
         # Override _find_and_validate_logger to reflect that the stub is now available.
         _find_and_validate_logger() {
-            LOGGER_PATH='$STUB_LOGGER'
+            LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
             _LOGGER_DISCOVERY_DONE='true'
             return 0
         }
@@ -538,7 +538,7 @@ test_log_to_journal_retries_on_second_call_after_first_failure() {
                 _LOGGER_DISCOVERY_DONE='true'
                 return 1
             fi
-            LOGGER_PATH='$STUB_LOGGER'
+            LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
             _LOGGER_DISCOVERY_DONE='true'
             return 0
         }
@@ -572,7 +572,7 @@ test_write_to_journal_passes_double_dash_before_message() {
     bash -c "
         source '$PROJECT_ROOT/logging.sh'
 
-        LOGGER_PATH='$STUB_LOGGER'
+        LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
         _find_and_validate_logger() { return 0; }
         check_logger_available() { return 0; }
 

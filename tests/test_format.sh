@@ -335,7 +335,7 @@ STUB
     result=$(bash -c "
         export STUB_CAPTURE_FILE='$stub_capture'
         source '$PROJECT_ROOT/logging.sh'
-        LOGGER_PATH='$stub_logger'
+        LOGGER_PATH='$stub_logger'; readonly LOGGER_PATH
         _find_and_validate_logger() { return 0; }
         check_logger_available() { return 0; }
         init_logger --no-color --quiet --format 'PREFIX: %l :: %m' --journal

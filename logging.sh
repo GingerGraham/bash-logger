@@ -1401,9 +1401,11 @@ _write_to_journal() {
         return 0
     fi
 
-    if [ -z "$LOGGER_PATH" ] || [ ! -x "$LOGGER_PATH" ]; then
+    # Only a path that _find_and_validate_logger locked (made readonly) is run. A path
+    # assigned any other way is refused, whatever its value.
+    if [ -z "$LOGGER_PATH" ] || [ ! -x "$LOGGER_PATH" ] || ! _is_readonly LOGGER_PATH; then
         if [ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]; then
-            printf '%s\n' "Warning: logger command unavailable at '$LOGGER_PATH'" >&2
+            printf '%s\n' "Warning: logger command unavailable or not validated at '$LOGGER_PATH'" >&2
             printf '%s\n' "  Journal logging disabled to prevent repeated failures" >&2
             LOGGER_JOURNAL_ERROR_REPORTED="yes"
         fi
@@ -2574,12 +2576,16 @@ log_to_journal() {
     # discovery locked the path as readonly). If LOGGER_PATH is empty — regardless of
     # whether _LOGGER_DISCOVERY_DONE is true — retry discovery so that logger becoming
     # available mid-session (installed, PATH corrected, etc.) is handled correctly.
+    # A failed validation stops here: LOGGER_PATH may still hold a value that was not
+    # validated, such as a locked path that no longer matches the logger on PATH.
+    local logger_validated="true"
     if [ "$_LOGGER_DISCOVERY_DONE" != "true" ] || [ -z "$LOGGER_PATH" ]; then
-        check_logger_available
+        check_logger_available || logger_validated="false"
     fi
 
     # Abort before any writes if logger is still unavailable after attempted discovery.
-    if [ -z "$LOGGER_PATH" ] || [ ! -x "$LOGGER_PATH" ]; then
+    if [ "$logger_validated" != "true" ] || [ -z "$LOGGER_PATH" ] \
+        || [ ! -x "$LOGGER_PATH" ] || ! _is_readonly LOGGER_PATH; then
         # Mirror _write_to_journal: only warn once to avoid noisy stderr spam when
         # logger is missing or untrusted. Subsequent calls still fail but stay quiet.
         if [ -z "${LOGGER_JOURNAL_ERROR_REPORTED:-}" ]; then

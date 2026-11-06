@@ -25,7 +25,8 @@
 # - log_sensitive text does not stay in shell variables
 # - A logger symlink to busybox is accepted only in a safe directory
 # - A second --config with no value returns an error
-# - A readonly value with a newline cannot fake a readonly constant
+# - A readonly value with a newline cannot fake a readonly constant, and a logger path
+#   that was not validated is never run
 # - CONFIG notices follow the stderr level
 # - Timestamps match date, in local time, in UTC and with TZ changed or readonly, and use
 #   the builtin only in bash 4.2+ and zsh
@@ -934,6 +935,43 @@ ab c" "$output" || return
     pass_test
 }
 
+test_posix_unvalidated_logger_path_not_run() {
+    local shell_command="$1"
+    start_test "[$shell_command] a logger path that was not validated is never run"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local stub_logger="$TEST_DIR/unvalidated_logger"
+    local stub_capture="$TEST_DIR/unvalidated_logger.capture"
+    printf '#!/bin/sh\necho ran >> "%s"\n' "$stub_capture" > "$stub_logger"
+    chmod +x "$stub_logger"
+
+    # Assigned without validation: refused by the journal writer
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "
+init_logger --no-color --format '%m' --quiet
+LOGGER_PATH='$stub_logger'
+USE_JOURNAL=true
+log_info one
+printf 'status=%s use=%s\n' \"\$?\" \"\$USE_JOURNAL\"
+" 2>&1)
+    assert_contains "$output" "status=1 use=false" || return
+    assert_contains "$output" "not validated" || return
+    assert_file_not_exists "$stub_capture" "An unvalidated logger path must not run" || return
+
+    # Locked, but no longer the logger that validation finds: log_to_journal stops
+    output=$(run_snippet_in_shell "$shell_command" C "
+init_logger --no-color --format '%m' --quiet
+LOGGER_PATH='$stub_logger'; readonly LOGGER_PATH
+log_to_journal info two
+printf 'status=%s\n' \"\$?\"
+" 2>&1)
+    assert_contains "$output" "status=1" || return
+    assert_file_not_exists "$stub_capture" "A path that fails validation must not run" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -1001,6 +1039,7 @@ while IFS= read -r posix_shell; do
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
     test_posix_readonly_guard_cannot_be_spoofed "$posix_shell"
+    test_posix_unvalidated_logger_path_not_run "$posix_shell"
     test_posix_timestamp_matches_date "$posix_shell"
     test_posix_timestamp_readonly_tz "$posix_shell"
     test_posix_timestamp_builtin_and_fallback "$posix_shell"
