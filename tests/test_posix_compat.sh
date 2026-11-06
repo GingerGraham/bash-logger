@@ -1004,21 +1004,29 @@ status=0" "$output" || return
     pass_test
 }
 
-# Log each control-character case from the 3.0.0 security review and print the result
-# with od, so the expected output is the same in every shell and locale
+# Log each control-character case from the 3.0.0 security review and compare the log file
+# with the expected bytes. Prints "ok" or, for each case that differs, its output as od shows it.
+# Each case is "<message>|<expected log line>", both printf formats.
 control_character_snippet() {
     cat <<'SNIPPET'
 init_logger --quiet --no-color --no-init-message --format '%m' --max-line-length 0 -l "$OUT"
-for spec in 'A\033[38:2:0:0:0mB' 'A\033[1`B' 'A\033[1;1;24;80$zB' 'A\033[2 qB' 'A\033[200~B' \
-    'A\033]0;title\007B' 'A\033]8;;x\033\134B' 'A\033]0;open' 'A\033Pq\033\134B' 'A\033]0;a\033[31mb\033\134B' \
-    'A\033\303\251B' 'A\033\377B' 'AB\033' 'AB\010C' 'A\013B\014C' 'A\007B\177C' 'A\016B\017C' \
-    'A\302\205B' 'A\302\23331mB' 'A\342\200\250B\342\200\251C' 'A\342\200\256BC\342\200\254D' \
-    'A\342\201\246B\342\201\251C' '\303\251 \360\237\231\202' 'A\342\200\213B'; do
+failures=0
+for case_spec in 'A\033[38:2:0:0:0mB|AB' 'A\033[1`B|AB' 'A\033[1;1;24;80$zB|AB' 'A\033[2 qB|AB' \
+    'A\033[200~B|AB' 'A\033]0;title\007B|AB' 'A\033]8;;x\033\134B|AB' 'A\033]0;open|A' \
+    'A\033Pq\033\134B|AB' 'A\033]0;a\033[31mb\033\134B|AB' 'A\033\303\251B|A\303\251B' \
+    'A\033\377B|A\377B' 'AB\033|AB' 'AB\010C|ABC' 'A\013B\014C|ABC' 'A\007B\177C|ABC' \
+    'A\016B\017C|ABC' 'A\302\205B|AB' 'A\302\23331mB|A31mB' 'A\342\200\250B\342\200\251C|ABC' \
+    'A\342\200\256BC\342\200\254D|ABCD' 'A\342\201\246B\342\201\251C|ABC' \
+    '\303\251 \360\237\231\202|\303\251 \360\237\231\202' 'A\342\200\213B|A\342\200\213B'; do
     : > "$OUT"
-    log_info "$(printf "$spec")"
-    od -An -c "$OUT" | tr -s ' ' | tr -d '\n'
-    printf '\n'
+    log_info "$(printf "${case_spec%%|*}")"
+    printf "${case_spec#*|}\n" > "$OUT.expected"
+    if ! cmp -s "$OUT" "$OUT.expected"; then
+        printf 'case %s gave:%s\n' "${case_spec%%|*}" "$(od -An -c "$OUT" | tr -s ' ' | tr -d '\n')"
+        failures=$((failures + 1))
+    fi
 done
+[ "$failures" -eq 0 ] && printf 'ok\n'
 SNIPPET
 }
 
@@ -1031,37 +1039,16 @@ test_posix_control_characters_removed() {
     # Covers findings P1, P2 and P4 of the 3.0.0 security review: CSI sequences outside
     # the old grammar, C0, C1, line separator and bidirectional controls, and ESC followed
     # by a byte that is not valid UTF-8. UTF-8 text, including after ESC, is kept.
-    local expected=" A B \n
- A B \n
- A B \n
- A B \n
- A B \n
- A B \n
- A B \n
- A \n
- A B \n
- A B \n
- A 303 251 B \n
- A 377 B \n
- A B \n
- A B C \n
- A B C \n
- A B C \n
- A B C \n
- A B \n
- A 3 1 m B \n
- A B C \n
- A B C D \n
- A B C \n
- 303 251 360 237 231 202 \n
- A 342 200 213 B \n"
     local locale_name output
     for locale_name in C "$(utf8_locale_name)"; do
         [[ -z "$locale_name" ]] && continue
         output=$(run_snippet_in_shell "$shell_command" \
             "$locale_name" "OUT='$TEST_DIR/control.log'
 $(control_character_snippet)" 2>/dev/null)
-        assert_equals "$expected" "$output" "LC_ALL=$locale_name" || return
+        if [[ "$output" != "ok" ]]; then
+            fail_test "LC_ALL=$locale_name: $output"
+            return
+        fi
     done
 
     pass_test
