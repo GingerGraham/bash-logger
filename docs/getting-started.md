@@ -403,6 +403,9 @@ init_logger --verbose
 init_logger --log "/tmp/myapp.log"
 ```
 
+A log file that `init_logger` creates is readable and writable only by its owner (mode 600), and so is any directory it creates for it. To let a group read it, create the file
+first with the mode you want, or change the mode afterwards. See [Log File Security](sensitive-data.md#log-file-security-toctou-protection).
+
 ### Quiet Mode
 
 ```bash

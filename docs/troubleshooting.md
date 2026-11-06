@@ -18,6 +18,7 @@ This guide helps you diagnose and resolve common issues with bash-logger.
 * [File Logging Issues](#file-logging-issues)
   * [No Output to Log File](#no-output-to-log-file)
   * [Log File Permission Denied](#log-file-permission-denied)
+  * [Other Users Cannot Read the Log File](#other-users-cannot-read-the-log-file)
   * [Understanding Error Messages Without Path Disclosure](#understanding-error-messages-without-path-disclosure)
 * [Journal Logging Issues](#journal-logging-issues)
   * [Journal Logs Not Appearing](#journal-logs-not-appearing)
@@ -54,6 +55,7 @@ This guide helps you diagnose and resolve common issues with bash-logger.
   * ["Configuration file not found" / "Configuration file not readable"](#configuration-file-not-found--configuration-file-not-readable)
   * ["Cannot create log directory" / "Cannot create log file"](#cannot-create-log-directory--cannot-create-log-file)
   * ["Log file path is a symbolic link"](#log-file-path-is-a-symbolic-link)
+  * ["Log file path is now a symbolic link"](#log-file-path-is-now-a-symbolic-link)
   * ["Log file is not writable" / "Failed to write to log file"](#log-file-is-not-writable--failed-to-write-to-log-file)
 * [Getting Help](#getting-help)
 * [Related Documentation](#related-documentation)
@@ -454,13 +456,38 @@ ls -l /var/log/myapp.log
 # Fix ownership
 sudo chown $USER:$USER /var/log/myapp.log
 
-# Fix permissions
-chmod 644 /var/log/myapp.log
+# Fix permissions: the owner needs read and write access
+# (600 is the mode init_logger gives a file it creates)
+chmod 600 /var/log/myapp.log
 
 # Or use a user-writable location
 init_logger --log "$HOME/logs/app.log"
 mkdir -p "$HOME/logs"
 ```
+
+### Other Users Cannot Read the Log File
+
+**Problem:** The log file exists, but another user or group, such as a log shipper or a monitoring account, gets "Permission denied" when reading it
+
+**Cause:** Since 3.0, a log file that `init_logger` creates is mode 600, and any directory it creates for it is mode 700. In 2.x the caller's umask decided, usually 644 and 755.
+Files and directories that already exist keep their permissions.
+
+**Solution:**
+
+```bash
+# Option 1: create the file with the mode you want before init_logger
+# (an existing file keeps its mode, so init_logger does not change it)
+sudo install -m 640 -o myuser -g myapp /dev/null /var/log/myapp/app.log
+init_logger --log "/var/log/myapp/app.log"
+
+# Option 2: change the mode after init_logger created the file
+init_logger --log "/var/log/myapp/app.log"
+chgrp myapp /var/log/myapp/app.log
+chmod 640 /var/log/myapp/app.log
+```
+
+If `init_logger` created the directory, it is mode 700 and the group cannot enter it either. Run `chmod 750 /var/log/myapp` as well, or create the directory first.
+See [Log File Security](sensitive-data.md#log-file-security-toctou-protection).
 
 ### Understanding Error Messages Without Path Disclosure
 
@@ -542,16 +569,17 @@ grep -E 'log_file|logfile|file' /path/to/config.conf
 
 Error messages include actionable hints:
 
-| Error Message                    | Hint Provided                                | What to Check                            |
-| -------------------------------- | -------------------------------------------- | ---------------------------------------- |
-| Configuration file not found     | Check the --config argument                  | Verify path passed to init_logger        |
-| Configuration file not readable  | Check file permissions                       | Run `ls -l` on config file               |
-| Cannot create log directory      | Check --log argument and parent permissions  | Verify parent directory is writable      |
-| Log file path is a symbolic link | Verify --log doesn't point to symlink        | Security check, use regular file         |
-| Cannot create log file           | Check directory permissions                  | Verify directory exists and is writable  |
-| Log file is not a regular file   | Check --log argument                         | Might be pointing to directory or device |
-| Log file is not writable         | Check file permissions                       | Run `chmod` or use different location    |
-| Failed to write to log file      | Check permissions, disk space, or if deleted | Check `df -h` for disk space             |
+| Error Message                        | Hint Provided                                                | What to Check                                                        |
+| ------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Configuration file not found         | Check the --config argument                                  | Verify path passed to init_logger                                    |
+| Configuration file not readable      | Check file permissions                                       | Run `ls -l` on config file                                           |
+| Cannot create log directory          | Check --log argument and parent permissions                  | Verify parent directory is writable                                  |
+| Log file path is a symbolic link     | Verify --log doesn't point to symlink                        | Security check, use regular file                                     |
+| Log file path is now a symbolic link | Something replaced the log file after init_logger checked it | Find what created the link; entries go to stderr until it is removed |
+| Cannot create log file               | Check directory permissions                                  | Verify directory exists and is writable                              |
+| Log file is not a regular file       | Check --log argument                                         | Might be pointing to directory or device                             |
+| Log file is not writable             | Check file permissions                                       | Run `chmod` or use different location                                |
+| Failed to write to log file          | Check permissions, disk space, or if deleted                 | Check `df -h` for disk space                                         |
 
 **6. Common Path Issues**
 
@@ -1116,9 +1144,39 @@ init_logger --log /actual/path.log
 
 **Note:** bash-logger rejects symbolic links for security reasons to prevent log redirection attacks.
 
+### "Log file path is now a symbolic link"
+
+```text
+ERROR: Log file path is now a symbolic link; not writing to it
+  Hint: Something replaced the log file after init_logger checked it
+```
+
+**Cause:** `init_logger` accepted the log file, but a symbolic link was put in its place while the script was running.
+bash-logger checks the path again before every entry and does not write through a link.
+The error is printed once. Until the link is removed, each entry is printed to stderr and not written to the file. The script keeps running.
+
+**Solution:**
+
+```bash
+# Check what is at the path now, and where the link points
+ls -l /path/to/app.log
+
+# Find out what created it (a deployment step, another user, or an attack),
+# then remove the link and restore the file
+rm /path/to/app.log
+touch /path/to/app.log
+```
+
+Later entries are written to the file again once the link is gone. Keep log files in a directory that other users cannot write to, so that they cannot create the link.
+
 ### "Log file is not writable" / "Failed to write to log file"
 
-**Cause:** File exists but lacks write permissions, or disk is full
+**Cause:**
+
+* `Log file is not writable` comes from `init_logger`: the file exists but you cannot write to it
+* `Failed to write to log file` comes later, while the script runs: the file became unwritable or was deleted, or the disk is full
+
+A failed write prints one error, and the entry goes to stderr so it is not lost. The shell's own message, such as `Is a directory`, no longer appears next to it.
 
 **Solution:**
 
@@ -1128,8 +1186,9 @@ See [Understanding Error Messages Without Path Disclosure](#understanding-error-
 # Check file permissions
 ls -l "$LOG_FILE_PATH"
 
-# Fix permissions
-chmod 644 "$LOG_FILE_PATH"
+# Fix permissions: the owner needs read and write access
+# (600 is the mode init_logger gives a file it creates)
+chmod 600 "$LOG_FILE_PATH"
 
 # Check disk space
 df -h /path/to/log/directory/

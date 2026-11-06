@@ -225,7 +225,8 @@ set_unsafe_allow_ansi_codes true
 
 ### Log File Security (TOCTOU Protection)
 
-bash-logger includes protection against Time-of-Check Time-of-Use (TOCTOU) race condition attacks during log file creation. This prevents attackers from redirecting log output to unintended locations.
+bash-logger includes protection against Time-of-Check Time-of-Use (TOCTOU) race condition attacks during log file creation, and it checks the path again on every write.
+This prevents attackers from redirecting log output to unintended locations.
 
 **Attack Scenario Prevented:**
 
@@ -248,6 +249,10 @@ ln -s /etc/passwd /tmp/app.log
 2. **Symlink Detection** - Immediately rejects symbolic links
 3. **File Type Validation** - Ensures only regular files are used for logging
 4. **Write Permission Check** - Validates write access before use
+5. **Re-checked on every write** - Each entry checks the path for a symbolic link again. If something replaced the log file with a link after `init_logger` ran, nothing is
+   written through the link. One error is printed, and the entry goes to stderr instead
+6. **Private by default** - A log file that `init_logger` creates is mode 600, and any directory it creates for the file is mode 700, whatever the caller's umask.
+   Existing files and directories keep their permissions. To let a group read the log, create the file first with the mode you want, or change the mode afterwards
 
 **What This Protects Against:**
 
@@ -263,8 +268,16 @@ If a security issue is detected during initialization, you'll see:
 ```bash
 Error: Log file path is a symbolic link
 Error: Log file exists but is not a regular file (may be a directory or device)
-Error: Log file '/path/to/log' is not writable
+Error: Log file is not writable
 ```
+
+If the log file is replaced by a symbolic link after initialization, the first write that finds it prints:
+
+```bash
+ERROR: Log file path is now a symbolic link; not writing to it
+```
+
+The message is printed once. Later entries go to stderr until the link is removed. See [Troubleshooting](troubleshooting.md#log-file-path-is-now-a-symbolic-link).
 
 **Best Practices:**
 

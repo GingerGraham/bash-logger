@@ -58,7 +58,7 @@ The `init_logger` function accepts the following options:
 | Option                                          | Description                                                                         |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `-c, --config FILE`                             | Load configuration from an INI file (CLI args override config values)               |
-| `-l, --log, --logfile, --log-file, --file FILE` | Specify a log file to write logs to                                                 |
+| `-l, --log, --logfile, --log-file, --file FILE` | Specify a log file to write logs to (created private; see below)                    |
 | `-n, --name, --script-name NAME`                | Set custom script name for log messages (overrides auto-detection)                  |
 | `-q, --quiet`                                   | Disable console output                                                              |
 | `-v, --verbose, --debug`                        | Set log level to DEBUG (most verbose)                                               |
@@ -76,6 +76,10 @@ The `init_logger` function accepts the following options:
 | `-A, --unsafe-allow-ansi-codes`                 | Allow ANSI escape codes in log messages (not recommended; disables sanitization)    |
 | `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
 | `--max-journal-length LENGTH`                   | Max message length before formatting for journal output (0 = unlimited)             |
+
+**Log file access:** A log file that `init_logger` creates, and any directory it creates for it, is readable only by its owner (mode 600 and 700). Existing files and directories keep
+their permissions. To let a group read the log, create the file first with the mode you want, or change the mode afterwards. See
+[Log File Security](sensitive-data.md#log-file-security-toctou-protection) for the symbolic link checks.
 
 ## Common Initialization Patterns
 
