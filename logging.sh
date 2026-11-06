@@ -371,7 +371,7 @@ _replace_all() {
 # grow with the square of the length:
 #   * text longer than 8192 characters is cut to 8192 first, which is far longer than any
 #     real name; zsh's pattern substitution is itself quadratic
-#   * bash and zsh replace every character in one pattern substitution
+#   * bash and zsh replace characters with pattern substitution, 256 characters at a time
 #   * other shells use one tr process for text longer than 256 bytes, and the loop below
 #     (or if tr fails) for shorter text
 _replace_unsafe_name_characters() {
@@ -382,9 +382,20 @@ _replace_unsafe_name_characters() {
         remaining="$_LOGGER_PREFIX"
     fi
     if _shell_counts_characters; then
-        # Pattern substitution only runs in bash and zsh
-        # shellcheck disable=SC3060
-        _LOGGER_REPLACED="${remaining//[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]/_}"
+        # One pattern substitution per 256 characters: in bash 3.2 its cost grows faster
+        # than the square of the length (47 s for one substitution on 8192 characters)
+        local result=""
+        local offset=0
+        local chunk=""
+        while [ "$offset" -lt "${#remaining}" ]; do
+            # Substring expansion and pattern substitution only run in bash and zsh
+            # shellcheck disable=SC3057
+            chunk="${remaining:$offset:256}"
+            # shellcheck disable=SC3060
+            result="${result}${chunk//[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]/_}"
+            offset=$((offset + 256))
+        done
+        _LOGGER_REPLACED="$result"
         return 0
     fi
     if [ "${#remaining}" -gt 256 ]; then
