@@ -67,15 +67,18 @@ The `init_logger` function accepts the following options:
 | `-f, --format FORMAT`                           | Set custom log format                                                               |
 | `-u, --utc`                                     | Use UTC time instead of local time                                                  |
 | `-j, --journal`                                 | Enable logging to systemd journal                                                   |
-| `-t, --tag TAG`                                 | Set custom tag for journal logs (default: script name)                              |
+| `-t, --tag TAG`                                 | Set custom tag for journal logs (default: script name; see below)                   |
 | `-F, --facility FACILITY`                       | Set syslog facility for journal logs (default: daemon)                              |
 | `--color, --colour`                             | Explicitly enable color output (default: auto-detect)                               |
 | `--no-color, --no-colour`                       | Disable color output                                                                |
 | `--no-init-message`                             | Suppress the INIT entry written to the log file on initialization                   |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
-| `-A, --unsafe-allow-ansi-codes`                 | Allow ANSI escape codes in log messages (not recommended; disables sanitization)    |
+| `-A, --unsafe-allow-ansi-codes`                 | Keep escape sequences and other control characters in messages (not recommended)    |
 | `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
 | `--max-journal-length LENGTH`                   | Max message length before formatting for journal output (0 = unlimited)             |
+
+**Journal tags:** `-t` and `--tag` are validated in the same way as the `tag` configuration key and `set_journal_tag`: a tag must not be empty, longer than 64 characters,
+or contain control characters or shell metacharacters. An invalid tag prints an error, and the previous tag is kept. See [Tag Rules](journal-logging.md#tag-rules).
 
 **Log file access:** A log file that `init_logger` creates, and any directory it creates for it, is readable only by its owner (mode 600 and 700). Existing files and directories keep
 their permissions. To let a group read the log, create the file first with the mode you want, or change the mode afterwards. See

@@ -16,7 +16,7 @@ persistent storage.
 * [Security Considerations](#security-considerations)
   * [Console Output Security](#console-output-security)
   * [Production Environments](#production-environments)
-  * [ANSI Code Injection Prevention](#ansi-code-injection-prevention)
+  * [Terminal Control Sequence Injection Prevention](#terminal-control-sequence-injection-prevention)
   * [Log File Security (TOCTOU Protection)](#log-file-security-toctou-protection)
   * [Alternative Approaches](#alternative-approaches)
     * [1. Redact Sensitive Values](#1-redact-sensitive-values)
@@ -166,29 +166,48 @@ else
 fi
 ```
 
-### ANSI Code Injection Prevention
+### Terminal Control Sequence Injection Prevention
 
-bash-logger provides secure-by-default protection against ANSI escape sequence injection attacks. This is important
-because malicious ANSI codes can:
+bash-logger provides secure-by-default protection against terminal control sequences and control characters in messages. This is important
+because malicious sequences can:
 
 * **Manipulate terminal display** - Clear screen, reposition cursor
-* **Hide information** - Make previous output invisible
+* **Hide information** - Make previous output invisible, for example with a color that matches the background
 * **Spoof messages** - Create fake error or success messages
 * **Enable social engineering** - Change window titles, fake prompts
 * **Exploit terminal bugs** - Some terminal emulators have CVEs triggered by specific sequences
+* **Reorder text** - Bidirectional formatting characters can make a log line read in a different order than it is stored
 
 **Default Behavior:**
 
 ```bash
-# By default, ANSI codes in user input are stripped
+# By default, escape sequences in user input are removed
 malicious_input=$'\e[2J\e[HFAKE ERROR\e[0m'
 log_error "Processing: $malicious_input"
 # Output: "Processing: FAKE ERROR" (without escape sequences)
 ```
 
-**ANSI Code Protection:**
+**What Is Removed:**
 
-* All user input is automatically scrubbed of ANSI escape sequences
+* **Every CSI sequence** as ECMA-48 defines it (`ESC [` followed by parameter bytes, intermediate bytes and a final byte), such as colors, cursor movement and `ESC[2J`
+* **OSC, DCS, SOS, PM and APC strings**, up to their terminator or the next escape character
+* **Other control characters:** the C0 controls other than newline, carriage return and tab (such as backspace, BEL, vertical tab, form feed and DEL), the C1 controls,
+  the line and paragraph separators U+2028 and U+2029, and the bidirectional formatting characters U+202A to U+202E and U+2066 to U+2069
+* **No escape character is left behind.** A lone escape character or an incomplete sequence is removed as well
+
+Newline, carriage return and tab are replaced by spaces. That is controlled separately by `--unsafe-allow-newlines`.
+
+**Very Long Messages:**
+
+A message much longer than the line limits is cut before it is sanitized, because sanitizing takes longer the longer the message is.
+The cut is at four times the larger of the console and journal line limits, and never below 8,192 characters.
+The logged text is the same, except that a message made mostly of escape sequences now ends with `...[truncated]`. With a line limit of 0, nothing is cut.
+
+For the full list and the changes from 2.x, see [Messages and control characters](upgrading-to-3.0.md#messages-and-control-characters).
+
+**Protection:**
+
+* All user input is automatically scrubbed of terminal control sequences and control characters
 * Library-generated colors (for log levels) are preserved
 * This protection is transparent - no code changes needed
 
@@ -206,9 +225,9 @@ Some invisible characters are not removed, because they cannot reverse or hide a
 
 The bidirectional marks can only move neutral characters such as punctuation. The zero-width characters can only hide differences between similar text.
 
-**If You Need ANSI Codes in Log Messages:**
+**If You Need Escape Sequences in Log Messages:**
 
-Only enable unsafe mode if you have complete control over all logged content:
+Unsafe mode keeps escape sequences, and keeps the other control characters listed above as well. Only enable it if you have complete control over all logged content:
 
 ```bash
 init_logger --unsafe-allow-ansi-codes  # Not recommended
@@ -219,7 +238,7 @@ set_unsafe_allow_ansi_codes true
 
 **See Also:**
 
-* [ANSI Code Injection Protection](../examples.md#ansi-code-injection-protection) in Examples
+* [Upgrading to 3.0](upgrading-to-3.0.md#messages-and-control-characters) - Full list of removed characters
 * [api-reference.md](api-reference.md#set_unsafe_allow_ansi_codes) - set_unsafe_allow_ansi_codes function
 * [runtime-configuration.md](runtime-configuration.md#set_unsafe_allow_ansi_codes) - Runtime control
 

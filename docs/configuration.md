@@ -89,8 +89,8 @@ verbose = false
 # Warning: true disables sanitization and can allow log injection
 unsafe_allow_newlines = false
 
-# Allow ANSI color codes in log messages: true/false
-# Warning: true disables ANSI sanitization and can allow escape-sequence injection
+# Keep escape sequences and other control characters in log messages: true/false
+# Warning: true disables this sanitization and can allow escape-sequence injection
 unsafe_allow_ansi_codes = false
 
 # Maximum message length before formatting for console/file output (0 = unlimited)
@@ -104,25 +104,25 @@ max_journal_length = 4096
 
 ## Configuration Keys
 
-| Key                       | Aliases                                     | Values                                                            | Default           | Description                               |
-| ------------------------- | ------------------------------------------- | ----------------------------------------------------------------- | ----------------- | ----------------------------------------- |
-| `level`                   | `log_level`                                 | DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, 0-7 | `INFO`            | Minimum log level                         |
-| `format`                  | `log_format`                                | Format string                                                     | `%d [%l] [%s] %m` | Log message format                        |
-| `log_file`                | `logfile`, `file`                           | Path                                                              | (none)            | Log file path                             |
-| `script_name`             | `scriptname`, `name`                        | String                                                            | auto-detected     | Script name in log messages               |
-| `journal`                 | `use_journal`                               | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable journal logging                    |
-| `tag`                     | `journal_tag`                               | String                                                            | script name       | Journal/syslog tag                        |
-| `utc`                     | `use_utc`                                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Use UTC timestamps                        |
-| `color`                   | `colour`, `colors`, `colours`, `use_colors` | auto, always, never                                               | `auto`            | Color mode                                |
-| `stderr_level`            | `stderr-level`                              | Log level                                                         | `ERROR`           | Minimum level for stderr                  |
-| `quiet`                   | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Disable console output                    |
-| `console_log`             | -                                           | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable console output (inverse of quiet)  |
-| `verbose`                 | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Enable DEBUG level                        |
-| `unsafe_allow_newlines`   | `unsafe-allow-newlines`                     | true/false, yes/no, on/off, 1/0                                   | `false`           | Allow newlines in log messages (unsafe)   |
-| `unsafe_allow_ansi_codes` | `unsafe-allow-ansi-codes`                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Allow ANSI codes in log messages (unsafe) |
-| `max_line_length`         | `max-line-length`, `log_max_line_length`    | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length before formatting      |
-| `max_journal_length`      | `max-journal-length`, `journal_max_length`  | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length for journal            |
-| `init_message`            | `log_init_message`                          | true/false, yes/no, on/off, 1/0                                   | `true`            | Write INIT entry to log file on startup   |
+| Key                       | Aliases                                     | Values                                                            | Default           | Description                                                 |
+| ------------------------- | ------------------------------------------- | ----------------------------------------------------------------- | ----------------- | ----------------------------------------------------------- |
+| `level`                   | `log_level`                                 | DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, 0-7 | `INFO`            | Minimum log level                                           |
+| `format`                  | `log_format`                                | Format string                                                     | `%d [%l] [%s] %m` | Log message format                                          |
+| `log_file`                | `logfile`, `file`                           | Path                                                              | (none)            | Log file path                                               |
+| `script_name`             | `scriptname`, `name`                        | String                                                            | auto-detected     | Script name in log messages                                 |
+| `journal`                 | `use_journal`                               | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable journal logging                                      |
+| `tag`                     | `journal_tag`                               | String                                                            | script name       | Journal/syslog tag                                          |
+| `utc`                     | `use_utc`                                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Use UTC timestamps                                          |
+| `color`                   | `colour`, `colors`, `colours`, `use_colors` | auto, always, never                                               | `auto`            | Color mode                                                  |
+| `stderr_level`            | `stderr-level`                              | Log level                                                         | `ERROR`           | Minimum level for stderr                                    |
+| `quiet`                   | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Disable console output                                      |
+| `console_log`             | -                                           | true/false, yes/no, on/off, 1/0                                   | `true`            | Enable console output (inverse of quiet)                    |
+| `verbose`                 | -                                           | true/false, yes/no, on/off, 1/0                                   | `false`           | Enable DEBUG level                                          |
+| `unsafe_allow_newlines`   | `unsafe-allow-newlines`                     | true/false, yes/no, on/off, 1/0                                   | `false`           | Allow newlines in log messages (unsafe)                     |
+| `unsafe_allow_ansi_codes` | `unsafe-allow-ansi-codes`                   | true/false, yes/no, on/off, 1/0                                   | `false`           | Keep escape sequences and other control characters (unsafe) |
+| `max_line_length`         | `max-line-length`, `log_max_line_length`    | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length before formatting                        |
+| `max_journal_length`      | `max-journal-length`, `journal_max_length`  | Non-negative integer (0 = unlimited)                              | `4096`            | Max message length for journal                              |
+| `init_message`            | `log_init_message`                          | true/false, yes/no, on/off, 1/0                                   | `true`            | Write INIT entry to log file on startup                     |
 
 ### Syslog Facility Key
 

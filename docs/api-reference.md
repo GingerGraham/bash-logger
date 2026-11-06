@@ -64,25 +64,25 @@ init_logger [options]
 
 **Options:**
 
-| Option                        | Short | Description                                      | Default     |
-| ----------------------------- | ----- | ------------------------------------------------ | ----------- |
-| `--level LEVEL`               | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.)   | INFO        |
-| `--log FILE`                  | `-l`  | Write logs to file                               | (none)      |
-| `--quiet`                     | `-q`  | Disable console output                           | false       |
-| `--verbose`                   | `-v`  | Enable DEBUG level logging                       | false       |
-| `--journal`                   | `-j`  | Enable system journal logging                    | false       |
-| `--tag TAG`                   | `-t`  | Set journal tag                                  | (script)    |
-| `--facility FACILITY`         | `-F`  | Set syslog facility for journal logging          | daemon      |
-| `--utc`                       | `-u`  | Use UTC timestamps instead of local time         | false       |
-| `--format FORMAT`             | `-f`  | Set log message format                           | (see below) |
-| `--color`                     |       | Force color output                               | auto        |
-| `--no-color`                  |       | Disable color output                             | auto        |
-| `--config FILE`               | `-c`  | Load configuration from INI file                 | (none)      |
-| `--stderr-level LEVEL`        | `-e`  | Messages at/above this level go to stderr        | ERROR       |
-| `--unsafe-allow-newlines`     | `-U`  | Allow newlines in log messages (unsafe)          | false       |
-| `--unsafe-allow-ansi-codes`   | `-A`  | Allow ANSI escape codes in log messages (unsafe) | false       |
-| `--max-line-length LENGTH`    |       | Max message length before formatting             | 4096        |
-| `--max-journal-length LENGTH` |       | Max message length for journal                   | 4096        |
+| Option                        | Short | Description                                                 | Default     |
+| ----------------------------- | ----- | ----------------------------------------------------------- | ----------- |
+| `--level LEVEL`               | `-d`  | Set log level (DEBUG, INFO, WARN, ERROR, etc.)              | INFO        |
+| `--log FILE`                  | `-l`  | Write logs to file                                          | (none)      |
+| `--quiet`                     | `-q`  | Disable console output                                      | false       |
+| `--verbose`                   | `-v`  | Enable DEBUG level logging                                  | false       |
+| `--journal`                   | `-j`  | Enable system journal logging                               | false       |
+| `--tag TAG`                   | `-t`  | Set journal tag (validated, see below)                      | (script)    |
+| `--facility FACILITY`         | `-F`  | Set syslog facility for journal logging                     | daemon      |
+| `--utc`                       | `-u`  | Use UTC timestamps instead of local time                    | false       |
+| `--format FORMAT`             | `-f`  | Set log message format                                      | (see below) |
+| `--color`                     |       | Force color output                                          | auto        |
+| `--no-color`                  |       | Disable color output                                        | auto        |
+| `--config FILE`               | `-c`  | Load configuration from INI file                            | (none)      |
+| `--stderr-level LEVEL`        | `-e`  | Messages at/above this level go to stderr                   | ERROR       |
+| `--unsafe-allow-newlines`     | `-U`  | Allow newlines in log messages (unsafe)                     | false       |
+| `--unsafe-allow-ansi-codes`   | `-A`  | Keep escape sequences and other control characters (unsafe) | false       |
+| `--max-line-length LENGTH`    |       | Max message length before formatting                        | 4096        |
+| `--max-journal-length LENGTH` |       | Max message length for journal                              | 4096        |
 
 **Default Format:**
 
@@ -607,8 +607,9 @@ log_to_journal LEVEL MESSAGE
   the message is silently suppressed with return code `0`, matching all other log functions.
   This suppression happens before any logger availability check, so no warning is emitted even
   when `logger` is not available.
-* Applies the same sanitisation (newline and ANSI stripping) and truncation rules as all
-  other log functions.
+* Applies the same sanitisation (newline replacement, and removal of terminal control sequences
+  and other control characters) and truncation rules as all other log functions. See
+  [Sensitive Data](sensitive-data.md#terminal-control-sequence-injection-prevention) for what is removed.
 * Console and file output follow the normal `CONSOLE_LOG` and `LOG_FILE` settings.
 * When `logger` is not available or fails validation (for example when the binary is missing,
   is outside the trusted system directories, or no longer matches the path validated earlier)
@@ -840,7 +841,13 @@ set_journal_tag "tag"
 
 **Parameters:**
 
-* `tag` - String identifier for journal entries
+* `tag` - String identifier for journal entries. It must not be empty or longer than 64 characters, and must not contain control characters or shell metacharacters.
+  See [Tag Rules](journal-logging.md#tag-rules)
+
+**Returns:**
+
+* `0` - The tag was changed
+* `1` - The tag is invalid. A message explains why, and the previous tag is kept
 
 **Examples:**
 
@@ -1042,7 +1049,7 @@ set_unsafe_allow_ansi_codes false
 
 * Logs a CONFIG message documenting the change (in red when enabling unsafe mode as a warning)
 * Takes effect immediately for all subsequent log messages
-* Affects `_strip_ansi_codes()` behavior in `_sanitize_log_message()`
+* Keeps escape sequences and the other control characters in messages while enabled
 
 **Security Considerations:**
 
