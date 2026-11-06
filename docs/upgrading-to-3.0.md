@@ -121,7 +121,9 @@ Point the script at that file, run it, then point it at 3.0 and compare the outp
 
 ## Staying on 2.x
 
-Only 3.x receives fixes. To stay on 2.7.0 while you test:
+3.0 receives all fixes. 2.7 receives security fixes for now, as listed in
+[SECURITY.md](../SECURITY.md#supported-versions), and earlier 2.x releases are not supported.
+To stay on 2.7.0 while you test:
 
 * **Install script:**
   `curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | INSTALL_VERSION=2.7.0 bash`

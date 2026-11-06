@@ -6,8 +6,8 @@ We provide security updates for the following versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 3.x     | :white_check_mark: |
-| 2.7.x   | :x:                |
+| 3.0.x   | :white_check_mark: |
+| 2.7.x   | :white_check_mark: |
 | 2.6.x   | :x:                |
 | 2.5.x   | :x:                |
 | 2.4.x   | :x:                |
@@ -17,6 +17,12 @@ We provide security updates for the following versions:
 | 2.0.x   | :x:                |
 | 1.x.x   | :x:                |
 | 0.x.x   | :x:                |
+
+* **3.0.x** is the current release and receives all fixes.
+* **2.7.x** is the last 2.x release. It receives security fixes for now, while scripts move to
+  3.0. See [Upgrading to 3.0](docs/upgrading-to-3.0.md).
+* **2.6.x and earlier** are not supported. Upgrade to 3.0.x, or to 2.7.x if you cannot move to
+  3.0 yet.
 
 ## Reporting a Vulnerability
 
