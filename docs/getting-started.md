@@ -1,6 +1,6 @@
 # Getting Started <!-- omit in toc -->
 
-This guide will help you get started with the Bash Logging Module quickly.
+This guide will help you get started with bash-logger quickly.
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -112,14 +112,15 @@ curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/insta
 **Installing a Specific Version:**
 
 To install a specific version instead of the latest release, set the `INSTALL_VERSION` environment variable to a valid
-release tag:
+release tag. Replace `<version>` with a tag from the [releases page](https://github.com/GingerGraham/bash-logger/releases), such as `3.0.0`.
+Only 3.x receives fixes (see [SECURITY.md](../SECURITY.md#supported-versions)):
 
 ```bash
 # Install a specific version (user installation)
-INSTALL_VERSION=2.7.0 bash -c "$(curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh)"
+INSTALL_VERSION=<version> bash -c "$(curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh)"
 
 # Install a specific version (system-wide)
-curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | sudo INSTALL_VERSION=2.7.0 bash -s -- --system
+curl -fsSL https://raw.githubusercontent.com/GingerGraham/bash-logger/main/install.sh | sudo INSTALL_VERSION=<version> bash -s -- --system
 ```
 
 For more details on available options, run the install script with the `--help` flag.
@@ -360,6 +361,25 @@ log_debug "Now you can see debug messages!"
 log_info "Script completed successfully"
 ```
 
+To use the same script in a POSIX sh script (dash, busybox ash, or `/bin/sh` on Debian, Ubuntu and Alpine), start it with `#!/bin/sh` and source the library with `.`,
+because `source` is not available in every `sh`. The library calls are the same. See [Shell Compatibility](shell-compatibility.md) for the supported shells.
+
+```sh
+#!/bin/sh
+
+# Source the logging module
+. ./logging.sh
+
+# Initialize with default settings
+init_logger
+
+log_info "Hello, logging!"
+log_debug "This debug message won't appear (log level is INFO by default)"
+
+set_log_level DEBUG
+log_debug "Now you can see debug messages!"
+```
+
 Run it:
 
 ```bash
@@ -382,6 +402,9 @@ init_logger --verbose
 # Log to file in addition to console
 init_logger --log "/tmp/myapp.log"
 ```
+
+A log file that `init_logger` creates is readable and writable only by its owner (mode 600), and so is any directory it creates for it. To let a group read it, create the file
+first with the mode you want, or change the mode afterwards. See [Log File Security](sensitive-data.md#log-file-security-toctou-protection).
 
 ### Quiet Mode
 

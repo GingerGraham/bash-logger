@@ -1,6 +1,6 @@
 # Initialization <!-- omit in toc -->
 
-The `init_logger` function is the entry point for configuring the Bash Logging Module. It must be called before using
+The `init_logger` function is the entry point for configuring bash-logger. It must be called before using
 any logging functions.
 
 ## Table of Contents <!-- omit in toc -->
@@ -58,7 +58,7 @@ The `init_logger` function accepts the following options:
 | Option                                          | Description                                                                         |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `-c, --config FILE`                             | Load configuration from an INI file (CLI args override config values)               |
-| `-l, --log, --logfile, --log-file, --file FILE` | Specify a log file to write logs to                                                 |
+| `-l, --log, --logfile, --log-file, --file FILE` | Specify a log file to write logs to (created private; see below)                    |
 | `-n, --name, --script-name NAME`                | Set custom script name for log messages (overrides auto-detection)                  |
 | `-q, --quiet`                                   | Disable console output                                                              |
 | `-v, --verbose, --debug`                        | Set log level to DEBUG (most verbose)                                               |
@@ -67,15 +67,22 @@ The `init_logger` function accepts the following options:
 | `-f, --format FORMAT`                           | Set custom log format                                                               |
 | `-u, --utc`                                     | Use UTC time instead of local time                                                  |
 | `-j, --journal`                                 | Enable logging to systemd journal                                                   |
-| `-t, --tag TAG`                                 | Set custom tag for journal logs (default: script name)                              |
+| `-t, --tag TAG`                                 | Set custom tag for journal logs (default: script name; see below)                   |
 | `-F, --facility FACILITY`                       | Set syslog facility for journal logs (default: daemon)                              |
 | `--color, --colour`                             | Explicitly enable color output (default: auto-detect)                               |
 | `--no-color, --no-colour`                       | Disable color output                                                                |
 | `--no-init-message`                             | Suppress the INIT entry written to the log file on initialization                   |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
-| `-A, --unsafe-allow-ansi-codes`                 | Allow ANSI escape codes in log messages (not recommended; disables sanitization)    |
+| `-A, --unsafe-allow-ansi-codes`                 | Keep escape sequences and other control characters in messages (not recommended)    |
 | `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
 | `--max-journal-length LENGTH`                   | Max message length before formatting for journal output (0 = unlimited)             |
+
+**Journal tags:** `-t` and `--tag` are validated in the same way as the `tag` configuration key and `set_journal_tag`: a tag must not be empty, longer than 64 characters,
+or contain control characters or shell metacharacters. An invalid tag prints an error, and the previous tag is kept. See [Tag Rules](journal-logging.md#tag-rules).
+
+**Log file access:** A log file that `init_logger` creates, and any directory it creates for it, is readable only by its owner (mode 600 and 700). Existing files and directories keep
+their permissions. To let a group read the log, create the file first with the mode you want, or change the mode afterwards. See
+[Log File Security](sensitive-data.md#log-file-security-toctou-protection) for the symbolic link checks.
 
 ## Common Initialization Patterns
 
@@ -398,31 +405,39 @@ esac
 
 ### 6. Be Aware of Environment Variable Overrides
 
-bash-logger uses global variables that are initialized with default values when the module is sourced.
-These variables can be modified after sourcing but before calling `init_logger()`.
-Understanding this behavior is important to avoid unexpected configuration:
+Sourcing `logging.sh` sets every setting to its default. A value that the parent shell or environment exports is discarded, with one exception: `SCRIPT_NAME`.
+Understanding this is important to avoid unexpected configuration:
 
 **How it works:**
 
 ```bash
-# Variables are reset to defaults when sourcing
-source /path/to/logging.sh  # LOG_FILE="", USE_COLORS="auto", etc.
+# Sourcing resets these to their defaults, whatever the environment held:
+# LOG_FILE, LOG_FORMAT, USE_COLORS, CURRENT_LOG_LEVEL, LOG_STDERR_LEVEL, USE_JOURNAL
+# (and the other settings: JOURNAL_TAG, USE_UTC, CONSOLE_LOG, the unsafe flags and the line limits)
+export LOG_FILE="/tmp/inherited.log"
+source /path/to/logging.sh  # LOG_FILE=""
 
-# You can override defaults BEFORE calling init_logger
+# Assignments made AFTER sourcing and BEFORE init_logger are used
 LOG_FILE="/tmp/my.log"
 USE_COLORS="never"
 init_logger  # Uses the modified values
 
 # Or pass them as arguments (cleaner approach)
 source /path/to/logging.sh
-init_logger --log "/tmp/my.log" --colors never
+init_logger --log "/tmp/my.log" --no-color
 ```
+
+**SCRIPT_NAME is inherited:**
+
+`SCRIPT_NAME` is the only setting that survives sourcing. If the environment sets it and no `--name` option or `script_name` config key is given, `init_logger` uses it as the script name.
+`init_logger` sanitizes the value like any other script name, so characters outside `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` become `_`.
+Pass `--name`, or run `unset SCRIPT_NAME` before sourcing, if the name must not depend on the caller's environment.
 
 **Potential Issues:**
 
-* Unintended configuration if parent shell/environment sets these variables
-* In multi-user systems, one user could affect another's logging by exporting variables
-* Automation/CI systems might unexpectedly override logging configuration
+* An inherited `SCRIPT_NAME` appears in every log line. A parent process, a CI system or a wrapper script can change it by exporting `SCRIPT_NAME`
+* Code that runs between `source` and `init_logger` can assign a setting directly, and `init_logger` then starts from that value.
+  Options and configuration file values given to `init_logger` still override it
 
 **Best Practices:**
 
@@ -436,24 +451,16 @@ init_logger --log "/var/log/myapp.log" --level INFO
 
 # GOOD: Use configuration files for complex setups
 init_logger --config /etc/myapp/logging.conf
-
-# CAUTION: This can be affected by parent environment
-source /path/to/logging.sh
-init_logger  # May use LOG_FILE from environment
 ```
 
-For **secure or critical applications**, avoid relying on inherited environment variables:
+For **secure or critical applications**, set the script name explicitly, and leave the other settings to `init_logger` arguments or a configuration file:
 
 ```bash
 #!/bin/bash
-
-# Explicitly unset any pre-existing bash-logger variables to ensure clean state
-unset LOG_FILE USE_COLORS LOG_FORMAT CURRENT_LOG_LEVEL LOG_STDERR_LEVEL SCRIPT_NAME USE_JOURNAL
-
 source /path/to/logging.sh
 
-# Now initialize with only explicit configuration
-init_logger --log "/secure/location/app.log" --level WARN
+# --name replaces any SCRIPT_NAME inherited from the environment
+init_logger --name "myapp" --log "/secure/location/app.log" --level WARN
 ```
 
 ## Examples by Use Case

@@ -1,6 +1,6 @@
 # Sensitive Data <!-- omit in toc -->
 
-The Bash Logging Module provides a special function for handling sensitive information that should not be written to
+bash-logger provides a special function for handling sensitive information that should not be written to
 persistent storage.
 
 ## Table of Contents <!-- omit in toc -->
@@ -16,7 +16,7 @@ persistent storage.
 * [Security Considerations](#security-considerations)
   * [Console Output Security](#console-output-security)
   * [Production Environments](#production-environments)
-  * [ANSI Code Injection Prevention](#ansi-code-injection-prevention)
+  * [Terminal Control Sequence Injection Prevention](#terminal-control-sequence-injection-prevention)
   * [Log File Security (TOCTOU Protection)](#log-file-security-toctou-protection)
   * [Alternative Approaches](#alternative-approaches)
     * [1. Redact Sensitive Values](#1-redact-sensitive-values)
@@ -166,35 +166,68 @@ else
 fi
 ```
 
-### ANSI Code Injection Prevention
+### Terminal Control Sequence Injection Prevention
 
-bash-logger provides secure-by-default protection against ANSI escape sequence injection attacks. This is important
-because malicious ANSI codes can:
+bash-logger provides secure-by-default protection against terminal control sequences and control characters in messages. This is important
+because malicious sequences can:
 
 * **Manipulate terminal display** - Clear screen, reposition cursor
-* **Hide information** - Make previous output invisible
+* **Hide information** - Make previous output invisible, for example with a color that matches the background
 * **Spoof messages** - Create fake error or success messages
 * **Enable social engineering** - Change window titles, fake prompts
 * **Exploit terminal bugs** - Some terminal emulators have CVEs triggered by specific sequences
+* **Reorder text** - Bidirectional formatting characters can make a log line read in a different order than it is stored
 
 **Default Behavior:**
 
 ```bash
-# By default, ANSI codes in user input are stripped
+# By default, escape sequences in user input are removed
 malicious_input=$'\e[2J\e[HFAKE ERROR\e[0m'
 log_error "Processing: $malicious_input"
 # Output: "Processing: FAKE ERROR" (without escape sequences)
 ```
 
-**ANSI Code Protection:**
+**What Is Removed:**
 
-* All user input is automatically scrubbed of ANSI escape sequences
+* **Every CSI sequence** as ECMA-48 defines it (`ESC [` followed by parameter bytes, intermediate bytes and a final byte), such as colors, cursor movement and `ESC[2J`
+* **OSC, DCS, SOS, PM and APC strings**, up to their terminator or the next escape character
+* **Other control characters:** the C0 controls other than newline, carriage return and tab (such as backspace, BEL, vertical tab, form feed and DEL), the C1 controls,
+  the line and paragraph separators U+2028 and U+2029, and the bidirectional formatting characters U+202A to U+202E and U+2066 to U+2069
+* **No escape character is left behind.** A lone escape character or an incomplete sequence is removed as well
+
+Newline, carriage return and tab are replaced by spaces. That is controlled separately by `--unsafe-allow-newlines`.
+
+**Very Long Messages:**
+
+A message much longer than the line limits is cut before it is sanitized, because sanitizing takes longer the longer the message is.
+The cut is at four times the larger of the console and journal line limits, and never below 8,192 characters.
+The logged text is the same, except that a message made mostly of escape sequences now ends with `...[truncated]`. With a line limit of 0, nothing is cut.
+
+For the full list and the changes from 2.x, see [Messages and control characters](upgrading-to-3.0.md#messages-and-control-characters).
+
+**Protection:**
+
+* All user input is automatically scrubbed of terminal control sequences and control characters
 * Library-generated colors (for log levels) are preserved
 * This protection is transparent - no code changes needed
 
-**If You Need ANSI Codes in Log Messages:**
+**Characters That Are Kept:**
 
-Only enable unsafe mode if you have complete control over all logged content:
+Some invisible characters are not removed, because they cannot reverse or hide a log line the way the removed bidirectional overrides and isolates can:
+
+| Character | Name                                                      |
+| --------- | --------------------------------------------------------- |
+| U+200E    | LEFT-TO-RIGHT MARK (bidirectional mark)                   |
+| U+200F    | RIGHT-TO-LEFT MARK (bidirectional mark)                   |
+| U+061C    | ARABIC LETTER MARK (bidirectional mark)                   |
+| U+200B    | ZERO WIDTH SPACE                                          |
+| U+FEFF    | ZERO WIDTH NO-BREAK SPACE, also used as a byte order mark |
+
+The bidirectional marks can only move neutral characters such as punctuation. The zero-width characters can only hide differences between similar text.
+
+**If You Need Escape Sequences in Log Messages:**
+
+Unsafe mode keeps escape sequences, and keeps the other control characters listed above as well. Only enable it if you have complete control over all logged content:
 
 ```bash
 init_logger --unsafe-allow-ansi-codes  # Not recommended
@@ -205,13 +238,14 @@ set_unsafe_allow_ansi_codes true
 
 **See Also:**
 
-* [ANSI Code Injection Protection](../examples.md#ansi-code-injection-protection) in Examples
+* [Upgrading to 3.0](upgrading-to-3.0.md#messages-and-control-characters) - Full list of removed characters
 * [api-reference.md](api-reference.md#set_unsafe_allow_ansi_codes) - set_unsafe_allow_ansi_codes function
 * [runtime-configuration.md](runtime-configuration.md#set_unsafe_allow_ansi_codes) - Runtime control
 
 ### Log File Security (TOCTOU Protection)
 
-bash-logger includes protection against Time-of-Check Time-of-Use (TOCTOU) race condition attacks during log file creation. This prevents attackers from redirecting log output to unintended locations.
+bash-logger includes protection against Time-of-Check Time-of-Use (TOCTOU) race condition attacks during log file creation, and it checks the path again on every write.
+This prevents attackers from redirecting log output to unintended locations.
 
 **Attack Scenario Prevented:**
 
@@ -234,6 +268,10 @@ ln -s /etc/passwd /tmp/app.log
 2. **Symlink Detection** - Immediately rejects symbolic links
 3. **File Type Validation** - Ensures only regular files are used for logging
 4. **Write Permission Check** - Validates write access before use
+5. **Re-checked on every write** - Each entry checks the path for a symbolic link again. If something replaced the log file with a link after `init_logger` ran, nothing is
+   written through the link. One error is printed, and the entry goes to stderr instead
+6. **Private by default** - A log file that `init_logger` creates is mode 600, and any directory it creates for the file is mode 700, whatever the caller's umask.
+   Existing files and directories keep their permissions. To let a group read the log, create the file first with the mode you want, or change the mode afterwards
 
 **What This Protects Against:**
 
@@ -249,8 +287,16 @@ If a security issue is detected during initialization, you'll see:
 ```bash
 Error: Log file path is a symbolic link
 Error: Log file exists but is not a regular file (may be a directory or device)
-Error: Log file '/path/to/log' is not writable
+Error: Log file is not writable
 ```
+
+If the log file is replaced by a symbolic link after initialization, the first write that finds it prints:
+
+```bash
+ERROR: Log file path is now a symbolic link; not writing to it
+```
+
+The message is printed once. Later entries go to stderr until the link is removed. See [Troubleshooting](troubleshooting.md#log-file-path-is-now-a-symbolic-link).
 
 **Best Practices:**
 

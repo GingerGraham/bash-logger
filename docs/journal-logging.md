@@ -1,6 +1,6 @@
 # Journal Logging <!-- omit in toc -->
 
-The Bash Logging Module can integrate with systemd's journal logging system, making it ideal for system services and
+bash-logger can integrate with systemd's journal logging system, making it ideal for system services and
 applications running on modern Linux distributions.
 
 ## Table of Contents <!-- omit in toc -->
@@ -17,6 +17,7 @@ applications running on modern Linux distributions.
 * [Journal Tags](#journal-tags)
   * [Default Tag](#default-tag)
   * [Custom Tag](#custom-tag)
+  * [Tag Rules](#tag-rules)
   * [Tag Best Practices](#tag-best-practices)
 * [Journal Facilities](#journal-facilities)
   * [Default Facility](#default-facility)
@@ -47,6 +48,7 @@ applications running on modern Linux distributions.
   * [Journal Not Receiving Logs](#journal-not-receiving-logs)
   * [Permission Issues](#permission-issues)
   * [Verifying Logs Are Received](#verifying-logs-are-received)
+* [Using a Stub logger in Tests](#using-a-stub-logger-in-tests)
 * [Performance Considerations](#performance-considerations)
 * [Related Documentation](#related-documentation)
 
@@ -169,6 +171,40 @@ init_logger --journal --tag "backup-service"
 # Use component name
 init_logger --journal --tag "database-monitor"
 ```
+
+### Tag Rules
+
+A tag given with `--tag` (`-t`), with `set_journal_tag` or as the `tag` configuration key must:
+
+* not be empty
+* be at most 64 characters long
+* not contain control characters (ASCII control characters, and in a UTF-8 locale the C1 controls and U+2028 and U+2029)
+* not contain shell metacharacters: `$` `` ` `` `;` `|` `&` `<` `>` `(` `)` `{` `}` `[` `]` `\`
+
+Spaces and other printable characters are allowed.
+
+**`--tag` and `set_journal_tag` reject an invalid tag.** They print a message that says why, and the previous tag is kept. If there was no previous tag, the default (the script name) is used.
+`init_logger` carries on, and `set_journal_tag` returns 1:
+
+```bash
+$ init_logger --journal --tag "my;app"
+Warning: Journal tag contains shell metacharacters
+  Hint: Keeping existing journal tag ''
+$ set_journal_tag "bad|tag"
+Warning: Journal tag contains shell metacharacters
+$ echo $?
+1
+```
+
+| Problem             | Message                                                       |
+| ------------------- | ------------------------------------------------------------- |
+| Empty               | `Warning: Empty journal tag`                                  |
+| Longer than 64      | `Error: journal tag exceeds maximum length of 64 (actual: N)` |
+| Control characters  | `Error: journal tag contains control characters`              |
+| Shell metacharacter | `Warning: Journal tag contains shell metacharacters`          |
+
+**The `tag` configuration key corrects the tag instead.** It prints a warning with a line number, and a tag that is longer than 64 characters is cut to 64 characters.
+For any other invalid tag, every character other than letters, digits, `.`, `_` and `-` is replaced by `_`. See [Configuration](configuration.md).
 
 ### Tag Best Practices
 
@@ -581,6 +617,39 @@ log_error "Test error 1"
 # Check immediately
 journalctl -t "test-*" -n 5
 ```
+
+## Using a Stub logger in Tests
+
+The library runs only a `logger` that it has validated. `LOGGER_PATH` is set when validation succeeds, and it is then made readonly. The journal writer refuses any `LOGGER_PATH` that is not readonly.
+A test that assigns `LOGGER_PATH` to a stub script, as 2.x allowed, finds that the stub is never run.
+
+Making the value readonly is necessary but not enough when a real `logger` is installed. Journal logging, `check_logger_available` and `log_to_journal` also check the `logger` found on `PATH`.
+They disable journal logging if it differs from a locked `LOGGER_PATH`. The library's own tests therefore lock the stub and replace the two internal validation functions:
+
+```bash
+stub_dir=$(mktemp -d)
+cat > "$stub_dir/stub_logger" <<'EOF'
+#!/bin/sh
+echo "$*" >> "$(dirname "$0")/journal_capture.log"
+EOF
+chmod +x "$stub_dir/stub_logger"
+
+source /path/to/logging.sh
+
+# Lock the stub, as validation does for the real logger
+LOGGER_PATH="$stub_dir/stub_logger"
+readonly LOGGER_PATH
+
+# Replace the checks that look for the real logger (internal functions, as in tests/test_journal_logging.sh)
+_find_and_validate_logger() { return 0; }
+check_logger_available() { return 0; }
+
+init_logger --journal --tag "test" --quiet
+log_info "captured by the stub"
+```
+
+The stub receives the arguments that `logger` would get, for example `-p daemon.info -t test -- captured by the stub`. These two functions are internal and can change between releases.
+See [Using a Stub logger in Tests](testing.md#using-a-stub-logger-in-tests) for the same pattern in the test suite.
 
 ## Performance Considerations
 

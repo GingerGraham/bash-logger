@@ -683,6 +683,35 @@ if ! check_logger_available; then
 fi
 ```
 
+#### Using a Stub logger in Tests
+
+Journal tests use a stub script in place of the system `logger`. The library runs a `logger` only when `LOGGER_PATH` has been validated and made readonly, so a stub needs the following.
+`tests/test_journal_logging.sh` has the pattern (`_create_stub_logger` writes the stub and a capture file in `$TEST_DIR`):
+
+```bash
+result=$(bash -c "
+    source '$PROJECT_ROOT/logging.sh'
+
+    # Assign after sourcing, because sourcing sets LOGGER_PATH to '' unless it is already readonly.
+    # Make the value readonly: the library refuses a LOGGER_PATH that is not.
+    LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
+
+    # Stop the library from looking for the real logger. Without this, journal logging is disabled
+    # when a real logger is installed, because its path differs from the locked one.
+    _find_and_validate_logger() { return 0; }
+    check_logger_available() { return 0; }
+
+    init_logger --no-color --quiet
+    log_to_journal INFO 'message for the stub'
+" 2>&1)
+
+assert_file_contains "$STUB_CAPTURE" "message for the stub" || return
+```
+
+* A stub that is assigned to `LOGGER_PATH` but not made readonly is never run. This is the usual reason a test that worked on 2.x stops capturing journal calls.
+* Do the assignment in the same shell that runs the library, inside the `bash -c` script. A test function that sets the variable does not affect the child shell.
+* The two function overrides are internal. If they change, update every suite that uses them. See [Journal Logging](journal-logging.md#using-a-stub-logger-in-tests).
+
 ### Best Practices
 
 1. **Descriptive Names**: Use clear, specific test names

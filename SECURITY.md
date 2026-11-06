@@ -242,7 +242,7 @@ This minimal dependency surface reduces supply chain risk.
 When using bash-logger in your applications:
 
 1. **Never log sensitive data** with standard functions
-2. **Set restrictive permissions** on log files (600 or 640)
+2. **Set restrictive permissions** on log files. A file that `init_logger` creates is already mode 600. Use 640 and `chgrp` only to share it with a group
 3. **Validate user input** before logging
 4. **Review journal access** if using systemd integration
 5. **Rotate logs** to prevent information accumulation

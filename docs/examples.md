@@ -1,6 +1,9 @@
 # Examples <!-- omit in toc -->
 
-This document provides comprehensive examples demonstrating various use cases for the Bash Logging Module.
+This document provides comprehensive examples demonstrating various use cases for bash-logger.
+
+The examples are bash scripts: they start with `#!/bin/bash` and use `source` and `[[ ]]`. The library itself is POSIX sh plus `local`, and a POSIX sh script calls it the
+same way, with `.` in place of `source` (see [POSIX sh Script](#posix-sh-script)). See [Shell Compatibility](shell-compatibility.md) for the supported shells.
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -8,6 +11,7 @@ This document provides comprehensive examples demonstrating various use cases fo
   * [Simple Script Logging](#simple-script-logging)
   * [Logging to File with Verbose Output](#logging-to-file-with-verbose-output)
   * [Comprehensive Logging Configuration](#comprehensive-logging-configuration)
+  * [POSIX sh Script](#posix-sh-script)
 * [Configuration File Examples](#configuration-file-examples)
   * [Using a Configuration File](#using-a-configuration-file)
   * [Environment-Specific Configuration](#environment-specific-configuration)
@@ -94,6 +98,26 @@ init_logger \
   --level INFO
 
 log_info "Application initialized with comprehensive logging"
+```
+
+### POSIX sh Script
+
+The same library calls work in a script that runs under dash or busybox ash. Source the file with `.`, and use `[ ]` in place of `[[ ]]`:
+
+```sh
+#!/bin/sh
+
+# Source the logging module (use "." because "source" is not available in every sh)
+. /path/to/logging.sh
+
+init_logger --log "/var/log/myapp.log" --level INFO
+
+log_info "Starting backup"
+
+if [ ! -d "/srv/data" ]; then
+    log_error "Source directory is missing"
+    exit 1
+fi
 ```
 
 ## Configuration File Examples

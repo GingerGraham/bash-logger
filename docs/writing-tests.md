@@ -21,6 +21,11 @@ For the full assertion and helper API reference, see [Testing](testing.md).
   * [A flag or config option is respected](#a-flag-or-config-option-is-respected)
   * [Invalid input is handled gracefully](#invalid-input-is-handled-gracefully)
   * [A test is skipped when a dependency is unavailable](#a-test-is-skipped-when-a-dependency-is-unavailable)
+* [Tests that run under more than one shell](#tests-that-run-under-more-than-one-shell)
+  * [Adding a scenario](#adding-a-scenario)
+  * [Known failures](#known-failures)
+  * [Golden files](#golden-files)
+  * [Shell helpers](#shell-helpers)
 * [What not to do](#what-not-to-do)
 * [Getting started quickly](#getting-started-quickly)
 
@@ -355,6 +360,64 @@ test_journal_logging_writes_entry
 
 `skip_test` records the test as skipped in the summary and JUnit output. Always `return`
 immediately after calling it — execution must not continue into the test body.
+
+## Tests that run under more than one shell
+
+`logging.sh` is POSIX sh plus `local`, and it runs in bash 3.2+, bash `--posix`, zsh, dash and busybox ash. The test suites themselves run under bash. A change to `logging.sh` needs a
+check under the other shells as well. See [Shell Matrix Suites](testing.md#shell-matrix-suites) for the commands, `TEST_SHELLS` and `TEST_REQUIRE_SHELLS`.
+
+Use a normal test (everything above) when behaviour does not depend on the shell.
+Use the patterns below when a new behaviour must give the same result in every shell, or when a shell is known to differ.
+
+### Adding a scenario
+
+`test_shell_compat.sh` runs every script in `tests/compat/scenarios/` under bash to get a reference result, then under each other shell in `TEST_SHELLS`. It compares stdout, stderr, the log file
+and the exit status. To cover a new behaviour, add a scenario file:
+
+```sh
+# shellcheck shell=sh
+# Short description of the behaviour
+. "$LOGGER_ROOT/logging.sh"
+init_logger --no-color --log "$SCENARIO_DIR/test.log" --format "%l|%m"
+log_info "the behaviour under test"
+```
+
+* Write it in POSIX sh. It starts with `# shellcheck shell=sh`, sources `"$LOGGER_ROOT/logging.sh"` with `.`, and writes any log file to `"$SCENARIO_DIR/test.log"`.
+* Scenarios run with `LC_ALL=C`. To use another locale, add a header line such as `# compat-locale: C.UTF-8`. The scenario is skipped if the locale is not installed.
+* There is no registration step and no assertion. The suite discovers the file, and the test passes when every shell matches bash.
+
+### Known failures
+
+If a shell is expected to differ from bash for now, add a line to `tests/compat/known_failures.txt` in the form `<shell command>|<scenario file name>`.
+The scenario must exist. An entry for dash and `colors.sh` is written `dash|colors.sh`.
+
+The suite reports a listed pair as skipped while it differs. It fails once the pair matches bash, so remove the line when the difference is fixed.
+Do not add an entry to hide a new regression.
+
+### Golden files
+
+`test_validator_equivalence.sh` and `test_sanitize_equivalence.sh` compare the current code with results that were recorded from bash before the POSIX conversion (`validators.tsv`,
+`validators_utf8.tsv` and `sanitize.tsv` in `tests/compat/golden/`). Their purpose is to show that the conversion changed nothing, so:
+
+* Do not regenerate these files from the current `logging.sh`. A regenerated file makes the suite pass whatever the code does.
+* A mismatch means behaviour changed. Fix the code, or decide that the change is intended.
+* An intended change in how messages are sanitized is recorded in `sanitize_3.0.tsv`, with a reason for each row, by `tests/compat/generate_sanitize_changes.sh`. That script takes both the 2.7.0
+  `logging.sh` and the current one. `sanitize.tsv` stays the record of 2.7.0.
+
+### Shell helpers
+
+`tests/test_helpers.sh` provides these helpers for tests that use more than one shell:
+
+| Helper                            | Use                                                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `test_shell_list`                 | Prints the shells in `TEST_SHELLS`, one per line (default `bash`). Loop over it to run a test in each shell.  |
+| `require_shell NAME`              | Skips the test when a shell is not installed, or fails it when the shell is in `TEST_REQUIRE_SHELLS`.         |
+| `run_with_logger_in_shell SHELL`  | Runs a snippet in the named shell after sourcing `logging.sh`.                                                |
+| `shell_counts_characters COMMAND` | Succeeds for bash and zsh, which count characters. dash and busybox ash count bytes, so length checks differ. |
+| `run_with_timeout SECONDS CMD...` | Stops a command after a number of seconds, including its child processes, without needing `timeout`.          |
+| `list_descendant_pids PID`        | Prints the PIDs of a process's descendants. `run_with_timeout` uses it; call it to clean up helper processes. |
+
+Write the call as `require_shell zsh || return 0` so that a skipped test does not end the suite with a non-zero status.
 
 ## What not to do
 
