@@ -55,17 +55,6 @@ run_snippet_in_shell() {
     return "$status"
 }
 
-# Print an installed UTF-8 locale name, or nothing
-utf8_locale_name() {
-    local candidate
-    for candidate in C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
-        if locale -a 2>/dev/null | grep -qx "$candidate"; then
-            printf '%s\n' "$candidate"
-            return 0
-        fi
-    done
-}
-
 test_posix_caller_detection() {
     local shell_command="$1"
     start_test "[$shell_command] script name is the calling script when sourced with ."
@@ -840,7 +829,11 @@ test_posix_levels_in_turkish_locale() {
     require_shell "${shell_command%% *}" || return 0
 
     if ! locale -a 2>/dev/null | grep -qiE '^tr_TR\.utf-?8$'; then
-        skip_test "tr_TR.UTF-8 locale not installed"
+        if musl_c_utf8; then
+            skip_test "musl has no locale-specific case mapping: the LC_ALL=C guard cannot be tested"
+        else
+            skip_test "tr_TR.UTF-8 locale not installed"
+        fi
         return 0
     fi
 

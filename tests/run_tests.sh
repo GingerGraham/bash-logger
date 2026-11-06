@@ -594,6 +594,19 @@ main() {
     print_summary
     local exit_status=$?
 
+    # Optional skip-count guard (TEST_MAX_SKIPPED): when set, a run that skips more
+    # tests than the threshold fails, so a future environment change cannot silently
+    # reduce coverage again (Issue #152).
+    if [[ -n "${TEST_MAX_SKIPPED:-}" ]]; then
+        if ! [[ "$TEST_MAX_SKIPPED" =~ ^[0-9]+$ ]]; then
+            echo -e "${COLOR_RED}Error: TEST_MAX_SKIPPED must be a non-negative integer (got '$TEST_MAX_SKIPPED')${COLOR_RESET}"
+            exit_status=1
+        elif [[ "$SKIPPED_TESTS" -gt "$TEST_MAX_SKIPPED" ]]; then
+            echo -e "${COLOR_RED}Error: $SKIPPED_TESTS tests skipped, exceeding TEST_MAX_SKIPPED=$TEST_MAX_SKIPPED${COLOR_RESET}"
+            exit_status=1
+        fi
+    fi
+
     # Generate JUnit XML if requested
     if [[ "$JUNIT_OUTPUT" == "true" ]]; then
         generate_junit_xml "$OUTPUT_DIR/junit.xml"
