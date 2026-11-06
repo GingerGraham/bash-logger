@@ -366,7 +366,8 @@ immediately after calling it — execution must not continue into the test body.
 `logging.sh` is POSIX sh plus `local`, and it runs in bash 3.2+, bash `--posix`, zsh, dash and busybox ash. The test suites themselves run under bash. A change to `logging.sh` needs a
 check under the other shells as well. See [Shell Matrix Suites](testing.md#shell-matrix-suites) for the commands, `TEST_SHELLS` and `TEST_REQUIRE_SHELLS`.
 
-Use a normal test (everything above) when behaviour does not depend on the shell. Use the patterns below when a new behaviour must give the same result in every shell, or when a shell is known to differ.
+Use a normal test (everything above) when behaviour does not depend on the shell.
+Use the patterns below when a new behaviour must give the same result in every shell, or when a shell is known to differ.
 
 ### Adding a scenario
 

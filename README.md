@@ -26,7 +26,9 @@ running it directly prints its usage message. Everything else in the repo - docs
 demos, and pipeline scripts - exists to support using that file.
 
 > [!NOTE]
-> This is a expansion of the originally published [bash_logging GitHub gist](https://gist.github.com/GingerGraham/99af97eed2cd89cd047a2088947a5405) published by [@GingerGraham](https://github.com/GingerGraham).
+> This is an expansion of the originally published
+> [bash_logging GitHub gist](https://gist.github.com/GingerGraham/99af97eed2cd89cd047a2088947a5405)
+> published by [@GingerGraham](https://github.com/GingerGraham).
 
 ## Features
 
