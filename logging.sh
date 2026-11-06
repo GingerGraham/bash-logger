@@ -2192,9 +2192,11 @@ init_logger() {
         # Get directory of log file
         LOG_DIR=$(dirname "$LOG_FILE")
 
-        # Try to create directory if it doesn't exist
+        # Try to create directory if it doesn't exist. Directories and the file that the
+        # library creates are readable only by their owner (umask 077, set in a subshell
+        # so the caller's umask is unchanged). Existing ones keep their permissions.
         if [ ! -d "$LOG_DIR" ]; then
-            mkdir -p "$LOG_DIR" 2>/dev/null || {
+            (umask 077 && mkdir -p "$LOG_DIR") 2>/dev/null || {
                 printf '%s\n' "Error: Cannot create log directory" >&2
                 printf '%s\n' "  Hint: Check the --log argument (or LOG_FILE environment variable) and parent directory permissions" >&2
                 return 1
@@ -2205,7 +2207,7 @@ init_logger() {
         # Always attempt atomic file creation with noclobber (safe on existing files)
         # Removing existence check eliminates TOCTOU window where attacker could
         # create symlink between check and creation attempt
-        (set -C; : > "$LOG_FILE") 2>/dev/null || true
+        (umask 077; set -C; : > "$LOG_FILE") 2>/dev/null || true
 
         # Immediately validate file security to minimize TOCTOU window
         # Reject symbolic links to prevent log redirection attacks
@@ -2562,7 +2564,19 @@ _log_to_console() {
 
 # Append a formatted entry to LOG_FILE (internal)
 # A failed write is reported once, and the entry goes to stderr so it is not lost.
+# init_logger rejects a symbolic link, but the path is opened again for every entry, so it
+# is checked again here: a link put in its place later is not written through. A link
+# created between this check and the write is not caught (see SECURITY.md).
 _append_to_log_file() {
+    if [ -L "$LOG_FILE" ]; then
+        if [ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]; then
+            printf '%s\n' "ERROR: Log file path is now a symbolic link; not writing to it" >&2
+            printf '%s\n' "  Hint: Something replaced the log file after init_logger checked it" >&2
+            LOGGER_FILE_ERROR_REPORTED="yes"
+        fi
+        printf '%s\n' "$1" >&2
+        return 0
+    fi
     { printf '%s\n' "$1" >> "$LOG_FILE"; } 2>/dev/null || {
         # Only print the error once to avoid spam
         if [ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]; then

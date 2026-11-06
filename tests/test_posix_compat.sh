@@ -27,7 +27,8 @@
 # - A second --config with no value returns an error
 # - Long names and many trailing newlines take linear time
 # - Escape sequences and control characters are removed, in linear time
-# - --tag is validated
+# - --tag is validated; created log files are private; a log file replaced by a symbolic
+#   link is not written through
 # - A readonly value with a newline cannot fake a readonly constant, and a logger path
 #   that was not validated is never run
 # - CONFIG notices follow the stderr level
@@ -1116,6 +1117,67 @@ printf 'tag=%s status=%s\n' \"\$JOURNAL_TAG\" \"\$?\"
     pass_test
 }
 
+test_posix_log_file_permissions() {
+    local shell_command="$1"
+    start_test "[$shell_command] a created log file and directory are private, existing ones are kept"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local existing_file="$TEST_DIR/existing.log"
+    : > "$existing_file"
+    chmod 644 "$existing_file"
+    run_snippet_in_shell "$shell_command" C "
+umask 022
+init_logger --quiet -l '$TEST_DIR/new_dir/nested/new.log'
+init_logger --quiet -l '$existing_file'
+printf 'umask=%s\n' \"\$(umask)\"
+" > "$TEST_DIR/permissions.out" 2>/dev/null
+
+    # ls prints the mode the same way on Linux and macOS
+    assert_equals "-rw-------" "$(ls -l "$TEST_DIR/new_dir/nested/new.log" | cut -c1-10)" \
+        "new log file" || return
+    assert_equals "drwx------" "$(ls -ld "$TEST_DIR/new_dir" | cut -c1-10)" "new directory" || return
+    assert_equals "drwx------" "$(ls -ld "$TEST_DIR/new_dir/nested" | cut -c1-10)" \
+        "new nested directory" || return
+    assert_equals "-rw-r--r--" "$(ls -l "$existing_file" | cut -c1-10)" "existing file" || return
+    # zsh prints the umask as 022, the other shells as 0022
+    if ! grep -Eq '^umask=0*22$' "$TEST_DIR/permissions.out"; then
+        fail_test "The caller's umask changed: $(cat "$TEST_DIR/permissions.out")"
+        return
+    fi
+
+    pass_test
+}
+
+test_posix_log_file_replaced_by_symlink() {
+    local shell_command="$1"
+    start_test "[$shell_command] a log file replaced by a symbolic link is not written through"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local log_file="$TEST_DIR/swapped.log"
+    local link_target="$TEST_DIR/link_target"
+    : > "$link_target"
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "
+init_logger --quiet --no-color --no-init-message --format '%m' -l '$log_file'
+log_info before
+rm -f '$log_file'
+ln -s '$link_target' '$log_file'
+log_info after-one
+log_info after-two
+set_log_level debug
+printf 'status=%s\n' \"\$?\"
+" 2>&1)
+    assert_file_not_contains "$link_target" "after" "The link target must not be written" || return
+    assert_equals "1" "$(printf '%s\n' "$output" | grep -c 'symbolic link')" \
+        "The problem should be reported once" || return
+    assert_contains "$output" "after-two" "Entries should still go to stderr" || return
+    assert_contains "$output" "status=0" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -1183,6 +1245,8 @@ while IFS= read -r posix_shell; do
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
     test_posix_tag_option_validated "$posix_shell"
+    test_posix_log_file_permissions "$posix_shell"
+    test_posix_log_file_replaced_by_symlink "$posix_shell"
     test_posix_control_characters_removed "$posix_shell"
     test_posix_unterminated_sequences_linear "$posix_shell"
     test_posix_long_names_and_trailing_newlines "$posix_shell"
