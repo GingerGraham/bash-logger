@@ -42,15 +42,27 @@ TEST_PARALLEL_JOBS=4 ./run_tests.sh
 
 ## Test Suites
 
-The test suite includes 201 tests across 7 test suites:
+Each `tests/test_*.sh` file is one suite. List the current suites and run them to get the current number of tests:
 
-* **test_log_levels.sh** (12 tests) - Log level functionality
-* **test_initialization.sh** (21 tests) - Logger initialization
-* **test_output.sh** (17 tests) - Output routing and formatting
-* **test_format.sh** (16 tests) - Message format templates
-* **test_config.sh** (21 tests) - Configuration file parsing
-* **test_runtime_config.sh** (16 tests) - Runtime configuration changes
-* **test_unsafe_newlines.sh** (17 tests) - Log injection prevention and unsafe mode
+```bash
+ls test_*.sh
+./run_tests.sh
+```
+
+The suites fall into these areas:
+
+* **Levels, initialization and output** - `test_log_levels`, `test_initialization`, `test_output`, `test_source_guard`, `test_journal_logging`
+* **Formatting** - `test_format`
+* **Configuration** - `test_config`, `test_runtime_config`
+* **Security: message content** - `test_ansi_injection`, `test_unsafe_newlines`, `test_mixed_sanitization_modes`, `test_script_name_sanitization`, `test_sensitive_data`
+* **Security: files, environment and input** - `test_path_traversal`, `test_toctou_protection`, `test_environment_security`, `test_config_security`, `test_fuzzing`
+* **Robustness** - `test_edge_cases`, `test_error_conditions`, `test_concurrent_access`, `test_resource_limits`
+* **Cross-shell compatibility** - `test_shell_compat`, `test_posix_compat`, `test_zsh_compat`, `test_validator_equivalence`, `test_sanitize_equivalence`, `test_bash32_compat_check`
+* **Repository tooling and test infrastructure** - `test_install`, `test_license_year`, `test_junit_output`, `test_runner`
+
+`test_example.sh` is a template for new suites and `test_helpers.sh` is the shared library. The runner does not run either of them.
+
+For cross-shell runs and `TEST_SHELLS`, see [docs/testing.md](../docs/testing.md#shell-matrix-suites).
 
 ## Test Output
 
@@ -63,15 +75,16 @@ Running test_log_levels...
   ✓ Log level constants are defined
   ✓ FATAL is alias for EMERGENCY
   ...
-✓ test_log_levels: 12 passed
+✓ test_log_levels: N passed
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Test Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Total Tests:   201
-Passed:        201
+Total Tests:   N
+Passed:        N
 Failed:        0
+Skipped:       0
 
 All tests passed!
 ```
