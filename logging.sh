@@ -62,18 +62,12 @@
 
 # Returns 0 if the named variable is readonly in the current shell (internal).
 # Used by the re-source guards below; must be defined before the first guard.
-# Accepts the readonly -p output formats of bash (declare -r), bash POSIX mode
-# and dash (readonly), and zsh (typeset -r, or export -r when also exported).
-# readonly -p lists only readonly variables, so the prefix word is not a risk.
-# The ^ anchor stops a match on another readonly variable whose value contains
-# " NAME=".
-# grep reads all of its input (no -q): with -q it can exit on the first match
-# while readonly -p is still writing, and under a caller's "set -o pipefail"
-# the resulting SIGPIPE makes the pipeline report a readonly variable as not
-# readonly.
+# It tries to unset the variable in a subshell, which fails only for a readonly variable.
+# Earlier versions parsed "readonly -p" output instead. dash and busybox ash print values
+# there with literal newlines, so a readonly variable whose value contained a newline and
+# "readonly NAME=..." made NAME look readonly, and an environment value was then kept.
 _is_readonly() {
-    readonly -p 2>/dev/null \
-        | grep -E "^(declare|typeset|readonly|export)( -[a-zA-Z]+)* ${1}=" >/dev/null
+    ! (unset "$1") 2>/dev/null
 }
 
 # The shell running this file: "bash", "zsh", or empty for any other shell (internal).

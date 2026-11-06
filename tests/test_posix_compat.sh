@@ -25,6 +25,7 @@
 # - log_sensitive text does not stay in shell variables
 # - A logger symlink to busybox is accepted only in a safe directory
 # - A second --config with no value returns an error
+# - A readonly value with a newline cannot fake a readonly constant
 # - CONFIG notices follow the stderr level
 # - Timestamps match date, in local time, in UTC and with TZ changed or readonly, and use
 #   the builtin only in bash 4.2+ and zsh
@@ -807,13 +808,13 @@ test_posix_journal_failure_reported_once() {
 
     require_shell "${shell_command%% *}" || return 0
 
-    # LOGGER_PATH points at a command that always fails
+    # LOGGER_PATH points at a command that always fails, locked as validation locks it
     printf '#!/bin/sh\nexit 1\n' > "$TEST_DIR/failing_logger"
     chmod +x "$TEST_DIR/failing_logger"
     local output
     output=$(run_snippet_in_shell "$shell_command" C "
 init_logger --no-color --format '%m'
-LOGGER_PATH='$TEST_DIR/failing_logger'
+LOGGER_PATH='$TEST_DIR/failing_logger'; readonly LOGGER_PATH
 USE_JOURNAL=true
 log_info one
 printf 'status=%s use=%s\n' \"\$?\" \"\$USE_JOURNAL\"
@@ -896,6 +897,43 @@ check 32503680000
     pass_test
 }
 
+test_posix_readonly_guard_cannot_be_spoofed() {
+    local shell_command="$1"
+    start_test "[$shell_command] a readonly value with a newline cannot fake a readonly constant"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # dash and busybox print readonly values with literal newlines in "readonly -p", so
+    # this value used to make LOGGER_PATH, _LOGGER_ESC and _LOGGER_NEWLINE look readonly
+    # and their environment values were kept
+    local stub_logger="$TEST_DIR/spoofed_logger"
+    local stub_capture="$TEST_DIR/spoofed_logger.capture"
+    printf '#!/bin/sh\necho ran >> "%s"\n' "$stub_capture" > "$stub_logger"
+    chmod +x "$stub_logger"
+    local spoof_note="x
+readonly LOGGER_PATH='$stub_logger'
+readonly _LOGGER_ESC='x'
+readonly _LOGGER_NEWLINE='y'"
+    local snippet_file="$TEST_DIR/spoof.sh"
+    printf '%s\n' 'readonly UNTRUSTED_NOTE="$NOTE"' \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        'printf "path=[%s]\n" "$LOGGER_PATH"' \
+        "init_logger --no-color --format '%m'" \
+        'log_info "$(printf "a\033[31mb\nc")"' \
+        'log_to_journal info probe >/dev/null 2>&1' > "$snippet_file"
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$PATH" LC_ALL=C NOTE="$spoof_note" LOGGER_PATH="$stub_logger" \
+        _LOGGER_ESC=x _LOGGER_NEWLINE=y $shell_command "$snippet_file" 2>&1 </dev/null)
+
+    assert_equals "path=[]
+ab c" "$output" || return
+    assert_file_not_exists "$stub_capture" "The logger from the environment must not run" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -962,6 +1000,7 @@ while IFS= read -r posix_shell; do
     test_posix_config_notice_stream "$posix_shell"
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
+    test_posix_readonly_guard_cannot_be_spoofed "$posix_shell"
     test_posix_timestamp_matches_date "$posix_shell"
     test_posix_timestamp_readonly_tz "$posix_shell"
     test_posix_timestamp_builtin_and_fallback "$posix_shell"
