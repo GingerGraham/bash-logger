@@ -350,9 +350,8 @@ EOF
     # only runs a locked (readonly) logger path. The subshell keeps the lock and the
     # settings out of the tests that follow.
     (
-        # shellcheck disable=SC2034
-        LOGGER_PATH="$fake_logger"
-        readonly LOGGER_PATH
+        # shellcheck disable=SC2034  # read by logging.sh
+        readonly LOGGER_PATH="$fake_logger"
 
         # shellcheck disable=SC2034
         USE_JOURNAL="true"
