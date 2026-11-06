@@ -2088,7 +2088,12 @@ init_logger() {
                 ;;
             -t|--tag)
                 _require_option_value "$@" || return 1
-                JOURNAL_TAG="$2"
+                # Validated as in the config file and set_journal_tag
+                if _validate_journal_tag "$2"; then
+                    JOURNAL_TAG="$2"
+                else
+                    printf '%s\n' "  Hint: Keeping existing journal tag '$JOURNAL_TAG'" >&2
+                fi
                 shift 2
                 ;;
             -F|--facility)

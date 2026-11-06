@@ -27,6 +27,7 @@
 # - A second --config with no value returns an error
 # - Long names and many trailing newlines take linear time
 # - Escape sequences and control characters are removed, in linear time
+# - --tag is validated
 # - A readonly value with a newline cannot fake a readonly constant, and a logger path
 #   that was not validated is never run
 # - CONFIG notices follow the stderr level
@@ -1095,6 +1096,26 @@ limited=15" "$output" || return
     pass_test
 }
 
+test_posix_tag_option_validated() {
+    local shell_command="$1"
+    start_test "[$shell_command] --tag is validated like the tag config key"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "
+init_logger --quiet --no-init-message --tag 'good-tag'
+printf 'tag=%s\n' \"\$JOURNAL_TAG\"
+init_logger --quiet --no-init-message --tag 'bad;tag' 2>&1
+printf 'tag=%s status=%s\n' \"\$JOURNAL_TAG\" \"\$?\"
+" 2>/dev/null)
+    assert_contains "$output" "tag=good-tag" || return
+    assert_contains "$output" "shell metacharacters" || return
+    assert_contains "$output" "tag=good-tag status=0" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -1161,6 +1182,7 @@ while IFS= read -r posix_shell; do
     test_posix_config_notice_stream "$posix_shell"
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
+    test_posix_tag_option_validated "$posix_shell"
     test_posix_control_characters_removed "$posix_shell"
     test_posix_unterminated_sequences_linear "$posix_shell"
     test_posix_long_names_and_trailing_newlines "$posix_shell"
