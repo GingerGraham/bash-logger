@@ -36,6 +36,9 @@ exploitable by an unprivileged attacker on a default system, so none needed a pr
 
 "Origin 2.x" means the same behaviour exists in 2.7.0 (checked by running both versions).
 
+Filed as issues: SEC-01 #160, SEC-02 #161, SEC-03 #162, SEC-04 #163, SEC-05 #164, SEC-06 #165, INF-03 #166,
+INF-04 with INF-01 #167. INF-02 is included in #160.
+
 ---
 
 ## Scope and Methodology
