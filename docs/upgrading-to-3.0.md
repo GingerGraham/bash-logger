@@ -9,6 +9,7 @@ or renamed.
 ## Table of Contents <!-- omit in toc -->
 
 * [Messages and control characters](#messages-and-control-characters)
+* [Log files, journal and tags](#log-files-journal-and-tags)
 * [Changes in bash and zsh](#changes-in-bash-and-zsh)
 * [CONFIG notices](#config-notices)
 * [Changes in zsh only](#changes-in-zsh-only)
@@ -49,6 +50,23 @@ characters as well.
 
 C1 controls are recognised in their UTF-8 form only. In a single-byte locale such as
 ISO-8859-1, bytes 0x80 to 0x9F are left as they are.
+
+## Log files, journal and tags
+
+These also come from the security review of 3.0 and apply in every shell.
+
+* **New log files are private.** A log file that `init_logger` creates, and any directory it
+  creates for it, is readable only by its owner (mode 600 and 700). 2.x used the caller's umask,
+  usually 644 and 755. Existing files and directories keep their permissions. To let a group
+  read the log, create the file before calling `init_logger`, or change its mode afterwards.
+* **A log file replaced by a symbolic link is no longer written to.** Each write checks the path
+  again, reports the problem once, and sends the entry to stderr.
+* **Only a validated `logger` is run.** The journal writer runs `LOGGER_PATH` only after
+  `init_logger --journal`, `log_to_journal` or `check_logger_available` has validated it and
+  made it readonly. A script that assigned `LOGGER_PATH` itself, for example to use a stub in
+  tests, must now also make it readonly. `log_to_journal` also stops when validation fails.
+* **`-t` and `--tag` are validated** as the `tag` config key and `set_journal_tag` are. An
+  invalid tag prints an error, and the previous tag is kept.
 
 ## Changes in bash and zsh
 
@@ -123,7 +141,8 @@ counting bytes. See [Shell Compatibility](shell-compatibility.md#documented-diff
 The library adds internal functions and variables. Internal function names start with `_` and
 variable names start with `_LOGGER_`. If your script defines one of these names, rename yours:
 
-`_append_to_log_file`, `_bash_timestamp_into`, `_contains_control_characters`,
+`_append_to_log_file`, `_bash_timestamp_into`, `_cap_message_length_into`,
+`_contains_control_characters`, `_contains_strippable_characters`,
 `_contains_shell_metacharacters`, `_count_characters`, `_current_timestamp_into`,
 `_find_caller_script`, `_format_log_message_into`, `_get_log_level_color_into`,
 `_get_syslog_priority_into`, `_has_word_after_separator`, `_is_digits`, `_is_utf8_locale`,
@@ -144,6 +163,9 @@ Search your scripts and log tooling for:
 * zsh scripts or log parsers that expect `[unknown]` as the script name
 * scripts that use `--stderr-level NOTICE`, `INFO` or `DEBUG` and read `CONFIG` notices from stdout
 * functions or variables with the names listed above
+* scripts or tests that assign `LOGGER_PATH` themselves (make the value readonly)
+* log files that `init_logger` creates and that other users or groups need to read
+* messages that rely on control characters, such as backspace or BEL, being written to the log
 
 To compare the two versions on one of your scripts:
 

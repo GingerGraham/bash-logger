@@ -610,10 +610,13 @@ log_to_journal LEVEL MESSAGE
 * Applies the same sanitisation (newline and ANSI stripping) and truncation rules as all
   other log functions.
 * Console and file output follow the normal `CONSOLE_LOG` and `LOG_FILE` settings.
-* When `logger` is not available (for example when `LOGGER_PATH` is unset or the binary is
-  missing) and the message is at or above `CURRENT_LOG_LEVEL`, a warning is emitted to stderr
-  and the function returns `1` rather than silently discarding the message, regardless of the
-  value of `USE_JOURNAL`.
+* When `logger` is not available or fails validation (for example when the binary is missing,
+  is outside the trusted system directories, or no longer matches the path validated earlier)
+  and the message is at or above `CURRENT_LOG_LEVEL`, a warning is emitted to stderr and the
+  function returns `1` rather than silently discarding the message, regardless of the value of
+  `USE_JOURNAL`.
+* Only a `LOGGER_PATH` that validation locked (made readonly) is run. A value assigned any other
+  way is refused.
 * `log_sensitive` behaviour is unaffected — `log_to_journal` does not change the
   `skip_journal` logic and cannot cause sensitive messages to reach the journal.
 

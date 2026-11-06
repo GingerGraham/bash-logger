@@ -69,7 +69,17 @@ See [Sensitive Data Documentation](docs/sensitive-data.md) for details.
 
 ### Log File Permissions
 
-Log files may contain sensitive information. Always set appropriate permissions:
+Log files may contain sensitive information. Since 3.0, a log file that `init_logger` creates is
+readable and writable only by its owner (mode 600), and so is any directory it creates for the
+file. An existing file or directory keeps its permissions. To let a group read the log, create the
+file before calling `init_logger`, or change its mode afterwards.
+
+`init_logger` refuses a log file path that is a symbolic link, and each write checks again, so a
+link put in place of the file later is not written through. A link created in the short time
+between that check and the write is not caught. Keep log files in a directory that other users
+cannot write to.
+
+Always set appropriate permissions:
 
 ```bash
 # Set restrictive permissions on log files
@@ -201,14 +211,10 @@ bash-logger uses version guards to prevent issues when sourced multiple times:
 * This prevents errors in environments where the library may be sourced multiple times
 
 The guards check whether a constant is readonly (not merely set), so a value inherited from the environment cannot
-skip initialisation. The check reads `readonly -p` and accepts the output format of each supported shell:
-
-| Shell                                                | `readonly -p` format                              |
-| ---------------------------------------------------- | ------------------------------------------------- |
-| bash (normal mode)                                   | `declare -r NAME="value"`                         |
-| bash in POSIX mode (`--posix`, `set -o posix`, `sh`) | `readonly NAME="value"`                           |
-| zsh                                                  | `typeset -r NAME=value` or `export -r NAME=value` |
-| dash, busybox ash                                    | `readonly NAME='value'`                           |
+skip initialisation. The check tries to unset the variable in a subshell, which fails only for a readonly variable.
+It parses no output: before 3.0 it read `readonly -p`, where dash and busybox ash print values with literal newlines,
+so a readonly variable whose value contained a newline and `readonly NAME=...` could make another variable look
+readonly.
 
 ## Known Security Considerations
 
