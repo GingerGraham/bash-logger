@@ -1,6 +1,6 @@
 # Formatting <!-- omit in toc -->
 
-The Bash Logging Module allows you to customize the format of log messages using special placeholders.
+bash-logger allows you to customize the format of log messages using special placeholders.
 
 ## Table of Contents <!-- omit in toc -->
 

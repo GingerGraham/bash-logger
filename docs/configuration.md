@@ -1,6 +1,6 @@
 # Configuration <!-- omit in toc -->
 
-The Bash Logging Module supports loading configuration from INI-style files. This is useful for centralizing logging
+bash-logger supports loading configuration from INI-style files. This is useful for centralizing logging
 configuration across multiple scripts, allowing users to customize logging without modifying scripts, and separating
 configuration from code.
 
@@ -531,7 +531,7 @@ Track configuration changes:
 
 ```ini
 # logging.conf
-# Version: 2.1.0
+# Config revision: 3
 # Last updated: 2026-01-15
 
 [logging]

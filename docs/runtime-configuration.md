@@ -1,6 +1,6 @@
 # Runtime Configuration <!-- omit in toc -->
 
-The Bash Logging Module allows you to change configuration settings during script execution, providing flexibility for
+bash-logger allows you to change configuration settings during script execution, providing flexibility for
 different phases of operation.
 
 ## Table of Contents <!-- omit in toc -->

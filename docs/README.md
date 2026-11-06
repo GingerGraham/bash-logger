@@ -1,6 +1,6 @@
 # Bash Logger Documentation
 
-Welcome to the bash-logger documentation! This directory contains comprehensive guides for using the bash logging module.
+Welcome to the bash-logger documentation! This directory contains comprehensive guides for using bash-logger.
 
 ## Getting Started
 

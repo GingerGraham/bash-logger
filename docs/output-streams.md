@@ -1,6 +1,6 @@
 # Output Streams <!-- omit in toc -->
 
-The Bash Logging Module intelligently splits console output between stdout and stderr based on message severity,
+bash-logger intelligently splits console output between stdout and stderr based on message severity,
 following Unix conventions.
 
 ## Table of Contents <!-- omit in toc -->
@@ -280,7 +280,7 @@ See [Configuration](configuration.md) for more details.
 # Capture both stdout and stderr to same file
 ./script.sh > output.log 2>&1
 
-# Modern syntax (Bash 4+)
+# Shorthand for the same redirection (bash and zsh only; use the form above in sh scripts)
 ./script.sh &> output.log
 ```
 

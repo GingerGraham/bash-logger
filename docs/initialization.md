@@ -1,6 +1,6 @@
 # Initialization <!-- omit in toc -->
 
-The `init_logger` function is the entry point for configuring the Bash Logging Module. It must be called before using
+The `init_logger` function is the entry point for configuring bash-logger. It must be called before using
 any logging functions.
 
 ## Table of Contents <!-- omit in toc -->

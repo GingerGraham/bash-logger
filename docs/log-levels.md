@@ -1,6 +1,6 @@
 # Log Levels <!-- omit in toc -->
 
-The Bash Logging Module supports standard syslog log levels, providing a hierarchy of severity from most critical to
+bash-logger supports standard syslog log levels, providing a hierarchy of severity from most critical to
 least critical.
 
 ## Table of Contents <!-- omit in toc -->

@@ -1,6 +1,6 @@
 # Sensitive Data <!-- omit in toc -->
 
-The Bash Logging Module provides a special function for handling sensitive information that should not be written to
+bash-logger provides a special function for handling sensitive information that should not be written to
 persistent storage.
 
 ## Table of Contents <!-- omit in toc -->

@@ -1,6 +1,6 @@
 # Troubleshooting <!-- omit in toc -->
 
-This guide helps you diagnose and resolve common issues with the Bash Logging Module.
+This guide helps you diagnose and resolve common issues with bash-logger.
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -10,6 +10,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 * [Initialization Issues](#initialization-issues)
   * [Logger Not Initialized](#logger-not-initialized)
   * [Initialization Fails](#initialization-fails)
+  * [Script Name Shows as unknown](#script-name-shows-as-unknown)
 * [Configuration File Issues](#configuration-file-issues)
   * [Configuration File Not Loaded](#configuration-file-not-loaded)
   * [Invalid Configuration Values](#invalid-configuration-values)
@@ -28,6 +29,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
 * [Output Stream Issues](#output-stream-issues)
   * [Logs Going to Wrong Stream](#logs-going-to-wrong-stream)
   * [Cannot Separate Stdout and Stderr](#cannot-separate-stdout-and-stderr)
+  * [CONFIG Notices Appear on Stderr](#config-notices-appear-on-stderr)
 * [Runtime Configuration Issues](#runtime-configuration-issues)
   * [set_log_level Not Working](#set_log_level-not-working)
   * [Runtime Changes Not Persisting](#runtime-changes-not-persisting)
@@ -48,6 +50,7 @@ This guide helps you diagnose and resolve common issues with the Bash Logging Mo
   * ["command not found: init_logger"](#command-not-found-init_logger)
   * ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
   * ["invalid log level"](#invalid-log-level)
+  * ["requires a value"](#requires-a-value)
   * ["Configuration file not found" / "Configuration file not readable"](#configuration-file-not-found--configuration-file-not-readable)
   * ["Cannot create log directory" / "Cannot create log file"](#cannot-create-log-directory--cannot-create-log-file)
   * ["Log file path is a symbolic link"](#log-file-path-is-a-symbolic-link)
@@ -184,6 +187,25 @@ init_logger --log "$HOME/logs/app.log"
 ```
 
 **Note:** bash-logger rejects symbolic links for security reasons. This prevents attackers from redirecting your logs to sensitive system files. Always use direct file paths for log files.
+
+### Script Name Shows as unknown
+
+**Problem:** Log lines show `[unknown]` where the script name should be
+
+**Cause:**
+
+* In zsh before 3.0, every log line showed `unknown`. 3.0 detects the name of the script that called `init_logger`. If a log parser or alert matches `[unknown]` for zsh scripts, update the pattern.
+* In any shell, commands that come from `sh -c '...'` or standard input have no script file. bash reports `unknown`. dash, busybox ash and zsh report the shell's name.
+* When `init_logger` is called from a file that the main script sources, bash and zsh report that file, and dash and busybox ash report the main script.
+
+**Solution:**
+
+```bash
+# Set the name explicitly; it is the same in every shell
+init_logger --name "myapp"
+```
+
+See [Script name detection](shell-compatibility.md#script-name-detection) for the full rules.
 
 ## Configuration File Issues
 
@@ -726,6 +748,28 @@ init_logger --stderr-level ERROR
 ./script.sh > stdout.log 2> stderr.log
 ```
 
+### CONFIG Notices Appear on Stderr
+
+**Problem:** `[CONFIG]` lines from `set_*` functions appear on stderr and not on stdout
+
+**Cause:** In 3.0 a `CONFIG` notice goes to the same stream as a NOTICE message, so it follows the stderr level. In 2.x it always went to stdout.
+With `--stderr-level` set to `NOTICE`, `INFO` or `DEBUG`, `CONFIG` notices go to stderr. With the default level (`ERROR`) they stay on stdout.
+
+**Solution:**
+
+```bash
+# Keep CONFIG notices on stdout: leave the stderr level at WARN or less verbose
+init_logger --stderr-level WARN
+
+# Or read them from stderr
+./script.sh 2> stderr.log
+
+# Or do not print them
+init_logger --quiet --log "/var/log/app.log"
+```
+
+See [Runtime Configuration Notices](output-streams.md#runtime-configuration-notices).
+
 ## Runtime Configuration Issues
 
 ### set_log_level Not Working
@@ -993,6 +1037,29 @@ init_logger --level ERROR   # Correct
 # Not: init_logger --level TRACE
 ```
 
+### "requires a value"
+
+```text
+Error: --format requires a value
+```
+
+**Cause:** An option that takes a value was the last argument, or its value was missing. This applies to `--config`, `--level`, `--format`, `--log`, `--name`, `--tag` and `--stderr-level`.
+`init_logger` returns 1. In 2.x under bash, this looped forever.
+
+The usual cause is an unquoted variable that is empty, because the shell then drops it from the argument list.
+
+**Solution:**
+
+```bash
+# Wrong when FORMAT is empty: the argument disappears
+init_logger --format $FORMAT
+
+# Check the value first, and quote it
+if [ -n "$FORMAT" ]; then
+    init_logger --format "$FORMAT"
+fi
+```
+
 ### "Configuration file not found" / "Configuration file not readable"
 
 **Cause:** Config file path is incorrect or file has wrong permissions
@@ -1089,12 +1156,27 @@ init_logger
 log_info "Test message"
 ```
 
-1. **Check your Bash version:**
+1. **Check that your shell is supported, and its version:**
+
+   `logging.sh` runs in bash 3.2 or later, bash `--posix`, zsh, dash and busybox ash. See [Shell Compatibility](shell-compatibility.md#supported-shells) for the list.
+   Find the version of the shell that runs your script:
 
 ```bash
-bash --version
-# Module requires Bash 3.2 or later (the /bin/bash that macOS ships is 3.2)
+# bash (3.2 or later; the /bin/bash that macOS ships is 3.2)
+echo "$BASH_VERSION"
+
+# zsh
+zsh --version
+
+# busybox ash (/bin/sh on Alpine)
+busybox | head -1
+
+# dash has no version option. Ask the package manager:
+dpkg -s dash | grep '^Version'   # Debian, Ubuntu
+rpm -q dash                      # Fedora, RHEL
 ```
+
+   To see which shell runs a script, add `ps -p $$ -o comm=` to it.
 
 1. **Verify file permissions:**
 
