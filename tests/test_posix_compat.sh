@@ -25,6 +25,7 @@
 # - log_sensitive text does not stay in shell variables
 # - A logger symlink to busybox is accepted only in a safe directory
 # - A second --config with no value returns an error
+# - Long names and many trailing newlines take linear time
 # - A readonly value with a newline cannot fake a readonly constant, and a logger path
 #   that was not validated is never run
 # - CONFIG notices follow the stderr level
@@ -972,6 +973,34 @@ printf 'status=%s\n' \"\$?\"
     pass_test
 }
 
+test_posix_long_names_and_trailing_newlines() {
+    local shell_command="$1"
+    start_test "[$shell_command] long names and many trailing newlines take linear time"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # 2.x-era loops copied the text once per character replaced or newline removed:
+    # these inputs took about a minute in bash. The timeout is generous so that only
+    # that kind of growth fails.
+    local output
+    output=$(run_with_timeout 20 run_snippet_in_shell "$shell_command" C '
+big=$(awk "BEGIN { for (i = 0; i < 131072; i++) printf \"%s\", (i % 3 == 0) ? \" \" : \"a\" }")
+init_logger --quiet --no-init-message --name "$big"
+printf "name=%s %s\n" "${#SCRIPT_NAME}" "${SCRIPT_NAME%"${SCRIPT_NAME#????}"}"
+set_script_name "$(printf "a b\\\\c")" >/dev/null
+printf "short=%s\n" "$SCRIPT_NAME"
+lots=$(awk "BEGIN { printf \"x\"; for (i = 0; i < 80000; i++) printf \"\\n\" }"; printf y)
+init_logger --quiet --no-init-message --no-color --format "%m" --unsafe-allow-newlines
+log_info "${lots%y}"
+printf "status=%s\n" "$?"
+' 2>&1)
+    assert_equals "name=8192 _aa_
+short=a_b_c
+status=0" "$output" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -1038,6 +1067,7 @@ while IFS= read -r posix_shell; do
     test_posix_config_notice_stream "$posix_shell"
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
+    test_posix_long_names_and_trailing_newlines "$posix_shell"
     test_posix_readonly_guard_cannot_be_spoofed "$posix_shell"
     test_posix_unvalidated_logger_path_not_run "$posix_shell"
     test_posix_timestamp_matches_date "$posix_shell"

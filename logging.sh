@@ -305,8 +305,34 @@ _replace_all() {
 # what a range matches depends on the locale in some shells (for example bash 3.2 without
 # globasciiranges). They are written unquoted in each pattern: busybox 1.37 with musl
 # treated a backslash as allowed when the list came from a quoted variable containing "-".
+#
+# Names can come from the environment (SCRIPT_NAME) or a command line, so the cost must not
+# grow with the square of the length:
+#   * text longer than 8192 characters is cut to 8192 first, which is far longer than any
+#     real name; zsh's pattern substitution is itself quadratic
+#   * bash and zsh replace every character in one pattern substitution
+#   * other shells use one tr process for text longer than 256 bytes, and the loop below
+#     (or if tr fails) for shorter text
 _replace_unsafe_name_characters() {
     local remaining="$1"
+    local max_name_input=8192
+    if [ "${#remaining}" -gt "$max_name_input" ]; then
+        _text_prefix "$remaining" "$max_name_input"
+        remaining="$_LOGGER_PREFIX"
+    fi
+    if _shell_counts_characters; then
+        # Pattern substitution only runs in bash and zsh
+        # shellcheck disable=SC3060
+        _LOGGER_REPLACED="${remaining//[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]/_}"
+        return 0
+    fi
+    if [ "${#remaining}" -gt 256 ]; then
+        # tr leaves no trailing newline for command substitution to remove
+        if _LOGGER_REPLACED=$(printf '%s' "$remaining" \
+            | LC_ALL=C tr -c 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-' '_'); then
+            return 0
+        fi
+    fi
     local result=""
     local safe_prefix=""
     while :; do
@@ -428,14 +454,18 @@ _text_length() {
 
 # Remove trailing newlines from the value of _LOGGER_TEXT (internal).
 # Earlier versions passed messages through command substitution, which removes
-# trailing newlines; this keeps that result without starting a subshell.
+# trailing newlines; this keeps that result. One trailing newline is removed in the
+# shell. If more remain, command substitution removes them all at once: removing them
+# one at a time copies the text each time, so the cost would grow with the square of
+# their number.
 _strip_trailing_newlines() {
-    while :; do
-        case "$_LOGGER_TEXT" in
-            *"$_LOGGER_NEWLINE") _LOGGER_TEXT="${_LOGGER_TEXT%"$_LOGGER_NEWLINE"}" ;;
-            *) return 0 ;;
-        esac
-    done
+    case "$_LOGGER_TEXT" in
+        *"$_LOGGER_NEWLINE") _LOGGER_TEXT="${_LOGGER_TEXT%"$_LOGGER_NEWLINE"}" ;;
+        *) return 0 ;;
+    esac
+    case "$_LOGGER_TEXT" in
+        *"$_LOGGER_NEWLINE") _LOGGER_TEXT=$(printf '%s' "$_LOGGER_TEXT") ;;
+    esac
 }
 
 # Version (updated by release workflow)
