@@ -192,6 +192,20 @@ log_error "Processing: $malicious_input"
 * Library-generated colors (for log levels) are preserved
 * This protection is transparent - no code changes needed
 
+**Characters That Are Kept:**
+
+Some invisible characters are not removed, because they cannot reverse or hide a log line the way the removed bidirectional overrides and isolates can:
+
+| Character | Name                                                      |
+| --------- | --------------------------------------------------------- |
+| U+200E    | LEFT-TO-RIGHT MARK (bidirectional mark)                   |
+| U+200F    | RIGHT-TO-LEFT MARK (bidirectional mark)                   |
+| U+061C    | ARABIC LETTER MARK (bidirectional mark)                   |
+| U+200B    | ZERO WIDTH SPACE                                          |
+| U+FEFF    | ZERO WIDTH NO-BREAK SPACE, also used as a byte order mark |
+
+The bidirectional marks can only move neutral characters such as punctuation. The zero-width characters can only hide differences between similar text.
+
 **If You Need ANSI Codes in Log Messages:**
 
 Only enable unsafe mode if you have complete control over all logged content:

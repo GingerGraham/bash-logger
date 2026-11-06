@@ -14,7 +14,7 @@ description: >
 
 Apply to any change that touches:
 
-* Message processing or formatting (`_sanitize_log_message`, `_strip_ansi_codes`, format strings)
+* Message processing or formatting (`_sanitize_log_message_into`, `_strip_ansi_codes_into`, format strings)
 * File path handling (`init_logger`, `_parse_config_file`, `_validate_config_file_path`)
 * Configuration parsing (new config keys, value parsing, `_parse_config_file`)
 * Journal/`logger` integration (`_find_and_validate_logger`, `_write_to_journal`)
@@ -25,15 +25,26 @@ Apply to any change that touches:
 
 ## Domain 1: Input sanitization (log injection)
 
-Every message written to file or journal passes through `_sanitize_log_message`, which calls
-both `_strip_ansi_codes` (strips CSI, OSC, DCS, PM, APC sequences) and newline replacement.
+Every message written to file or journal passes through `_sanitize_log_message_into`, which
+replaces newline, carriage return and tab and calls `_strip_ansi_codes_into`. That removes every CSI
+sequence, OSC/DCS/SOS/PM/APC strings, and other control characters (C0 other than newline,
+carriage return and tab; C1; U+2028 and U+2029; bidirectional formatting characters U+202A to
+U+202E and U+2066 to U+2069). The `_into` functions set `_LOGGER_TEXT` and avoid a subshell. The
+older `_sanitize_log_message` and `_strip_ansi_codes` only print that result, and the message
+path does not use them.
+
+These characters are kept on purpose (audit finding INF-01), so do not report them as a gap:
+U+200E and U+200F (left-to-right and right-to-left marks), U+061C (Arabic letter mark), U+200B
+(zero width space) and U+FEFF (byte order mark). They cannot reverse a line the way the removed
+overrides and isolates can.
 
 **What to check:**
 
 * New `_log_message` callers pass user-supplied content as the `$message` argument — not
   as part of `$level_name`, which is never sanitized (it comes from internal constants only).
-* No new code path writes directly to `$LOG_FILE` without first calling `_sanitize_log_message`.
-* If you add a new ANSI sequence type, update `_strip_ansi_codes` **and** add a test in
+* No new code path writes directly to `$LOG_FILE` without first calling
+  `_sanitize_log_message_into`.
+* If you add a new ANSI sequence type, update `_strip_ansi_codes_into` **and** add a test in
   `test_ansi_injection.sh`.
 * Format string changes: `LOG_FORMAT` uses `%d`, `%l`, `%s`, `%m`, `%z` only. Never
   interpolate raw user data into the format string itself.
@@ -73,8 +84,8 @@ immediate validation to minimize the TOCTOU window.
 **Test suites for this domain:**
 
 ```bash
-./tests/run_tests.sh toctou_protection
-./tests/run_tests.sh path_traversal
+./tests/run_tests.sh test_toctou_protection
+./tests/run_tests.sh test_path_traversal
 ```
 
 ---
@@ -102,8 +113,8 @@ type-specific validation.
 **Test suites for this domain:**
 
 ```bash
-./tests/run_tests.sh config_security
-./tests/run_tests.sh config
+./tests/run_tests.sh test_config_security
+./tests/run_tests.sh test_config
 ```
 
 ---
@@ -119,12 +130,18 @@ poisoning constants.
 * New global constants that should not be user-overridable: unset before assignment, then
   declare `readonly`. Follow the existing guard pattern:
 
-  ```bash
-  if ! readonly -p 2>/dev/null | grep -q "declare -[^ ]*r[^ ]* MY_CONST="; then
+  ```sh
+  if ! _is_readonly MY_CONST; then
       unset MY_CONST 2>/dev/null || true
-      readonly MY_CONST="value"
+      _logger_readonly MY_CONST="value"
   fi
   ```
+
+  `_is_readonly` tests a variable by trying to unset it in a subshell, which fails only for a
+  readonly variable. Do not test with `readonly -p | grep ...`: the output differs between shells,
+  and a value that contains a newline and text such as `readonly NAME=` can make a variable look
+  readonly (the PR #147 review showed this). `_logger_readonly` keeps the constant global in zsh
+  when the file is sourced from inside a function. Do not call `readonly` directly.
 
 * New mutable state variables (like `LOG_FILE`): these must not be `readonly`. Ensure they
   are reset to a safe default on each `source` so pre-set environment values cannot persist.
@@ -137,7 +154,7 @@ poisoning constants.
 **Test suites for this domain:**
 
 ```bash
-./tests/run_tests.sh environment_security
+./tests/run_tests.sh test_environment_security
 ```
 
 ---
@@ -183,7 +200,7 @@ during interactive sessions regardless of level configuration.
 **Test suites for this domain:**
 
 ```bash
-./tests/run_tests.sh sensitive_data
+./tests/run_tests.sh test_sensitive_data
 ```
 
 ---
@@ -218,9 +235,13 @@ value, and `SCRIPT_NAME` at the end of `init_logger` regardless of source.
 Run all security suites together:
 
 ```bash
-./tests/run_tests.sh ansi_injection unsafe_newlines path_traversal toctou_protection \
-    config_security environment_security sensitive_data script_name_sanitization
+./tests/run_tests.sh test_ansi_injection test_unsafe_newlines test_path_traversal \
+    test_toctou_protection test_config_security test_environment_security \
+    test_sensitive_data test_script_name_sanitization
 ```
+
+The suite arguments need the `test_` prefix. `./tests/run_tests.sh ansi_injection` fails with
+"Test file not found".
 
 After any security-related change, always follow with the full suite:
 
@@ -233,8 +254,8 @@ After any security-related change, always follow with the full suite:
 ## Security checklist before committing
 
 * [ ] New external input is sanitized before being written to file, journal, or console
-* [ ] No new code path bypasses `_sanitize_log_message`
-* [ ] No new constant is set without unset + readonly guard against env override
+* [ ] No new code path bypasses `_sanitize_log_message_into`
+* [ ] No new constant is set without an `_is_readonly` guard, unset and `_logger_readonly`
 * [ ] New mutable state is reset to safe default on source
 * [ ] New file path handling uses noclobber → symlink check → existence check → regular-file check → writable check
 * [ ] New config key uses an appropriate typed validator; metacharacter injection is not possible

@@ -134,7 +134,7 @@ See [Tests that run under more than one shell](../../../docs/writing-tests.md#te
 
 ```bash
 # New suite only first
-./tests/run_tests.sh <suite_name>
+./tests/run_tests.sh test_<feature>
 
 # Then confirm no regressions
 ./tests/run_tests.sh
@@ -154,7 +154,7 @@ TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" ./tests/run_tests.sh test_sh
 * [ ] Every assertion uses `|| return`
 * [ ] All file I/O uses `$TEST_DIR`
 * [ ] `init_logger` called after `start_test`, not at suite top-level
-* [ ] Suite passes: `./tests/run_tests.sh <suite_name>`
+* [ ] Suite passes: `./tests/run_tests.sh test_<feature>`
 * [ ] Full suite still passes: `./tests/run_tests.sh`
 * [ ] If `logging.sh` changed: cross-shell run passes with `TEST_SHELLS` (or each skipped shell is reported)
 * [ ] If the behaviour must match across shells: scenario added in `tests/compat/scenarios/`

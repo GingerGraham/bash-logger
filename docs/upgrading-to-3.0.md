@@ -36,6 +36,9 @@ what a log line shows.
   and paragraph separators U+2028 and U+2029, and the bidirectional formatting characters
   U+202A to U+202E and U+2066 to U+2069. 2.x logged them unchanged. Newline, carriage return
   and tab are still replaced by spaces, as before.
+* **Some invisible characters are still kept:** the bidirectional marks U+200E, U+200F and U+061C,
+  and the zero-width characters U+200B and U+FEFF. They cannot reverse a line the way the removed
+  overrides and isolates can.
 * **No escape character is left behind.** 2.x left a lone escape character, an incomplete
   sequence, and some nested sequences in the log. It also removed an escape character
   together with the first byte of a UTF-8 character after it, which left invalid UTF-8; 3.0

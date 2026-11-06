@@ -86,22 +86,25 @@ TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" ./tests/run_tests.sh test_sh
 ./tests/run_tests.sh <suite_name>
 ```
 
-`<suite_name>` is the filename without the `test_` prefix **and** without `.sh`:
+`<suite_name>` is the filename without `.sh`. It **keeps** the `test_` prefix:
 
 ```bash
 # Correct
-./tests/run_tests.sh log_levels
-./tests/run_tests.sh config
-./tests/run_tests.sh initialization
+./tests/run_tests.sh test_log_levels
+./tests/run_tests.sh test_config
+./tests/run_tests.sh test_initialization
 
 # Also accepted — runner strips the extension
 ./tests/run_tests.sh test_log_levels.sh
+
+# Wrong — "Test file not found"
+./tests/run_tests.sh log_levels
 ```
 
 ### Multiple suites in one invocation
 
 ```bash
-./tests/run_tests.sh config config_security runtime_config
+./tests/run_tests.sh test_config test_config_security test_runtime_config
 ```
 
 ### JUnit XML output (for CI artefacts)
@@ -161,7 +164,7 @@ Exit code `0` = all passed. Exit code `1` = at least one failure. Fix all failur
 ## Mistakes to avoid
 
 * Do **not** run from inside the `tests/` directory — always run from repo root.
-* Do **not** pass the full path (`tests/test_config.sh`) — pass the suite name only.
+* Do **not** pass the full path (`tests/test_config.sh`) — pass the suite name only, with its `test_` prefix.
 * Do **not** skip the discovery step and guess suite names — the list changes as the project grows.
 * Do **not** treat a bash-only pass as enough after changing `logging.sh` — run the cross-shell command above.
 * `test_helpers.sh` and `test_example.sh` are never valid suite arguments.
