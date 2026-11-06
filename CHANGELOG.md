@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0](https://github.com/GingerGraham/bash-logger/compare/2.7.0...3.0.0) (2026-11-06)
+
+### BREAKING CHANGES
+
+* logging.sh is now POSIX sh plus local. No public API was removed, but some edge cases behave differently from 2.x. See docs/upgrading-to-3.0.md.
+
+### Features
+
+* **logging:** support POSIX sh (dash, busybox ash) ([#147](https://github.com/GingerGraham/bash-logger/issues/147))
+
 ## [2.7.0](https://github.com/GingerGraham/bash-logger/compare/2.6.2...2.7.0) (2026-11-03)
 
 ### Features
