@@ -45,8 +45,8 @@ OUTPUT_NAMES = ("stdout", "stderr", "log", "status")
 
 # The workload that runs under every shell mode. It sets --name so that the zsh results are
 # not all different because 2.x could not detect the script name in zsh. Inputs whose result
-# changed in 3.0 (such as the messages -n and -e) are in their own scenarios below, so that
-# only those scenarios need to be allowed.
+# changed in 3.0 (such as the messages -n and -e, and control characters other than ESC)
+# are in their own scenarios below, so that only those scenarios need to be allowed.
 WORKLOAD = r'''
 . "$LIB"
 rc=$?; printf 'source rc=%s\n' "$rc"
@@ -57,8 +57,7 @@ log_critical "crit"; log_alert "alert"; log_emergency "emerg"; log_fatal "fatal"
 for m in '--' '%s %d %m %l %z %%' '*' '[a-z]*' '?' '~' '$HOME' '`id`' '$(id)' \
   'a&b' '&' 'x=1' '  leading' 'trailing  ' '' ' ' '"quoted"' "'single'" '#hash' '!bang' 'é ü 日本語 🙂' \
   "$(printf 'line1\nline2')" "$(printf 'tab\there')" "$(printf 'cr\rhere')" "$(printf 'trail\n\n')x" \
-  "$(printf '\033[31mred\033[0m')" "$(printf '\033]0;title\007rest')" "$(printf 'bell\007x')" "$(printf 'bs\010x')" \
-  "$(printf '\302\205nel')" "$(printf '\342\200\250ls')" "$(printf '\377\376bad')"; do
+  "$(printf '\033[31mred\033[0m')" "$(printf '\033]0;title\007rest')" "$(printf '\377\376bad')"; do
     log_info "$m"; printf 'rc=%s\n' "$?"
 done
 log_info "$(printf 'x%.0s' 1 2 3)"
@@ -498,6 +497,15 @@ log_info 'back\slash\n\t\033'
 . "$LIB"
 init_logger -l "$T/x.log" --name script.sh
 log_info 'back\slash\n\t\033'
+''',
+    "control-characters": r'''
+. "$LIB"
+init_logger -l "$T/x.log" --name script.sh
+for m in 'bell\007x' 'bs\010x' 'vt\013ff\014x' 'del\177x' '\302\205nel' '\302\23331mcsi' \
+    '\342\200\250ls' '\342\200\256rlo' '\342\201\246lri' 'colon\033[38:2:0:0:0mx' 'hpa\033[1`x' \
+    'decera\033[1;1;24;80$zx' 'cursor\033[2 qx' 'paste\033[200~x' 'esc-end\033' 'esc-utf8\033\303\251x'; do
+    log_info "$(printf "$m")"
+done
 ''',
     "missing-option-value": r'''
 . "$LIB"

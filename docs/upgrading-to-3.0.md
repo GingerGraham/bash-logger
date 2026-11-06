@@ -8,6 +8,7 @@ or renamed.
 
 ## Table of Contents <!-- omit in toc -->
 
+* [Messages and control characters](#messages-and-control-characters)
 * [Changes in bash and zsh](#changes-in-bash-and-zsh)
 * [CONFIG notices](#config-notices)
 * [Changes in zsh only](#changes-in-zsh-only)
@@ -15,6 +16,39 @@ or renamed.
 * [Internal names](#internal-names)
 * [Checking your scripts](#checking-your-scripts)
 * [Staying on 2.x](#staying-on-2x)
+
+## Messages and control characters
+
+3.0 removes more from messages than 2.x did, in every shell. These changes come from a security
+review of 3.0: text that 2.x let through could still act on a terminal, or hide or reorder
+what a log line shows.
+
+* **All terminal control sequences are removed.** 2.x removed CSI sequences only when their
+  parameters were digits, `;` or `<=>?!` and their last character was a letter or `@`. 3.0
+  removes every CSI sequence as ECMA-48 defines it, such as `ESC[38:2:0:0:0m` (a color that can
+  hide text), ``ESC[1` `` (moves the cursor), `ESC[2 q` and `ESC[200~`.
+* **OSC, DCS, SOS, PM and APC strings end where a terminal ends them:** at their terminator, or
+  at the next escape character. 2.x left the text of an unterminated string in the log, and a
+  terminal hides it.
+* **Other control characters are removed:** the C0 controls other than newline, carriage return
+  and tab (such as backspace, BEL, vertical tab, form feed and DEL), the C1 controls, the line
+  and paragraph separators U+2028 and U+2029, and the bidirectional formatting characters
+  U+202A to U+202E and U+2066 to U+2069. 2.x logged them unchanged. Newline, carriage return
+  and tab are still replaced by spaces, as before.
+* **No escape character is left behind.** 2.x left a lone escape character, an incomplete
+  sequence, and some nested sequences in the log. It also removed an escape character
+  together with the first byte of a UTF-8 character after it, which left invalid UTF-8; 3.0
+  keeps the character.
+* **Very long messages are cut before they are sanitized.** A message longer than four times
+  the larger of the console and journal line limits (and at least 8,192 characters) is cut to
+  that length first. The logged text is the same, except that a message made mostly of escape
+  sequences now ends with `...[truncated]`. With a line limit of 0, nothing is cut.
+
+`--unsafe-allow-ansi-codes` still keeps escape sequences, and now keeps these other control
+characters as well.
+
+C1 controls are recognised in their UTF-8 form only. In a single-byte locale such as
+ISO-8859-1, bytes 0x80 to 0x9F are left as they are.
 
 ## Changes in bash and zsh
 

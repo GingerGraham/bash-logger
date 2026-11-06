@@ -188,6 +188,20 @@
         "posix",
         "zsh"
       ],
+      "case": "x:control-characters",
+      "outputs": [
+        "stdout",
+        "log"
+      ],
+      "reason": "Control characters, C1 controls, line separators, bidirectional controls and escape sequences outside the 2.x CSI grammar are removed",
+      "guide": "#messages-and-control-characters"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
       "case": "x:config-notice-stderr-level",
       "outputs": [
         "stdout",

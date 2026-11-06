@@ -1050,6 +1050,11 @@ By default, bash-logger strips ANSI escape sequences from user input to prevent:
 * Visual spoofing attacks (fake error messages)
 * Terminal emulator exploitation via crafted sequences
 
+It also removes other control characters: the C0 controls other than newline, carriage return
+and tab (such as backspace and BEL), DEL, the C1 controls, U+2028 and U+2029, and the
+bidirectional formatting characters U+202A to U+202E and U+2066 to U+2069. Enabling this unsafe
+mode keeps all of them.
+
 Library-generated ANSI codes for colors and formatting are preserved.
 
 **See Also:**

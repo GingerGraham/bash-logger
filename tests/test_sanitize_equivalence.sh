@@ -8,10 +8,28 @@
 # shell in TEST_SHELLS and requires the same log output, compared by checksum, in three
 # modes: default sanitizing, unsafe newlines and unsafe ANSI codes.
 #
+# 3.0 removes more than 2.7.0 did. The rows that changed on purpose, with the reason for
+# each, are in tests/compat/golden/sanitize_3.0.tsv (see
+# tests/compat/generate_sanitize_changes.sh), which replaces those rows of sanitize.tsv.
+#
 # TEST_SHELLS and TEST_REQUIRE_SHELLS work as in test_shell_compat.sh.
 
 SANITIZE_GOLDEN_DIR="$PROJECT_ROOT/tests/compat/golden"
 SANITIZE_DRIVER="$PROJECT_ROOT/tests/compat/sanitize_driver.sh"
+
+# Print sanitize.tsv with the rows in sanitize_3.0.tsv replaced by their 3.0 results
+write_expected_sanitize_results() {
+    awk -F'\t' '
+        FNR == 1 { file_number++ }
+        /^#/ { next }
+        file_number == 1 { changed[$1 "\t" $2] = $3; next }
+        {
+            key = $1 "\t" $2
+            if (key in changed) { $3 = changed[key] }
+            printf "%s\t%s\t%s\n", $1, $2, $3
+        }
+    ' "$SANITIZE_GOLDEN_DIR/sanitize_3.0.tsv" "$SANITIZE_GOLDEN_DIR/sanitize.tsv"
+}
 
 # Test: one shell matches the golden file
 test_sanitize_equivalence_in_shell() {
@@ -23,7 +41,7 @@ test_sanitize_equivalence_in_shell() {
 
     local expected_file="$TEST_DIR/expected.tsv"
     local actual_file="$TEST_DIR/actual.tsv"
-    grep -v '^#' "$SANITIZE_GOLDEN_DIR/sanitize.tsv" > "$expected_file"
+    write_expected_sanitize_results > "$expected_file"
 
     # shellcheck disable=SC2086  # word splitting of shell_command is intended
     env -i PATH="$PATH" HOME="$TEST_DIR" TMPDIR="$TEST_DIR" LC_ALL=C \
@@ -65,8 +83,33 @@ test_sanitize_golden_files_present() {
     pass_test
 }
 
+# Test: every row in sanitize_3.0.tsv is a real change with a listed reason
+test_sanitize_changes_are_explained() {
+    start_test "every 3.0 sanitizing change differs from 2.7.0 and has a reason"
+
+    local changes_file="$SANITIZE_GOLDEN_DIR/sanitize_3.0.tsv"
+    assert_file_not_empty "$changes_file" || return
+
+    local problems
+    problems=$(awk -F'\t' '
+        FNR == 1 { file_number++ }
+        /^#/ { next }
+        file_number == 1 { baseline[$1 "\t" $2] = $3; next }
+        {
+            key = $1 "\t" $2
+            if (!(key in baseline)) { print "not in sanitize.tsv: " key; next }
+            if (baseline[key] == $3) { print "same as 2.7.0: " key }
+            if ($4 !~ /^(esc|utf8|c1)(,(esc|utf8|c1))*$/) { print "no valid reason: " key }
+        }
+    ' "$SANITIZE_GOLDEN_DIR/sanitize.tsv" "$changes_file")
+    assert_equals "" "$problems" || return
+
+    pass_test
+}
+
 # Run all tests
 test_sanitize_golden_files_present
+test_sanitize_changes_are_explained
 
 while IFS= read -r sanitize_shell; do
     test_sanitize_equivalence_in_shell "$sanitize_shell"

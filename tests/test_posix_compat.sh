@@ -26,6 +26,7 @@
 # - A logger symlink to busybox is accepted only in a safe directory
 # - A second --config with no value returns an error
 # - Long names and many trailing newlines take linear time
+# - Escape sequences and control characters are removed, in linear time
 # - A readonly value with a newline cannot fake a readonly constant, and a logger path
 #   that was not validated is never run
 # - CONFIG notices follow the stderr level
@@ -1001,6 +1002,99 @@ status=0" "$output" || return
     pass_test
 }
 
+# Log each control-character case from the 3.0.0 security review and print the result
+# with od, so the expected output is the same in every shell and locale
+control_character_snippet() {
+    cat <<'SNIPPET'
+init_logger --quiet --no-color --no-init-message --format '%m' --max-line-length 0 -l "$OUT"
+for spec in 'A\033[38:2:0:0:0mB' 'A\033[1`B' 'A\033[1;1;24;80$zB' 'A\033[2 qB' 'A\033[200~B' \
+    'A\033]0;title\007B' 'A\033]8;;x\033\134B' 'A\033]0;open' 'A\033Pq\033\134B' 'A\033]0;a\033[31mb\033\134B' \
+    'A\033\303\251B' 'A\033\377B' 'AB\033' 'AB\010C' 'A\013B\014C' 'A\007B\177C' 'A\016B\017C' \
+    'A\302\205B' 'A\302\23331mB' 'A\342\200\250B\342\200\251C' 'A\342\200\256BC\342\200\254D' \
+    'A\342\201\246B\342\201\251C' '\303\251 \360\237\231\202' 'A\342\200\213B'; do
+    : > "$OUT"
+    log_info "$(printf "$spec")"
+    od -An -c "$OUT" | tr -s ' ' | tr -d '\n'
+    printf '\n'
+done
+SNIPPET
+}
+
+test_posix_control_characters_removed() {
+    local shell_command="$1"
+    start_test "[$shell_command] escape sequences and control characters are removed"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Covers findings P1, P2 and P4 of the 3.0.0 security review: CSI sequences outside
+    # the old grammar, C0, C1, line separator and bidirectional controls, and ESC followed
+    # by a byte that is not valid UTF-8. UTF-8 text, including after ESC, is kept.
+    local expected=" A B \n
+ A B \n
+ A B \n
+ A B \n
+ A B \n
+ A B \n
+ A B \n
+ A \n
+ A B \n
+ A B \n
+ A 303 251 B \n
+ A 377 B \n
+ A B \n
+ A B C \n
+ A B C \n
+ A B C \n
+ A B C \n
+ A B \n
+ A 3 1 m B \n
+ A B C \n
+ A B C D \n
+ A B C \n
+ 303 251 360 237 231 202 \n
+ A 342 200 213 B \n"
+    local locale_name output
+    for locale_name in C "$(utf8_locale_name)"; do
+        [[ -z "$locale_name" ]] && continue
+        output=$(run_snippet_in_shell "$shell_command" \
+            "$locale_name" "OUT='$TEST_DIR/control.log'
+$(control_character_snippet)" 2>/dev/null)
+        assert_equals "$expected" "$output" "LC_ALL=$locale_name" || return
+    done
+
+    pass_test
+}
+
+test_posix_unterminated_sequences_linear() {
+    local shell_command="$1"
+    start_test "[$shell_command] long runs of unterminated escape sequences take linear time"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # 240 KB of unterminated OSC sequences took 90 s with busybox sed and the 2.x
+    # expressions. Checked with truncation off (no cap), and with the default limits,
+    # where the message is cut before sanitizing.
+    local output
+    output=$(run_with_timeout 20 run_snippet_in_shell "$shell_command" C "
+message=\$(awk 'BEGIN { for (i = 0; i < 80000; i++) printf \"\\033]a\" }')
+init_logger --quiet --no-color --no-init-message --format '%m' --max-line-length 0 \\
+    -l '$TEST_DIR/unterminated.log'
+log_info \"\$message\"
+printf 'unlimited=%s\n' \"\$(wc -c < '$TEST_DIR/unterminated.log' | tr -d ' ')\"
+init_logger --quiet --no-color --no-init-message --format '%m' --max-line-length 4096 \\
+    -l '$TEST_DIR/unterminated.log'
+: > '$TEST_DIR/unterminated.log'
+log_info \"\$message\"
+printf 'limited=%s\n' \"\$(wc -c < '$TEST_DIR/unterminated.log' | tr -d ' ')\"
+" 2>/dev/null)
+    # Each unterminated OSC is removed up to the next ESC, so nothing is left; with the
+    # cap, the truncation suffix shows that the message was cut
+    assert_equals "unlimited=1
+limited=15" "$output" || return
+
+    pass_test
+}
+
 test_posix_version_variables_from_environment() {
     local shell_command="$1"
     start_test "[$shell_command] inherited BASH_VERSION and ZSH_VERSION do not change the shell used"
@@ -1067,6 +1161,8 @@ while IFS= read -r posix_shell; do
     test_posix_config_notice_stream "$posix_shell"
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
+    test_posix_control_characters_removed "$posix_shell"
+    test_posix_unterminated_sequences_linear "$posix_shell"
     test_posix_long_names_and_trailing_newlines "$posix_shell"
     test_posix_readonly_guard_cannot_be_spoofed "$posix_shell"
     test_posix_unvalidated_logger_path_not_run "$posix_shell"

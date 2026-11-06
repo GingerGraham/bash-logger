@@ -929,7 +929,7 @@ Other jobs in the same workflow:
 
 `scripts/compare-with-release.py` runs consumer-style scripts against `logging.sh` from the
 last release of the previous major version and against the working copy. It covers 45 bash
-option and locale modes, 38 zsh modes, and 58 API scenarios under bash, `bash --posix`
+option and locale modes, 38 zsh modes, and 59 API scenarios under bash, `bash --posix`
 and zsh, and compares stdout, stderr, log files and exit status.
 
 ```bash

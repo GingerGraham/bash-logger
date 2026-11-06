@@ -123,6 +123,67 @@ if ! _is_readonly _LOGGER_ESC; then
         _LOGGER_UTF8_CONTROLS
 fi
 
+# Constants used to remove control characters from messages (internal). Guarded separately
+# from the block above so that they are set even if an older version was sourced first.
+if ! _is_readonly _LOGGER_STRIP_C0; then
+    # Control characters removed from messages, other than LF, CR and TAB (which are
+    # replaced by spaces) and NUL (which a shell variable cannot hold): the rest of C0,
+    # including ESC and BEL, and DEL
+    _LOGGER_STRIP_C0=$(
+        printf '\001\002\003\004\005\006\007\010\013\014\016\017\020\021\022\023'
+        printf '\024\025\026\027\030\031\032\033\034\035\036\037\177'
+    )
+    # Bidirectional formatting characters, which can make a log line display in a different
+    # order from the one it was written in: U+202A to U+202E (E2 80 AA to AE) and U+2066 to
+    # U+2069 (E2 81 A6 to A9). They are printable, so [[:print:]] does not find them in a
+    # UTF-8 locale.
+    _LOGGER_LRE=$(printf '\342\200\252')
+    _LOGGER_RLE=$(printf '\342\200\253')
+    _LOGGER_PDF=$(printf '\342\200\254')
+    _LOGGER_LRO=$(printf '\342\200\255')
+    _LOGGER_RLO=$(printf '\342\200\256')
+    _LOGGER_LRI=$(printf '\342\201\246')
+    _LOGGER_RLI=$(printf '\342\201\247')
+    _LOGGER_FSI=$(printf '\342\201\250')
+    _LOGGER_PDI=$(printf '\342\201\251')
+    # For shells and locales that work on bytes: a two-byte character that [:print:] then
+    # does not match, and the first byte of the C1 controls (C2) and of U+2028 to U+2069 (E2)
+    _LOGGER_TWO_BYTE_CHARACTER=$(printf '\303\251')
+    _LOGGER_C1_LEAD=$(printf '\302')
+    _LOGGER_FORMAT_LEAD=$(printf '\342')
+    # sed expression for an escape that no other expression removed: ESC and the next
+    # byte when that is ASCII, otherwise ESC alone, so a UTF-8 character is never cut
+    _LOGGER_SED_STRIP_ESC=$(printf 's,\033[^\200-\377]?,,g')
+    _LOGGER_SED_STRIP_C1=$(printf 's,\302[\200-\237],,g')
+    _LOGGER_SED_STRIP_U2028=$(printf 's,\342\200[\250-\256],,g')
+    _LOGGER_SED_STRIP_U2066=$(printf 's,\342\201[\246-\251],,g')
+    _logger_readonly _LOGGER_STRIP_C0 _LOGGER_LRE _LOGGER_RLE _LOGGER_PDF _LOGGER_LRO \
+        _LOGGER_RLO _LOGGER_LRI _LOGGER_RLI _LOGGER_FSI _LOGGER_PDI _LOGGER_TWO_BYTE_CHARACTER \
+        _LOGGER_C1_LEAD _LOGGER_FORMAT_LEAD _LOGGER_SED_STRIP_ESC _LOGGER_SED_STRIP_C1 \
+        _LOGGER_SED_STRIP_U2028 _LOGGER_SED_STRIP_U2066
+fi
+
+# Whether the [:ascii:] character class works, set on every source so that a value from
+# the environment is not used. bash and zsh support it; dash and busybox ash do not. Every
+# multibyte character that _contains_strippable_characters searches for is non-ASCII, so
+# where the class works, printable ASCII text needs no further search.
+_LOGGER_ASCII_CLASS=""
+if [ -n "$_LOGGER_SHELL_FAMILY" ]; then
+    # A constant word is intended: this tests the shell, not a value
+    # shellcheck disable=SC2194
+    case "a" in
+        [[:ascii:]])
+            case "$_LOGGER_TWO_BYTE_CHARACTER" in
+                *[![:ascii:]]*)
+                    case "$_LOGGER_RLO" in
+                        *[![:ascii:]]*) _LOGGER_ASCII_CLASS="true" ;;
+                    esac
+                    ;;
+            esac
+            ;;
+    esac
+fi
+
 # Result variables of the *_into helpers. They start empty so that a value from the
 # environment is never read, and _log_message restores them after each message.
 _LOGGER_TEXT=""
@@ -1455,74 +1516,135 @@ _write_to_journal() {
     return 0
 }
 
-# Function to sanitize log messages to prevent log injection (internal)
+# Return 0 if text contains a character that _strip_ansi_codes_into removes (internal).
+# Checked in the shell, so the common message with none of them starts no process. Each
+# check searches the whole message, and a bracket expression or character class is the
+# slow kind, so the common case is decided with as few of them as possible:
+#   1. Text that [:print:] matches throughout has no control characters. Only the
+#      bidirectional formatting characters, which are printable, can be in it, and only as
+#      non-ASCII text (checked with [:ascii:] where it works).
+#   2. Otherwise: C0 controls other than LF, CR and TAB, including ESC, and DEL. Then, in a
+#      shell or locale that works on bytes, where [:print:] matched any non-ASCII byte, only
+#      text with a C2 or E2 byte (the first byte of every sequence below) is searched
+#      further. Then the bidirectional characters, the C1 controls and U+2028 and U+2029.
+# The searches are for whole UTF-8 sequences: zsh does not match high bytes in a bracket
+# expression, or a lone first byte in a UTF-8 locale.
+_contains_strippable_characters() {
+    case "$1" in
+        *[![:print:]]*) ;;
+        *)
+            if [ "$_LOGGER_ASCII_CLASS" = "true" ]; then
+                case "$1" in
+                    *[![:ascii:]]*) ;;
+                    *) return 1 ;;
+                esac
+            fi
+            case "$1" in
+                *"$_LOGGER_LRE"*|*"$_LOGGER_RLE"*|*"$_LOGGER_PDF"*|*"$_LOGGER_LRO"*|\
+                *"$_LOGGER_RLO"*|*"$_LOGGER_LRI"*|*"$_LOGGER_RLI"*|*"$_LOGGER_FSI"*|\
+                *"$_LOGGER_PDI"*)
+                    return 0
+                    ;;
+            esac
+            return 1
+            ;;
+    esac
+    case "$1" in
+        *["$_LOGGER_STRIP_C0"]*) return 0 ;;
+    esac
+    case "$_LOGGER_TWO_BYTE_CHARACTER" in
+        *[![:print:]]*)
+            case "$1" in
+                *"$_LOGGER_C1_LEAD"*|*"$_LOGGER_FORMAT_LEAD"*) ;;
+                *) return 1 ;;
+            esac
+            ;;
+    esac
+    case "$1" in
+        *"$_LOGGER_LRE"*|*"$_LOGGER_RLE"*|*"$_LOGGER_PDF"*|*"$_LOGGER_LRO"*|\
+        *"$_LOGGER_RLO"*|*"$_LOGGER_LRI"*|*"$_LOGGER_RLI"*|*"$_LOGGER_FSI"*|\
+        *"$_LOGGER_PDI"*)
+            return 0
+            ;;
+    esac
+    local remaining="${_LOGGER_UTF8_CONTROLS}${_LOGGER_NEWLINE}"
+    local sequence=""
+    while [ -n "$remaining" ]; do
+        sequence="${remaining%%"$_LOGGER_NEWLINE"*}"
+        remaining="${remaining#*"$_LOGGER_NEWLINE"}"
+        case "$1" in
+            *"$sequence"*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
+# Print text with terminal escape sequences and control characters removed (internal)
 # Removes control characters that could break log formats or inject fake entries
 _strip_ansi_codes() {
     _strip_ansi_codes_into "$1"
     printf '%s\n' "$_LOGGER_TEXT"
 }
 
-# Set _LOGGER_TEXT to text with ANSI escape sequences removed (internal).
-# Same result as _strip_ansi_codes, without a subshell for the caller.
+# Set _LOGGER_TEXT to text with terminal escape sequences and control characters removed
+# (internal). Same result as _strip_ansi_codes, without a subshell for the caller.
+# LF, CR and TAB are kept: _sanitize_log_message_into replaces them first, unless
+# LOG_UNSAFE_ALLOW_NEWLINES is true.
 _strip_ansi_codes_into() {
     _LOGGER_TEXT="$1"
 
-    # If unsafe mode is enabled, skip ANSI stripping and return input as-is
+    # If unsafe mode is enabled, skip stripping and return input as-is. The other control
+    # characters are kept too: BEL ends an OSC sequence such as a hyperlink.
     if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
         return 0
     fi
 
-    # Every pattern below starts with ESC, so text without ESC is unchanged and sed
-    # is not started. Trailing newlines are still removed, as the sed path does.
-    case "$_LOGGER_TEXT" in
-        *"$_LOGGER_ESC"*) ;;
-        *)
-            _strip_trailing_newlines
-            return 0
-            ;;
-    esac
+    # Text with nothing to remove is unchanged, and no process is started. Trailing
+    # newlines are still removed, as the sed path does.
+    if ! _contains_strippable_characters "$_LOGGER_TEXT"; then
+        _strip_trailing_newlines
+        return 0
+    fi
 
-    # Remove ANSI escape sequences that would otherwise manipulate terminal display.
+    # Remove escape sequences that would otherwise manipulate the terminal, then the
+    # control characters left over.
     #
-    # All patterns run in one sed process, in the order listed below. Each pattern is its
-    # own -e expression and is written to work with both GNU and BSD sed (macOS):
+    # sed and tr run with LC_ALL=C, so the expressions match bytes whatever the caller's
+    # locale: in a UTF-8 locale, GNU sed did not match ESC followed by an invalid byte.
+    # Each expression is its own -e and works with GNU, BSD (macOS) and busybox sed:
     #   * -E (extended regex) is used because BSD sed has no \| alternation in basic regex
-    #   * a loop label is its own -e expression, because BSD sed ends a label at a newline
-    #     and not at a semicolon
-    #   * the escape character is inserted as a literal byte, because BSD sed does not
+    #   * control characters are inserted as literal bytes, because BSD sed does not
     #     recognise \x1b
-    #   * ^ is escaped because it is an anchor everywhere in an extended regex
+    #   * "," is the delimiter, because "/" is in the CSI intermediate byte range
+    # No expression can match across an ESC that does not end its sequence, so a long
+    # message of unterminated sequences takes linear time. busybox sed took 90 s on 240 KB
+    # of unterminated OSC sequences with the 2.x expressions.
+    #
+    # 1. CSI (Control Sequence Introducer), as ECMA-48 defines it: ESC [, parameter bytes
+    #    0x30-0x3F, intermediate bytes 0x20-0x2F, then one final byte 0x40-0x7E. Covers
+    #    colors (ESC[31m, ESC[38:2:0:0:0m), cursor movement and positioning (ESC[H,
+    #    ESC[1`), erasing (ESC[2J, ESC[1;1;24;80$z), private modes (ESC[?25l), cursor
+    #    style (ESC[2 q) and bracketed paste (ESC[200~).
+    # 2. OSC (Operating System Command): ESC ] payload, ended by BEL or by ST (ESC \)
+    # 3. DCS (ESC P), SOS (ESC X), PM (ESC ^) and APC (ESC _): payload ended by ST
+    #    In both, the payload is removed up to the terminator or, as a terminal does, up to
+    #    the next ESC, which ends the string. A payload never contains ESC, so an
+    #    unterminated string is not searched to the end of the message.
+    # 4. Any other escape: ESC and the next byte when that is ASCII, otherwise ESC alone,
+    #    as 2.x did except that a UTF-8 character after ESC is no longer cut in half
+    # 5. C1 controls, U+2028 to U+202E and U+2066 to U+2069, encoded as UTF-8
+    # 6. tr removes the remaining C0 controls except LF, CR and TAB, and DEL
     local esc="$_LOGGER_ESC"
     local bel="$_LOGGER_BEL"
-
-    # 1. CSI (Control Sequence Introducer): ESC [ parameters letter
-    #    Includes color codes (\e[...m), cursor movement (\e[H), clearing (\e[2J), etc.
-    #    Also handles DEC private modes (e.g., \e[?25l, \e[?1049h) and other parameter
-    #    bytes: [<=>?!] plus digits and semicolons, then a letter or @
-    # 2. OSC (Operating System Command), BEL terminated: ESC ] ... BEL
-    # 3. OSC, ST terminated: ESC ] ... ESC \
-    #    The payload is any char except ESC, or ESC when not followed by \, so embedded
-    #    codes such as \e[31m do not end the match early. The loop removes consecutive
-    #    sequences. A substitution earlier in the script can set the t flag, which costs
-    #    one extra pass through the loop and nothing else.
-    # 4. OSC, ST terminated, without embedded escapes (second pass)
-    # 5. DCS (Device Control String): ESC P ... ESC \
-    #    Carries device control payloads (e.g. Sixel graphics, DECRQSS responses).
-    #    The payload and the ST terminator are removed along with the opener.
-    # 6. PM (Privacy Message): ESC ^ ... ESC \
-    # 7. APC (Application Program Command): ESC _ ... ESC \
-    # 8. Remaining escape sequences (simplified fallback): ESC and the next character
-    _LOGGER_TEXT=$(printf '%s' "$_LOGGER_TEXT" | sed -E \
-        -e "s/${esc}\[[0-9;<?>=!]*[a-zA-Z@]//g" \
-        -e "s/${esc}][^${bel}]*${bel}//g" \
-        -e ':osc_st_loop' \
-        -e "s/${esc}]([^${esc}]|${esc}[^\\\\])*${esc}\\\\//g" \
-        -e 't osc_st_loop' \
-        -e "s/${esc}][^${esc}]*${esc}\\\\//g" \
-        -e "s/${esc}P[^${esc}]*${esc}\\\\//g" \
-        -e "s/${esc}\^[^${esc}]*${esc}\\\\//g" \
-        -e "s/${esc}_[^${esc}]*${esc}\\\\//g" \
-        -e "s/${esc}[^[]//g")
+    _LOGGER_TEXT=$(printf '%s' "$_LOGGER_TEXT" | LC_ALL=C sed -E \
+        -e "s,${esc}\[[0-?]*[ -/]*[@-~],,g" \
+        -e "s,${esc}][^${bel}${esc}]*(${bel}|${esc}\\\\)?,,g" \
+        -e "s,${esc}[PX^_][^${esc}]*(${esc}\\\\)?,,g" \
+        -e "$_LOGGER_SED_STRIP_ESC" \
+        -e "$_LOGGER_SED_STRIP_C1" \
+        -e "$_LOGGER_SED_STRIP_U2028" \
+        -e "$_LOGGER_SED_STRIP_U2066" \
+        | LC_ALL=C tr -d '\001-\010\013\014\016-\037\177')
 }
 
 # Set _LOGGER_REPLACED to text with newline, carriage return and tab replaced by spaces
@@ -1596,6 +1718,49 @@ _sanitize_log_message_into() {
     _strip_trailing_newlines
 }
 
+# Set _LOGGER_TEXT to the message cut to a hard cap before sanitizing (internal).
+# Returns 0 if the message was cut, 1 if not.
+# Sanitizing runs before truncation, and its cost grows with the message length, so a
+# message far longer than the line limits is cut first. Sanitizing only removes or
+# replaces characters, so cutting at four times the larger limit (and never below 8192
+# characters) leaves the logged text the same, except when most of the message is escape
+# sequences. The truncation suffix is then still added.
+# Usage: _cap_message_length_into <message> <journal is written: true|false>
+# No cap applies when a limit that is used is 0, not a number or invalid octal, because
+# the whole message is then logged.
+_cap_message_length_into() {
+    local message="$1"
+    local journal_written="$2"
+    local cap=8192
+    _LOGGER_TEXT="$message"
+    # ${#message} counts bytes in dash and characters elsewhere. Either is enough here:
+    # the cap only bounds the work, and the limits are applied after sanitizing.
+    if [ "${#message}" -le "$cap" ]; then
+        return 1
+    fi
+    if ! _parse_shell_integer "$LOG_MAX_LINE_LENGTH" || [ "$_LOGGER_INTEGER" -le 0 ]; then
+        return 1
+    fi
+    local largest_limit="$_LOGGER_INTEGER"
+    if [ "$journal_written" = "true" ]; then
+        if ! _parse_shell_integer "$LOG_MAX_JOURNAL_LENGTH" || [ "$_LOGGER_INTEGER" -le 0 ]; then
+            return 1
+        fi
+        if [ "$_LOGGER_INTEGER" -gt "$largest_limit" ]; then
+            largest_limit="$_LOGGER_INTEGER"
+        fi
+    fi
+    if [ $((largest_limit * 4)) -gt "$cap" ]; then
+        cap=$((largest_limit * 4))
+    fi
+    if [ "${#message}" -le "$cap" ]; then
+        return 1
+    fi
+    _text_prefix "$message" "$cap"
+    _LOGGER_TEXT="$_LOGGER_PREFIX"
+    return 0
+}
+
 # Truncate log messages to a maximum length (internal)
 _truncate_log_message() {
     _truncate_log_message_into "$1" "$2"
@@ -1606,9 +1771,12 @@ _truncate_log_message() {
 # Same result as _truncate_log_message, without a subshell for the caller.
 # The limit counts characters in bash and zsh and bytes in other shells; a
 # multi-byte UTF-8 character is never cut in half (see _text_prefix).
+# A third argument of "true" means the message was already cut before it was sanitized
+# (see _cap_message_length_into), so the suffix is added even when it now fits.
 _truncate_log_message_into() {
     local message="$1"
     local limit="$2"
+    local already_cut="${3:-false}"
     local suffix="...[truncated]"
     _LOGGER_TEXT="$message"
 
@@ -1627,7 +1795,7 @@ _truncate_log_message_into() {
     fi
 
     _text_length "$message" "$limit"
-    if [ "$_LOGGER_TEXT_LENGTH" -le "$limit" ]; then
+    if [ "$_LOGGER_TEXT_LENGTH" -le "$limit" ] && [ "$already_cut" != "true" ]; then
         return 0
     fi
 
@@ -2451,11 +2619,25 @@ _write_log_message() {
     # The helpers below set _LOGGER_TEXT instead of printing, so no subshell is started
     # for each step of every message
 
+    # Whether the journal is written decides which limits the cap must allow for.
+    # skip_journal takes precedence over force_journal.
+    local journal_written="false"
+    if [ "$skip_journal" != "true" ] \
+        && { [ "$USE_JOURNAL" = "true" ] || [ "$force_journal" = "true" ]; }; then
+        journal_written="true"
+    fi
+
+    # Cut a very long message before sanitizing, which runs before truncation
+    local already_cut="false"
+    if _cap_message_length_into "$message" "$journal_written"; then
+        already_cut="true"
+    fi
+
     # Sanitize message to prevent log injection via control characters
-    _sanitize_log_message_into "$message"
+    _sanitize_log_message_into "$_LOGGER_TEXT"
     local sanitized_message="$_LOGGER_TEXT"
 
-    _truncate_log_message_into "$sanitized_message" "$LOG_MAX_LINE_LENGTH"
+    _truncate_log_message_into "$sanitized_message" "$LOG_MAX_LINE_LENGTH" "$already_cut"
     local console_message="$_LOGGER_TEXT"
 
     # Format the log entry
@@ -2475,15 +2657,14 @@ _write_log_message() {
 
     # If journal logging is enabled or force_journal is true, log to the system journal.
     # skip_journal takes precedence — it overrides force_journal when true.
-    if [ "$skip_journal" != "true" ] \
-        && { [ "$USE_JOURNAL" = "true" ] || [ "$force_journal" = "true" ]; }; then
+    if [ "$journal_written" = "true" ]; then
         # Map our log level to syslog priority
         _get_syslog_priority_into "$level_value"
         local syslog_priority="$_LOGGER_PRIORITY"
 
         # Use the logger command to send to syslog/journal
         # Strip any ANSI color codes from the message
-        _truncate_log_message_into "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH"
+        _truncate_log_message_into "$sanitized_message" "$LOG_MAX_JOURNAL_LENGTH" "$already_cut"
         _strip_ansi_codes_into "$_LOGGER_TEXT"
         local plain_message="$_LOGGER_TEXT"
 
