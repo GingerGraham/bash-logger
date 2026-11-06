@@ -116,7 +116,21 @@ if [[ -z "${ZSH_VERSION:-}" ]]; then
 fi
 ```
 
-## Step 6 — Run your suite, then the full suite
+## Step 6 — Cover other shells when behaviour must match
+
+`logging.sh` is POSIX sh plus `local` and also runs in bash `--posix`, zsh, dash and busybox ash. The suites run under bash. If the new behaviour must be the same in every shell, add a
+scenario instead of (or as well as) a bash test:
+
+* Create `tests/compat/scenarios/<name>.sh`: a short POSIX sh script starting with `# shellcheck shell=sh`, which sources `"$LOGGER_ROOT/logging.sh"` and writes any log file to
+  `"$SCENARIO_DIR/test.log"`. An optional `# compat-locale: C.UTF-8` header line sets the locale (default `C`).
+* No registration is needed. `test_shell_compat` runs every scenario under each shell in `TEST_SHELLS` and compares the results with bash.
+* List a shell and scenario that is expected to differ in `tests/compat/known_failures.txt` (`<shell command>|<scenario file name>`). Never add an entry to hide a new regression.
+* Do **not** regenerate the golden files in `tests/compat/golden/` from the current `logging.sh`. They record behaviour before the POSIX conversion.
+* Helpers for loops over shells are in `tests/test_helpers.sh`: `test_shell_list`, `require_shell`, `run_with_logger_in_shell`, `shell_counts_characters`, `run_with_timeout`.
+
+See [Tests that run under more than one shell](../../../docs/writing-tests.md#tests-that-run-under-more-than-one-shell).
+
+## Step 7 — Run your suite, then the full suite
 
 ```bash
 # New suite only first
@@ -124,6 +138,12 @@ fi
 
 # Then confirm no regressions
 ./tests/run_tests.sh
+```
+
+After any change to `logging.sh`, also run the cross-shell suites (see the `running-tests` skill):
+
+```bash
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" ./tests/run_tests.sh test_shell_compat test_validator_equivalence test_sanitize_equivalence test_posix_compat
 ```
 
 ## Checklist before committing
@@ -136,3 +156,5 @@ fi
 * [ ] `init_logger` called after `start_test`, not at suite top-level
 * [ ] Suite passes: `./tests/run_tests.sh <suite_name>`
 * [ ] Full suite still passes: `./tests/run_tests.sh`
+* [ ] If `logging.sh` changed: cross-shell run passes with `TEST_SHELLS` (or each skipped shell is reported)
+* [ ] If the behaviour must match across shells: scenario added in `tests/compat/scenarios/`

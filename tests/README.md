@@ -62,8 +62,6 @@ The suites fall into these areas:
 
 `test_example.sh` is a template for new suites and `test_helpers.sh` is the shared library. The runner does not run either of them.
 
-For cross-shell runs and `TEST_SHELLS`, see [docs/testing.md](../docs/testing.md#shell-matrix-suites).
-
 ## Test Output
 
 ```
@@ -89,6 +87,19 @@ Skipped:       0
 All tests passed!
 ```
 
+## Cross-Shell Runs
+
+The library runs in bash 3.2+, bash `--posix`, zsh, dash and busybox ash. The test runner itself runs under bash. Four suites run `logging.sh` under every shell listed in `TEST_SHELLS`,
+which defaults to `bash`: `test_shell_compat`, `test_validator_equivalence`, `test_sanitize_equivalence` and `test_posix_compat`. Run them after any change to `logging.sh`:
+
+```bash
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
+    ./run_tests.sh test_shell_compat test_validator_equivalence test_sanitize_equivalence test_posix_compat
+```
+
+A shell that is not installed is skipped, unless it is named in `TEST_REQUIRE_SHELLS`. For `TEST_REQUIRE_SHELLS`, the scenario format and the golden files, see
+[Shell Matrix Suites](../docs/testing.md#shell-matrix-suites).
+
 ## Documentation
 
 For comprehensive information about the test suite, see:
@@ -107,9 +118,11 @@ For comprehensive information about the test suite, see:
 * **run_tests.sh** - Main test runner
 * **test_helpers.sh** - Assertion functions and test utilities
 * **test\_\*.sh** - Individual test suites
+* **compat/** - Scenarios, golden files and known failures for the cross-shell suites
 
 ## Requirements
 
-* Bash 4.0 or later
+* Bash 3.2 or later (the Bash 3.2 that macOS ships as `/bin/bash` is supported)
 * Standard Unix utilities (cat, grep, wc, date, mkdir, touch)
 * Optional: `logger` command (for journal logging tests)
+* Optional: `zsh`, `dash` and `busybox` (for cross-shell runs)

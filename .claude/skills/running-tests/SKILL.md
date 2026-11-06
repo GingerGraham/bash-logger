@@ -26,7 +26,8 @@ Default to targeted. Only run the full suite for broad changes or as a pre-PR ga
 | What changed                                                  | Run                                      |
 | ------------------------------------------------------------- | ---------------------------------------- |
 | A specific functional area (e.g. format handling, log levels) | The matching suite(s) only               |
-| `logging.sh` core logic (init, output routing, sanitization)  | Full suite                               |
+| `logging.sh` core logic (init, output routing, sanitization)  | Full suite, then the cross-shell run     |
+| Any change to `logging.sh`                                    | Cross-shell run (see below)              |
 | `install.sh`                                                  | `test_install` only                      |
 | Config file parsing                                           | `test_config` and `test_config_security` |
 | Security-related code                                         | Relevant security suites + full suite    |
@@ -45,6 +46,7 @@ After discovering available suites, match by name:
 * Journal integration → `test_journal_logging`
 * Sanitisation (ANSI, newlines, paths) → `test_ansi_injection`, `test_unsafe_newlines`, `test_path_traversal`, `test_script_name_sanitization`
 * Security hardening → `test_environment_security`, `test_sensitive_data`, `test_config_security`, `test_toctou_protection`
+* Behaviour that must match in every shell → `test_shell_compat`, `test_posix_compat`, `test_validator_equivalence`, `test_sanitize_equivalence`
 * `install.sh` → `test_install`
 * JUnit/CI reporting → `test_junit_output`
 
@@ -63,6 +65,20 @@ Or via Make (quieter output):
 ```bash
 make test
 ```
+
+### Cross-shell run (required after any change to `logging.sh`)
+
+`logging.sh` runs in bash 3.2+, bash `--posix`, zsh, dash and busybox ash. A plain `./tests/run_tests.sh` runs the four cross-shell suites under bash only, so a failure that
+appears only in dash, busybox or zsh is missed. After any change to `logging.sh`, also run:
+
+```bash
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" ./tests/run_tests.sh test_shell_compat test_validator_equivalence test_sanitize_equivalence test_posix_compat
+```
+
+* Commas separate shell commands, so a command can carry flags (`bash --posix`, `busybox sh`).
+* A shell that is not installed is skipped. Add `TEST_REQUIRE_SHELLS="zsh dash busybox"` to make a missing shell fail the run, as CI does.
+* A skipped shell is not a pass. Report which shells actually ran.
+* See [docs/testing.md](../../../docs/testing.md#shell-matrix-suites) for the details of each suite.
 
 ### Single suite
 
@@ -147,4 +163,5 @@ Exit code `0` = all passed. Exit code `1` = at least one failure. Fix all failur
 * Do **not** run from inside the `tests/` directory — always run from repo root.
 * Do **not** pass the full path (`tests/test_config.sh`) — pass the suite name only.
 * Do **not** skip the discovery step and guess suite names — the list changes as the project grows.
+* Do **not** treat a bash-only pass as enough after changing `logging.sh` — run the cross-shell command above.
 * `test_helpers.sh` and `test_example.sh` are never valid suite arguments.
