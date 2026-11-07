@@ -54,6 +54,13 @@ compat_locale_available() {
     if [[ "$normalized_wanted" == "c" || "$normalized_wanted" == "posix" ]]; then
         return 0
     fi
+    # The C.UTF-8 case goes through the shared helper (test_helpers.sh), which reports
+    # it on musl even though `locale -a` prints nothing there. Other names stay
+    # unavailable: musl only speaks UTF-8.
+    if [[ "$normalized_wanted" == "c.utf8" ]] \
+        && [[ "$(utf8_locale_name)" == "C.UTF-8" ]]; then
+        return 0
+    fi
     locale -a 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -d '-' \
         | grep -qx "$normalized_wanted"
 }
