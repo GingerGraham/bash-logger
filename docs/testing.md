@@ -98,6 +98,20 @@ export TEST_PARALLEL_JOBS=4
 TEST_PARALLEL_JOBS=4 ./run_tests.sh
 ```
 
+**Failing when too many tests are skipped:**
+
+Set `TEST_MAX_SKIPPED` to a non-negative integer to fail the run when it skips more tests
+than that. A future environment change then cannot silently reduce coverage:
+
+```bash
+# At most 10 skipped tests are allowed
+TEST_MAX_SKIPPED=10 ./tests/run_tests.sh
+```
+
+The guard runs after the summary. It exits 1 with the skip count when the threshold is
+exceeded, and also exits 1 when the value is not a non-negative integer. CI uses it in the
+`test-alpine` job (see [Other CI jobs](#other-ci-jobs)).
+
 **Stopping at the first failure:**
 
 Use `--fail-fast` (or `-x`) to stop the runner immediately after the first suite that
@@ -642,6 +656,9 @@ of silently skipping. CI sets `TEST_REQUIRE_SHELLS="zsh dash busybox"`:
 TEST_REQUIRE_SHELLS=zsh ./tests/run_tests.sh
 ```
 
+Set `TEST_MAX_SKIPPED` to bound the number of tests a run may skip; exceeding it fails the
+run (see [Failing when too many tests are skipped](#failing-when-too-many-tests-are-skipped)).
+
 #### Shell Matrix Suites
 
 `test_shell_compat.sh`, `test_validator_equivalence.sh`, `test_sanitize_equivalence.sh` and
@@ -951,7 +968,8 @@ Other jobs in the same workflow:
   the tests run with musl and BusyBox tools, and the stub scripts they write must not assume
   `/bin/bash` or GNU `sed`.
 * `test-alpine` runs the suite on `alpine:latest` with every supported shell, using the real
-  BusyBox and musl of a default Alpine system.
+  BusyBox and musl of a default Alpine system. It sets `TEST_MAX_SKIPPED=10`, so a change that
+  silently skips the UTF-8 tests again fails the job instead of shrinking coverage.
 * `compare-with-release` runs `scripts/compare-with-release.py`, described below.
 
 ### Comparing with the Previous Major Release

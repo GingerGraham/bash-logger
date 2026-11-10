@@ -203,6 +203,33 @@ test_runner_all_skipped_passes() {
     pass_test
 }
 
+test_runner_max_skipped_guard() {
+    start_test "TEST_MAX_SKIPPED rejects too many skips and invalid values in both modes"
+    local suite_file jobs
+    suite_file=$(make_temp_file_with_suffix "$SCRIPT_DIR/test_runner_fixture_" .sh)
+    trap 'rm -f "$suite_file"; trap - RETURN' RETURN
+    printf '%s\n' 'start_test "skip one"; skip_test "synthetic skip"' >"$suite_file"
+    for jobs in 1 2; do
+        # A single skip must exceed a zero limit and fail the run.
+        TEST_MAX_SKIPPED=0 runner_invoke "$jobs" "$(basename "$suite_file" .sh)"
+        assert_equals "1" "$runner_status" "A zero limit must reject one skip (jobs: $jobs)" || return
+        assert_contains "$runner_output" \
+            '1 tests skipped, exceeding TEST_MAX_SKIPPED=0' "jobs: $jobs" || return
+
+        # The same skip fits a limit of one.
+        TEST_MAX_SKIPPED=1 runner_invoke "$jobs" "$(basename "$suite_file" .sh)"
+        assert_equals "0" "$runner_status" "A limit of one must accept one skip (jobs: $jobs)" || return
+        assert_not_contains "$runner_output" 'exceeding TEST_MAX_SKIPPED' || return
+
+        # A non-integer threshold is a configuration error, not a silent pass.
+        TEST_MAX_SKIPPED=two runner_invoke "$jobs" "$(basename "$suite_file" .sh)"
+        assert_equals "1" "$runner_status" "A non-integer limit must fail (jobs: $jobs)" || return
+        assert_contains "$runner_output" \
+            "TEST_MAX_SKIPPED must be a non-negative integer (got 'two')" "jobs: $jobs" || return
+    done
+    pass_test
+}
+
 test_runner_nounset_is_contained() {
     start_test "Fatal nounset retains diagnostics and partial counts in both modes"
     local suite_file jobs
@@ -403,6 +430,7 @@ test_runner_crash_shows_output_tail
 test_runner_error_xml_escaping
 test_runner_all_pass_control
 test_runner_all_skipped_passes
+test_runner_max_skipped_guard
 test_runner_nounset_is_contained
 test_runner_errexit_is_preserved
 test_runner_missing_results_fails
