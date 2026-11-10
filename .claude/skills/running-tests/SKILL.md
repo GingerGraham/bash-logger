@@ -77,6 +77,7 @@ TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" ./tests/run_tests.sh test_sh
 
 * Commas separate shell commands, so a command can carry flags (`bash --posix`, `busybox sh`).
 * A shell that is not installed is skipped. Add `TEST_REQUIRE_SHELLS="zsh dash busybox"` to make a missing shell fail the run, as CI does.
+* Add `TEST_MAX_SKIPPED=<n>` to fail the run when more than `n` tests are skipped; CI's `test-alpine` job uses 10.
 * A skipped shell is not a pass. Report which shells actually ran.
 * See [docs/testing.md](../../../docs/testing.md#shell-matrix-suites) for the details of each suite.
 

@@ -203,6 +203,36 @@ skip_test() {
     teardown_test 0
 }
 
+# Return 0 when the system runs musl, where C.UTF-8 works without any installed locale
+# files (musl's default since 1.1.11, 2015). musl ships no `locale` utility, so
+# `locale -a` lists nothing even though C.UTF-8 (and every other locale name) is
+# available. Everything else, including glibc, returns 1 and keeps the `locale -a`
+# based detection.
+musl_c_utf8() {
+    command -v ldd >/dev/null 2>&1 || return 1
+    local ldd_banner
+    # musl's ldd prints the version banner (and exits nonzero) on stderr; glibc's prints on
+    # stdout. musl's ldd also exits 1, and run_tests.sh runs with pipefail, so the banner is
+    # captured first and the probe's status comes from grep alone.
+    ldd_banner="$(ldd --version 2>&1 || true)"
+    printf '%s\n' "$ldd_banner" | grep -qi musl
+}
+
+# Print an installed UTF-8 locale name, or nothing. On musl there is no `locale`
+# utility and no locale files, but C.UTF-8 still works (musl_c_utf8 above).
+utf8_locale_name() {
+    local candidate
+    for candidate in C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
+        if locale -a 2>/dev/null | grep -qx "$candidate"; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    if musl_c_utf8; then
+        printf '%s\n' "C.UTF-8"
+    fi
+}
+
 # Assertion functions
 # shellcheck disable=SC2016
 

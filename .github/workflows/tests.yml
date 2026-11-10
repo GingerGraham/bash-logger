@@ -119,8 +119,8 @@ jobs:
       image: alpine:latest
 
     steps:
-      - name: Install bash, zsh and dash
-        run: apk add --no-cache bash zsh dash
+      - name: Install bash, zsh, dash and shellcheck
+        run: apk add --no-cache bash zsh dash shellcheck
 
       - name: Checkout code
         uses: actions/checkout@v7
@@ -137,7 +137,8 @@ jobs:
           adduser -D tester
           chown -R tester "$GITHUB_WORKSPACE"
           su tester -s /bin/sh -c 'cd tests && umask 022 &&
-            TEST_PARALLEL_JOBS=4 TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
+            TEST_MAX_SKIPPED=10 TEST_PARALLEL_JOBS=4 \
+            TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
             TEST_REQUIRE_SHELLS="zsh dash busybox" bash ./run_tests.sh'
 
   # Runs consumer-style scripts against the last release of the previous major version and
