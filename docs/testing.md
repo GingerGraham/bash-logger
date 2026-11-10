@@ -110,7 +110,7 @@ TEST_MAX_SKIPPED=10 ./tests/run_tests.sh
 
 The guard runs after the summary. It exits 1 with the skip count when the threshold is
 exceeded, and also exits 1 when the value is not a non-negative integer. CI uses it in the
-`test-alpine` job (see [Other CI jobs](#other-ci-jobs)).
+`test-alpine` job (see [Continuous Integration](#continuous-integration)).
 
 **Stopping at the first failure:**
 
@@ -657,7 +657,7 @@ TEST_REQUIRE_SHELLS=zsh ./tests/run_tests.sh
 ```
 
 Set `TEST_MAX_SKIPPED` to bound the number of tests a run may skip; exceeding it fails the
-run (see [Failing when too many tests are skipped](#failing-when-too-many-tests-are-skipped)).
+run (see [Run All Tests](#run-all-tests)).
 
 #### Shell Matrix Suites
 
