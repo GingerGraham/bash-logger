@@ -100,8 +100,9 @@ TEST_PARALLEL_JOBS=4 ./run_tests.sh
 
 **Failing when too many tests are skipped:**
 
-Set `TEST_MAX_SKIPPED` to a non-negative integer to fail the run when it skips more tests
-than that. A future environment change then cannot silently reduce coverage:
+Set `TEST_MAX_SKIPPED` to a non-negative integer without leading zeros (except `0`) to fail
+the run when it skips more tests than that. A future environment change then cannot silently
+reduce coverage:
 
 ```bash
 # At most 10 skipped tests are allowed
