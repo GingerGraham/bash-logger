@@ -598,7 +598,7 @@ main() {
     # tests than the threshold fails, so a future environment change cannot silently
     # reduce coverage again (Issue #152).
     if [[ -n "${TEST_MAX_SKIPPED:-}" ]]; then
-        if ! [[ "$TEST_MAX_SKIPPED" =~ ^[0-9]+$ ]]; then
+        if ! [[ "$TEST_MAX_SKIPPED" =~ ^(0|[1-9][0-9]*)$ ]]; then
             echo -e "${COLOR_RED}Error: TEST_MAX_SKIPPED must be a non-negative integer (got '$TEST_MAX_SKIPPED')${COLOR_RESET}"
             exit_status=1
         elif [[ "$SKIPPED_TESTS" -gt "$TEST_MAX_SKIPPED" ]]; then
