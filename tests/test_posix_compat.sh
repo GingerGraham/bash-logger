@@ -1207,13 +1207,13 @@ test_run_with_timeout_stops_process_tree() {
 test_run_with_timeout_stops_late_descendants() {
     start_test "run_with_timeout stops a descendant started after the timeout fired"
 
-    # The command ignores TERM, and starts its long sleep only after the timeout has fired
-    # and the first sleep was stopped. On a loaded machine the same thing happens when the
-    # command has not reached its sleep when the timeout fires.
+    # The command starts its long sleep from a TERM handler, so that child always starts
+    # after the first list of descendants was made, whatever the load on the machine. The
+    # handler runs once the short sleep that is running when TERM arrives has finished.
     local started_at=$SECONDS
     local output
     output=$(run_with_timeout 1 bash -c \
-        'trap "" TERM; sleep 1.5; sleep 30; echo finished' 2>/dev/null)
+        'trap "sleep 30" TERM; while :; do sleep 0.1; done' 2>/dev/null)
     local elapsed=$((SECONDS - started_at))
     assert_equals "" "$output" || return
     if [[ "$elapsed" -ge 15 ]]; then
