@@ -316,30 +316,38 @@ test_world_writable_directory() {
 
 # Test: Verify log file permissions are secure
 test_log_file_permissions() {
-    start_test "Created log files have secure permissions"
+    start_test "Created log files are mode 600 whatever the caller's umask"
 
-    local log_file="$TEST_TMP_DIR/perms_test.log"
+    # init_logger creates the file under its own umask 077, so the result must not depend
+    # on the umask in effect. 077 and 022 are the common defaults, 002 is the Fedora and
+    # RHEL default for users with a private group, and 000 is the most permissive case.
+    local umask_value=""
+    local log_file=""
+    local perms=""
 
-    if init_logger -l "$log_file" --no-color > /dev/null 2>&1; then
-        log_info "Permission test"
+    for umask_value in 077 022 002 000; do
+        log_file="$TEST_DIR/perms_umask_${umask_value}.log"
 
-        if [[ -f "$log_file" ]]; then
-            local perms
-            perms=$(stat -c %a "$log_file" 2>/dev/null || stat -f %A "$log_file" 2>/dev/null)
-
-            # File should be owner read/write at minimum
-            # and not world-writable
-            if [[ "$perms" =~ ^6[0-57][0-57]$ ]] || [[ "$perms" =~ ^[67][024][024]$ ]]; then
-                pass_test
-            else
-                fail_test "Insecure permissions: $perms"
-            fi
-        else
-            fail_test "Log file not created"
+        # A subshell keeps the changed umask away from the rest of the suite
+        if ! (
+            umask "$umask_value"
+            init_logger -l "$log_file" --no-color > /dev/null 2>&1 || exit 1
+            log_info "Permission test" > /dev/null 2>&1
+        ); then
+            fail_test "init_logger failed under umask $umask_value"
+            return
         fi
-    else
-        fail_test "init_logger failed"
-    fi
+
+        if [[ ! -f "$log_file" ]]; then
+            fail_test "Log file not created under umask $umask_value"
+            return
+        fi
+
+        perms=$(stat -c %a "$log_file" 2>/dev/null || stat -f %A "$log_file" 2>/dev/null)
+        assert_equals "600" "$perms" "Log file mode under umask $umask_value" || return
+    done
+
+    pass_test
 }
 
 # Run all tests
