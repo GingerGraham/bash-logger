@@ -988,6 +988,10 @@ The release to compare with, and the differences that are allowed, are in
 `scripts/compare-with-release.json`. Each allowed difference names its section of the upgrade
 guide. When a change alters behaviour on purpose, document it in the upgrade guide, then add a
 narrow scenario for it and allow only that scenario. Do not allow a whole shell mode.
+The script enforces this: it exits with status 2 before running anything when an entry in
+`allowed_differences` names a mode instead of an `x:` scenario, unless that mode is in
+`baseline_unusable`. It also checks that each `baseline_unusable` entry names a real case and a
+test that exists in `tests/test_posix_compat.sh`.
 
 When one output line differs in a whole mode, rewrite that line instead of allowing the mode.
 `baseline_rewrites` change the 2.x output and `candidate_rewrites` the 3.x output before the

@@ -23,7 +23,8 @@ Options:
     --json-out FILE   write every difference, with both outputs, to FILE
     --strict          fail if a shell or locale needed for a case is not installed
 
-Exit status: 0 when every difference is allowed, 1 when one is not, 2 on a setup error.
+Exit status: 0 when every difference is allowed, 1 when one is not, 2 on a setup error
+(including a configuration that allows a whole mode).
 
 bash and zsh run the baseline, so dash and busybox ash are not compared here. The
 cross-shell suites in tests/ compare them with bash.
@@ -721,6 +722,43 @@ def read_baseline_from_git(version, destination):
         baseline_file.write(show.stdout)
 
 
+def validate_config(config):
+    """Return the problems in the configuration, as a list of messages.
+
+    An allowance must name an x: scenario. One that names a mode from the mode lists would
+    hide every other difference in that mode, unless the baseline cannot run the mode and
+    it is listed in baseline_unusable. Entries in baseline_unusable must name a real case and
+    a test that exists, so that the "covered by" pointer cannot go stale.
+    """
+    problems = []
+    known_cases = {(case["shell"], case["name"]) for case in build_cases()}
+    test_file = os.path.join(REPO_ROOT, "tests", "test_posix_compat.sh")
+    with open(test_file, encoding="utf-8") as test_source:
+        test_names = set(re.findall(r"^(test_\w+)\(\)", test_source.read(), re.MULTILINE))
+
+    unusable = set()
+    for entry in config["baseline_unusable"]:
+        for shell in entry["shells"]:
+            unusable.add((shell, entry["case"]))
+            if (shell, entry["case"]) not in known_cases:
+                problems.append(f"baseline_unusable: {shell}/{entry['case']} is not a case")
+        if entry["covered_by"] not in test_names:
+            problems.append(f"baseline_unusable: {entry['case']} is covered by "
+                            f"{entry['covered_by']}, which is not a test in {test_file}")
+
+    for allowance in config["allowed_differences"]:
+        if allowance["case"].startswith("x:"):
+            continue
+        for shell in allowance["shells"]:
+            if (shell, allowance["case"]) not in unusable:
+                problems.append(
+                    f"allowed_differences: {shell}/{allowance['case']} names a whole mode. "
+                    f"Rewrite the differing lines (baseline_rewrites or candidate_rewrites), "
+                    f"or move the behaviour into an x: scenario and allow that. A mode the "
+                    f"baseline cannot run goes in baseline_unusable.")
+    return problems
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--baseline", help="baseline logging.sh")
@@ -735,6 +773,14 @@ def main():
 
     with open(CONFIG_PATH, encoding="utf-8") as config_file:
         config = json.load(config_file)
+
+    problems = validate_config(config)
+    if problems:
+        config_name = os.path.relpath(CONFIG_PATH, REPO_ROOT)
+        sys.stderr.write(f"{config_name} is not valid:\n")
+        for problem in problems:
+            sys.stderr.write(f"  {problem}\n")
+        return 2
 
     work_dir = tempfile.mkdtemp(prefix="compare-with-release")
     try:
