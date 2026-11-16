@@ -19,6 +19,24 @@
       "guide": "#changes-in-zsh-only"
     }
   ],
+  "baseline_unusable": [
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "no_unset",
+      "reason": "2.7.0 cannot be sourced under setopt no_unset: it reads BASH_SOURCE[0], which zsh does not set.",
+      "covered_by": "test_posix_set_e_set_u"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "case": "strict",
+      "reason": "2.7.0 cannot be sourced under set -u: it reads BASH_SOURCE[0], which zsh does not set.",
+      "covered_by": "test_posix_set_e_set_u"
+    }
+  ],
   "allowed_differences": [
     {
       "shells": [
@@ -247,30 +265,6 @@
         "log"
       ],
       "reason": "Backslash sequences in messages are logged as written",
-      "guide": "#changes-in-zsh-only"
-    },
-    {
-      "shells": [
-        "zsh"
-      ],
-      "case": "no_unset",
-      "outputs": [
-        "stdout",
-        "stderr"
-      ],
-      "reason": "set -u works",
-      "guide": "#changes-in-zsh-only"
-    },
-    {
-      "shells": [
-        "zsh"
-      ],
-      "case": "strict",
-      "outputs": [
-        "stdout",
-        "stderr"
-      ],
-      "reason": "set -u works",
       "guide": "#changes-in-zsh-only"
     },
     {

@@ -989,6 +989,11 @@ The release to compare with, and the differences that are allowed, are in
 guide. When a change alters behaviour on purpose, document it in the upgrade guide, then add a
 narrow scenario for it and allow only that scenario. Do not allow a whole shell mode.
 
+A mode in which the previous release cannot run at all, such as zsh under `set -u`, is listed in
+`baseline_unusable` with a reason and the `test_posix_compat.sh` test that covers it. The script
+does not run these cases and reports them as `NOT COMPARED`. They do not count as skipped, so
+`--strict` ignores them.
+
 Options: `--filter TEXT` runs only cases whose `shell/case` name contains `TEXT`,
 `--json-out FILE` writes both outputs of every difference, and `--strict` fails when zsh or a
 locale is missing. Full coverage needs the `en_GB.UTF-8`, `tr_TR.UTF-8` and

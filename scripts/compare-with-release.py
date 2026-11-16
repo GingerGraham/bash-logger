@@ -8,7 +8,9 @@ candidate) and compares stdout, stderr, the log files written and the exit statu
 * scenarios that exercise the public API, under bash, bash --posix and zsh
 
 Differences that the upgrade guide documents are listed, with the reason, in
-compare-with-release.json next to this script. Any other difference fails the run.
+compare-with-release.json next to this script. Any other difference fails the run. Modes in
+which the baseline cannot run at all are listed there too, under baseline_unusable, and are
+reported as NOT COMPARED.
 
 Usage:
     scripts/compare-with-release.py [options]
@@ -676,6 +678,14 @@ def find_allowance(allowed_differences, shell, case_name, differing_outputs):
     return None
 
 
+def find_unusable(baseline_unusable, shell, case_name):
+    """Return the baseline_unusable entry for a case, or None when the baseline can run it."""
+    for entry in baseline_unusable:
+        if shell in entry["shells"] and case_name == entry["case"]:
+            return entry
+    return None
+
+
 def print_difference(baseline, candidate, output_name, max_lines=20):
     baseline_lines = baseline[output_name].decode("utf-8", "replace").splitlines()
     candidate_lines = candidate[output_name].decode("utf-8", "replace").splitlines()
@@ -735,11 +745,17 @@ def compare(arguments, config, baseline_path, candidate_path):
 
     cases_to_run = []
     skipped = []
+    not_compared = []
     for case in build_cases():
         label = f"{case['shell']}/{case['name']}"
         if arguments.filter and arguments.filter not in label:
             continue
-        if case["shell"] in missing_shells:
+        # The baseline cannot run these, so they are neither run nor counted as skipped
+        # (a missing shell or locale does not matter for them, and --strict ignores them)
+        unusable = find_unusable(config["baseline_unusable"], case["shell"], case["name"])
+        if unusable:
+            not_compared.append((label, unusable))
+        elif case["shell"] in missing_shells:
             skipped.append((label, f"{SHELL_COMMANDS[case['shell']][0]} is not installed"))
         elif case["locale"] and normalize_locale_name(case["locale"]) not in locales:
             skipped.append((label, f"locale {case['locale']} is not installed"))
@@ -783,10 +799,13 @@ def compare(arguments, config, baseline_path, candidate_path):
     print(f"Baseline:  {baseline_path} ({config['baseline_version']})")
     print(f"Candidate: {candidate_path}")
     print(f"Cases run: {len(cases_to_run)}, differing: {len(json_records)}, "
-          f"allowed: {len(allowed)}, unexpected: {len(unexpected)}, skipped: {len(skipped)}")
+          f"allowed: {len(allowed)}, unexpected: {len(unexpected)}, skipped: {len(skipped)}, "
+          f"not compared: {len(not_compared)}")
 
     for label, reason in skipped:
         print(f"SKIPPED    {label}: {reason}")
+    for label, entry in not_compared:
+        print(f"NOT COMPARED {label}: {entry['reason']} Covered by {entry['covered_by']}.")
     for case, differing, allowance in sorted(allowed, key=lambda item: item[0]["name"]):
         print(f"ALLOWED    {case['shell']}/{case['name']} {differing}: {allowance['reason']}")
     for case, baseline, candidate, differing in unexpected:
