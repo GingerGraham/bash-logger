@@ -32,9 +32,40 @@
       "replacement": "",
       "reason": "With digits in IFS, 2.x split the numeric status of its own return and printed 'return: numeric argument required' errors. 3.0 prints none.",
       "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "cases": [
+        "glob_subst"
+      ],
+      "outputs": [
+        "stdout",
+        "log"
+      ],
+      "pattern": "(\\[script\\.sh\\] )<HOME>$",
+      "replacement": "\\1~",
+      "reason": "With setopt glob_subst, 2.x replaced a ~ at the start of a message with the home directory. The rewrite turns the home directory back into ~ on the one line of the workload that logs a lone ~.",
+      "guide": "#changes-in-zsh-only"
     }
   ],
   "candidate_rewrites": [
+    {
+      "shells": [
+        "zsh"
+      ],
+      "cases": [
+        "warn_nested_var"
+      ],
+      "outputs": [
+        "stderr"
+      ],
+      "pattern": "^[A-Za-z_<>][A-Za-z0-9_<>]*:N: scalar parameter _LOGGER_[A-Za-z0-9_]+ set in enclosing scope in function [A-Za-z0-9_]+\\n",
+      "replacement": "",
+      "reason": "The library keeps intermediate results in _LOGGER_ variables, and setopt warn_nested_var makes zsh warn each time a function sets one. Only these warnings are removed, so a warning about any other variable still fails the comparison.",
+      "guide": "#changes-in-zsh-only"
+    },
     {
       "shells": [
         "bash"
@@ -307,29 +338,6 @@
         "stderr"
       ],
       "reason": "set -u works",
-      "guide": "#changes-in-zsh-only"
-    },
-    {
-      "shells": [
-        "zsh"
-      ],
-      "case": "glob_subst",
-      "outputs": [
-        "stdout",
-        "log"
-      ],
-      "reason": "setopt glob_subst no longer changes messages",
-      "guide": "#changes-in-zsh-only"
-    },
-    {
-      "shells": [
-        "zsh"
-      ],
-      "case": "warn_nested_var",
-      "outputs": [
-        "stderr"
-      ],
-      "reason": "setopt warn_nested_var reports more internal variables",
       "guide": "#changes-in-zsh-only"
     },
     {

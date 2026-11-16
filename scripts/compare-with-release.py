@@ -649,6 +649,9 @@ def run_case(case, library_path):
     def normalize(data):
         data = TIMESTAMP_PATTERN.sub(b"<TS>", data)
         data = data.replace(temp_dir.encode(), b"<T>").replace(library_path.encode(), b"<LIB>")
+        # The home directory differs between machines. A rewrite can match <HOME>.
+        if len(environment["HOME"]) > 1:
+            data = data.replace(environment["HOME"].encode(), b"<HOME>")
         data = BASH_LINE_PATTERN.sub(rb"\1N\2", data)
         data = ZSH_LINE_PATTERN.sub(rb"\1N\2", data)
         return data
