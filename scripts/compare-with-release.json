@@ -17,6 +17,37 @@
       ],
       "reason": "zsh now detects the script name, where 2.x showed unknown. The excepted cases log before init_logger succeeds, so both versions show unknown.",
       "guide": "#changes-in-zsh-only"
+    },
+    {
+      "shells": [
+        "bash"
+      ],
+      "cases": [
+        "ifs-digit"
+      ],
+      "outputs": [
+        "stderr"
+      ],
+      "pattern": "^<LIB>: line N: return: : numeric argument required\\n",
+      "replacement": "",
+      "reason": "With digits in IFS, 2.x split the numeric status of its own return and printed 'return: numeric argument required' errors. 3.0 prints none.",
+      "guide": "#changes-in-bash-and-zsh"
+    }
+  ],
+  "candidate_rewrites": [
+    {
+      "shells": [
+        "bash"
+      ],
+      "cases": [
+        "ifs-digit"
+      ],
+      "outputs": [
+        "stderr"
+      ],
+      "pattern": "^<LIB>: line N: \\[: too many arguments\\n",
+      "replacement": "",
+      "reason": "TEMPORARY. A known bug in 3.0.0: with digits in IFS, an unquoted $((...)) in a [ test is split and prints this error. Remove this entry when the bug is fixed."
     }
   ],
   "baseline_unusable": [
@@ -38,17 +69,6 @@
     }
   ],
   "allowed_differences": [
-    {
-      "shells": [
-        "bash"
-      ],
-      "case": "ifs-digit",
-      "outputs": [
-        "stderr"
-      ],
-      "reason": "No 'return: numeric argument required' errors when IFS contains digits",
-      "guide": "#changes-in-bash-and-zsh"
-    },
     {
       "shells": [
         "bash",

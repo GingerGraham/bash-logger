@@ -657,14 +657,22 @@ def run_case(case, library_path):
             "log": normalize(log_contents), "status": status.encode()}
 
 
-def apply_baseline_rewrites(results, shell, case_name, rewrites):
-    """Rewrite baseline output where the upgrade guide documents a change everywhere."""
+def apply_rewrites(results, shell, case_name, rewrites):
+    """Rewrite one side's output where the upgrade guide documents a change.
+
+    baseline_rewrites change the 2.x output and candidate_rewrites the 3.x output. A rewrite
+    applies to its shells, to every case unless "cases" lists the only ones it is for, except
+    the ones in "except_cases", and to the outputs in "outputs" (default: stdout, stderr and
+    log). Patterns run in multi-line mode, so ^ and $ match at line boundaries.
+    """
     for rewrite in rewrites:
         if shell not in rewrite["shells"] or case_name in rewrite.get("except_cases", []):
             continue
-        pattern = re.compile(rewrite["pattern"].encode())
+        if "cases" in rewrite and case_name not in rewrite["cases"]:
+            continue
+        pattern = re.compile(rewrite["pattern"].encode(), re.MULTILINE)
         replacement = rewrite["replacement"].encode()
-        for output_name in ("stdout", "stderr", "log"):
+        for output_name in rewrite.get("outputs", ("stdout", "stderr", "log")):
             results[output_name] = pattern.sub(replacement, results[output_name])
     return results
 
@@ -764,9 +772,11 @@ def compare(arguments, config, baseline_path, candidate_path):
 
     def run_both(case):
         baseline = run_case(case, baseline_path)
-        baseline = apply_baseline_rewrites(baseline, case["shell"], case["name"],
-                                           config["baseline_rewrites"])
+        baseline = apply_rewrites(baseline, case["shell"], case["name"],
+                                  config["baseline_rewrites"])
         candidate = run_case(case, candidate_path)
+        candidate = apply_rewrites(candidate, case["shell"], case["name"],
+                                   config["candidate_rewrites"])
         return case, baseline, candidate
 
     allowed_differences = config["allowed_differences"]
