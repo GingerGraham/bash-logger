@@ -15,3 +15,18 @@ updates:
       - github-actions
     commit-message:
       prefix: "ci(github-actions)"
+
+  # Release tooling for .github/workflows/release.yml (lockfile in .github/release-tools)
+  - package-ecosystem: npm
+    directory: /.github/release-tools
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+    open-pull-requests-limit: 10
+    pull-request-branch-name:
+      separator: "/"
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "ci(deps)"
