@@ -542,13 +542,17 @@ run_with_timeout() {
     # A shell function runs in a background subshell, so the command's descendants have to be
     # stopped too: one left running keeps the caller's command substitution open. The list is
     # made first, because a process has no parent to look it up by once its parent has exited.
-    # KILL follows for anything that ignores TERM.
+    # KILL follows for anything that ignores TERM. A process that ignores TERM is still alive
+    # then and may have started more children since the first list (for example when it had
+    # not reached its long-running child yet on a loaded machine), so the list is made again
+    # before KILL.
     (
         sleep "$seconds" || exit 0
         command_tree="$command_pid $(list_descendant_pids "$command_pid")"
         # shellcheck disable=SC2086  # word splitting of the PID list is intended
         kill -TERM $command_tree
         sleep 2
+        command_tree="$command_tree $(list_descendant_pids "$command_pid")"
         # shellcheck disable=SC2086  # word splitting of the PID list is intended
         kill -KILL $command_tree
     ) >/dev/null 2>&1 &

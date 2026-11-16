@@ -1204,11 +1204,32 @@ test_run_with_timeout_stops_process_tree() {
     pass_test
 }
 
+test_run_with_timeout_stops_late_descendants() {
+    start_test "run_with_timeout stops a descendant started after the timeout fired"
+
+    # The command ignores TERM, and starts its long sleep only after the timeout has fired
+    # and the first sleep was stopped. On a loaded machine the same thing happens when the
+    # command has not reached its sleep when the timeout fires.
+    local started_at=$SECONDS
+    local output
+    output=$(run_with_timeout 1 bash -c \
+        'trap "" TERM; sleep 1.5; sleep 30; echo finished' 2>/dev/null)
+    local elapsed=$((SECONDS - started_at))
+    assert_equals "" "$output" || return
+    if [[ "$elapsed" -ge 15 ]]; then
+        fail_test "Took ${elapsed}s to stop"
+        return
+    fi
+
+    pass_test
+}
+
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
 test_posix_busybox_utf8_byte_length
 test_run_with_timeout_stops_process_tree
+test_run_with_timeout_stops_late_descendants
 while IFS= read -r posix_shell; do
     test_posix_caller_detection "$posix_shell"
     test_posix_truncation_bytes "$posix_shell"
