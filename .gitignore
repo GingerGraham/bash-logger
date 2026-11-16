@@ -25,3 +25,6 @@ logs/
 # Release packages (generated during CI)
 release-package/
 
+
+# Release tooling installed by npm ci in CI
+.github/release-tools/node_modules/
