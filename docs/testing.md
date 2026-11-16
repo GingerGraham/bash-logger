@@ -968,7 +968,7 @@ Other jobs in the same workflow:
   images (the RHEL 7, RHEL 8 and Ubuntu 22.04 era versions). The images are Alpine based, so
   the tests run with musl and BusyBox tools, and the stub scripts they write must not assume
   `/bin/bash` or GNU `sed`.
-* `test-alpine` runs the suite on `alpine:latest` with every supported shell, using the real
+* `test-alpine` runs the suite on a pinned Alpine release with every supported shell, using the real
   BusyBox and musl of a default Alpine system. It sets `TEST_MAX_SKIPPED=10`, so a change that
   silently skips the UTF-8 tests again fails the job instead of shrinking coverage.
 * `compare-with-release` runs `scripts/compare-with-release.py`, described below.

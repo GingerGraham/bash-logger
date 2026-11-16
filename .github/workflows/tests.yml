@@ -83,10 +83,19 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
+      # Each image is a tag plus the digest of its multi-platform index, so a republished tag
+      # cannot change what runs here. To update one, read the new digest from
+      # `docker buildx imagetools inspect bash:<tag>` and change the tag and digest together.
       matrix:
-        bash: ["4.2", "4.4", "5.1"]
+        include:
+          - bash: "4.2"
+            image: bash:4.2@sha256:b4624ba1360dbf58914efe2369e91effb24e8024853e606a4bec34c85111f070
+          - bash: "4.4"
+            image: bash:4.4@sha256:2ae8e461b944ae9b7cb036aabc93bb5d1e6c9fc324c943efded4403db252cfe9
+          - bash: "5.1"
+            image: bash:5.1@sha256:13d6dacba3442056074ae27b71227835a5cc81566873800fe740373a55c8fb7a
     container:
-      image: bash:${{ matrix.bash }}
+      image: ${{ matrix.image }}
 
     steps:
       - name: Checkout code
@@ -115,8 +124,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Run Test Suite (Alpine, musl and BusyBox)
     timeout-minutes: 45
+    # alpine:latest was 3.24 when this was pinned. Update the tag and digest together, as for
+    # the bash images above.
     container:
-      image: alpine:latest
+      image: alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
     steps:
       - name: Install bash, zsh, dash and shellcheck
