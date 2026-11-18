@@ -176,6 +176,7 @@ cd tests
 Available test suites:
 
 * `test_ansi_injection` - ANSI escape sanitization and related security tests
+* `test_bench_script` - The per-message benchmark script: verdict logic, failure paths and a slow-library canary
 * `test_concurrent_access` - Concurrency and parallel logging behavior
 * `test_config` - Configuration file parsing and behavior
 * `test_config_security` - Security hardening for configuration input
@@ -423,6 +424,7 @@ The test suite is organized into the following files:
 Current runnable suite files include:
 
 * `test_ansi_injection.sh`
+* `test_bench_script.sh`
 * `test_concurrent_access.sh`
 * `test_config.sh`
 * `test_config_security.sh`
