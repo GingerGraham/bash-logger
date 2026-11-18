@@ -1470,14 +1470,14 @@ test_posix_sourcing_starts_no_grep() {
 }
 
 test_posix_is_readonly_path_matches_bash_version() {
-    start_test "bash 4.4 and later use the attribute check, older bash the subshell check"
+    start_test "bash 5.1 and later use the attribute check, older bash the subshell check"
 
     local output
     output=$(run_snippet_in_shell bash C '
 printf "version=%s attributes=%s\n" "$BASH_VERSION" "$_LOGGER_BASH_HAS_ATTRS"
 ' 2>&1)
     case "$BASH_VERSION" in
-        [5-9].*|4.[4-9]*) assert_contains "$output" "attributes=true" || return ;;
+        5.[1-9]*|[6-9].*) assert_contains "$output" "attributes=true" || return ;;
         *) assert_contains "$output" "attributes=false" || return ;;
     esac
 

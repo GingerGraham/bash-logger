@@ -76,19 +76,22 @@ elif [ -n "${ZSH_VERSION:-}" ] && [ "$(command -v emulate 2>/dev/null)" = "emula
     _LOGGER_SHELL_FAMILY="zsh"
 fi
 
-# bash 4.4 added ${name@a}, the attributes of a variable (internal).
-# Set on every source, after the shell family is known, so an inherited value cannot stay.
+# ${name@a} gives the attributes of a variable (internal). bash 4.4 added it, but bash 4.4
+# gave a different answer from the later versions in the readonly tests, so it is used from
+# bash 5.1, the oldest version that has been checked against them. Older bash uses the
+# subshell probe. Set on every source, after the shell family is known, so an inherited value
+# cannot stay.
 _LOGGER_BASH_HAS_ATTRS="false"
 if [ "$_LOGGER_SHELL_FAMILY" = "bash" ]; then
     case "${BASH_VERSION:-}" in
-        [5-9].*|4.[4-9]*) _LOGGER_BASH_HAS_ATTRS="true" ;;
+        5.[1-9]*|[6-9].*) _LOGGER_BASH_HAS_ATTRS="true" ;;
     esac
 fi
 
 # Returns 0 if the named variable is readonly in the current shell (internal).
 # Used by the re-source guards below; must be defined before the first guard.
-# bash 4.4 and later and zsh answer from the variable's attributes, with no process started.
-# Other shells (dash, busybox ash, bash 3.2 to 4.3) try to unset the variable in a subshell,
+# bash 5.1 and later and zsh answer from the variable's attributes, with no process started.
+# Other shells (dash, busybox ash, bash up to 5.0) try to unset the variable in a subshell,
 # which fails only for a readonly variable: one fork and no exec.
 # Earlier versions parsed "readonly -p" output instead. dash and busybox ash print values
 # there with literal newlines, so a readonly variable whose value contained a newline and
