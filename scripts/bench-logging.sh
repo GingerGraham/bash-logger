@@ -37,6 +37,13 @@
 # as an information row. A run that exits non-zero, or whose log file does not have the
 # expected number of lines, prints FAIL and stops the script.
 #
+# With --baseline, each round times the candidate and the baseline one after the other, and
+# swaps which goes first every round, so a change in machine load affects both. When a
+# comparison or the scaling check is over its limit, the script says so and measures again
+# with twice the rounds. It fails only when the second measurement is over the limit too.
+# A baseline that cannot run (for example a release too old to source) is reported once per
+# row as unavailable and does not fail the run.
+#
 # Examples:
 #   scripts/bench-logging.sh bash dash "busybox sh" zsh
 #   scripts/bench-logging.sh --scenario plain --scenario lines-64k dash
@@ -125,11 +132,11 @@ scenario_settings() {
         ansi) scenario_count=200 ;;
         long-line) scenario_count=200 ;;
         utf8) scenario_count=100 ;;
-        huge-line) scenario_count=30 ;;
+        huge-line) scenario_count=100 ;;
         lines-4k) scenario_count=100 ;;
         lines-16k) scenario_count=50 ;;
-        lines-64k) scenario_count=10 ;;
-        lines-256k) scenario_count=3 ;;
+        lines-64k) scenario_count=100 ;;
+        lines-256k) scenario_count=50 ;;
         *)
             echo "Unknown scenario: $scenario" >&2
             echo "  Valid scenarios: ${all_scenarios[*]}" >&2
@@ -264,37 +271,98 @@ scaling_too_steep() {
     awk -v s="$1" -v m="$2" 'BEGIN { exit !(s > m) }'
 }
 
+# Run one round for one logging.sh: a zero-message run, a run with the scenario's messages,
+# and the bare shell. Sets round_per_message_us (the cost of one message) and round_init_us
+# (source + init_logger, less the bare shell start-up). Returns 1 if a run failed.
+run_round() {
+    local shell_command="$1"
+    local logging_path="$2"
+    local scenario="$3"
+    local zero_seconds=""
+    local full_seconds=""
+    local bare_seconds=""
+
+    zero_seconds=$(time_one_run "$shell_command" "$logging_path" "$scenario" 0) || return 1
+    full_seconds=$(time_one_run "$shell_command" "$logging_path" "$scenario" \
+        "$scenario_count") || return 1
+    round_per_message_us=$(awk -v zero="$zero_seconds" -v full="$full_seconds" \
+        -v n="$scenario_count" 'BEGIN { printf "%.3f\n", (full - zero) * 1000000 / n }')
+    TIMEFORMAT='%3R'
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    bare_seconds=$( { time $shell_command -c : >/dev/null 2>&1; } 2>&1 )
+    round_init_us=$(awk -v zero="$zero_seconds" -v bare="$bare_seconds" \
+        'BEGIN { printf "%.3f\n", (zero - bare) * 1000000 }')
+}
+
 # Measure one logging.sh under one shell and scenario.
+# Arguments: shell command, logging.sh, scenario, and optionally the number of rounds
+# (default: round_count).
 # Sets measured_us (median per message) and measured_init_us (median of the
 # zero-message runs, less the bare shell start-up). Returns 1 if a run failed.
 measure() {
     local shell_command="$1"
     local logging_path="$2"
     local scenario="$3"
+    local rounds="${4:-$round_count}"
     local round=0
-    local zero_seconds=""
-    local full_seconds=""
-    local bare_seconds=""
     local per_message=""
     local init_costs=""
 
-    while [[ $round -lt $round_count ]]; do
-        zero_seconds=$(time_one_run "$shell_command" "$logging_path" "$scenario" 0) || return 1
-        full_seconds=$(time_one_run "$shell_command" "$logging_path" "$scenario" \
-            "$scenario_count") || return 1
+    while [[ $round -lt $rounds ]]; do
+        run_round "$shell_command" "$logging_path" "$scenario" || return 1
         per_message="$per_message
-$(awk -v zero="$zero_seconds" -v full="$full_seconds" -v n="$scenario_count" \
-            'BEGIN { printf "%.3f\n", (full - zero) * 1000000 / n }')"
-        TIMEFORMAT='%3R'
-        # shellcheck disable=SC2086  # word splitting of shell_command is intended
-        bare_seconds=$( { time $shell_command -c : >/dev/null 2>&1; } 2>&1 )
+$round_per_message_us"
         init_costs="$init_costs
-$(awk -v zero="$zero_seconds" -v bare="$bare_seconds" \
-            'BEGIN { printf "%.3f\n", (zero - bare) * 1000000 }')"
+$round_init_us"
         round=$((round + 1))
     done
     measured_us=$(printf '%s\n' "$per_message" | sed '/^$/d' | median)
     measured_init_us=$(printf '%s\n' "$init_costs" | sed '/^$/d' | median)
+}
+
+# Measure the candidate and the baseline under one shell and scenario, one after the other in
+# every round, and swap which one goes first each round. A slow minute on the runner then
+# lands on both, where measuring all candidate rounds before all baseline rounds put drift
+# on one side only.
+# Arguments: shell command, scenario, and optionally the number of rounds (default:
+# round_count).
+# Sets measured_us and measured_init_us for the candidate, and baseline_measured_us.
+# Returns 1 if a candidate run failed and 2 if a baseline run failed.
+measure_pair() {
+    local shell_command="$1"
+    local scenario="$2"
+    local rounds="${3:-$round_count}"
+    local round=0
+    local candidate_samples=""
+    local baseline_samples=""
+    local init_costs=""
+    local order=""
+    local side=""
+
+    while [[ $round -lt $rounds ]]; do
+        if [[ $((round % 2)) -eq 0 ]]; then
+            order="candidate baseline"
+        else
+            order="baseline candidate"
+        fi
+        for side in $order; do
+            if [[ "$side" == "candidate" ]]; then
+                run_round "$shell_command" "$logging_file" "$scenario" || return 1
+                candidate_samples="$candidate_samples
+$round_per_message_us"
+                init_costs="$init_costs
+$round_init_us"
+            else
+                run_round "$shell_command" "$baseline_file" "$scenario" || return 2
+                baseline_samples="$baseline_samples
+$round_per_message_us"
+            fi
+        done
+        round=$((round + 1))
+    done
+    measured_us=$(printf '%s\n' "$candidate_samples" | sed '/^$/d' | median)
+    measured_init_us=$(printf '%s\n' "$init_costs" | sed '/^$/d' | median)
+    baseline_measured_us=$(printf '%s\n' "$baseline_samples" | sed '/^$/d' | median)
 }
 
 # Print the end of the last run's stderr and stop
@@ -308,6 +376,12 @@ fail_run() {
         tail -5 "$work_dir/stderr" | sed 's/^/    /'
     fi
     exit 1
+}
+
+# Print one result row of a comparison with the baseline
+# Arguments: shell command, scenario, candidate, baseline, ratio, verdict text
+print_comparison() {
+    printf '%-14s %-12s %10s us/message, baseline %10s, ratio %s %s\n' "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 main() {
@@ -327,14 +401,19 @@ main() {
     local shell_command=""
     local scenario=""
     local baseline_available=""
+    local baseline_note=""
     local lines_16k_us=""
     local lines_256k_us=""
     local init_reported=""
     local candidate_us=""
     local baseline_us=""
     local ratio=""
+    local first_ratio=""
     local scaling=""
+    local first_scaling=""
     local verdict=""
+    local pair_status=0
+    local confirm_rounds=$((round_count * 2))
 
     for shell_command in "${shells[@]}"; do
         baseline_available="false"
@@ -349,7 +428,27 @@ main() {
             scenario_settings "$scenario"
             write_message "$scenario"
 
-            if ! measure "$shell_command" "$logging_file" "$scenario" 2>"$work_dir/reason"; then
+            # The baseline may not run in every shell (main is bash/zsh only before
+            # Issue #143); that is reported once and is not a failure. A run of zero
+            # messages is enough to find out.
+            baseline_note=""
+            if [[ "$baseline_available" == "true" ]]; then
+                if ! time_one_run "$shell_command" "$baseline_file" "$scenario" 0 \
+                    >/dev/null 2>"$work_dir/reason"; then
+                    baseline_note="$(cat "$work_dir/reason")"
+                    baseline_available="false"
+                fi
+            fi
+
+            if [[ "$baseline_available" == "true" ]]; then
+                pair_status=0
+                measure_pair "$shell_command" "$scenario" 2>"$work_dir/reason" || pair_status=$?
+                if [[ $pair_status -eq 1 ]]; then
+                    fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
+                elif [[ $pair_status -ne 0 ]]; then
+                    fail_run "$shell_command" "$scenario" "baseline: $(cat "$work_dir/reason")"
+                fi
+            elif ! measure "$shell_command" "$logging_file" "$scenario" 2>"$work_dir/reason"; then
                 fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
             fi
             candidate_us="$measured_us"
@@ -366,40 +465,76 @@ main() {
             esac
 
             if [[ "$baseline_available" != "true" ]]; then
-                printf '%-14s %-12s %10s us/message\n' "$shell_command" "$scenario" \
-                    "$candidate_us"
+                if [[ -n "$baseline_note" ]]; then
+                    printf '%-14s %-12s %10s us/message, baseline unavailable (%s)\n' \
+                        "$shell_command" "$scenario" "$candidate_us" "$baseline_note"
+                else
+                    printf '%-14s %-12s %10s us/message\n' "$shell_command" "$scenario" \
+                        "$candidate_us"
+                fi
                 continue
             fi
 
-            # The baseline may not run in every shell (main is bash/zsh only before
-            # Issue #143); that is reported once and is not a failure
-            if ! measure "$shell_command" "$baseline_file" "$scenario" 2>"$work_dir/reason"; then
-                printf '%-14s %-12s %10s us/message, baseline unavailable (%s)\n' \
-                    "$shell_command" "$scenario" "$candidate_us" "$(cat "$work_dir/reason")"
-                baseline_available="false"
+            baseline_us="$baseline_measured_us"
+            ratio=$(compute_ratio "$candidate_us" "$baseline_us")
+            if ! is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$min_difference_us"; then
+                print_comparison "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
+                    "$ratio" "ok"
                 continue
             fi
-            baseline_us="$measured_us"
+
+            # A result over the limit is often noise on a shared runner. Measure this shell
+            # and scenario again with twice the rounds, and fail only if it is over again.
+            print_comparison "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
+                "$ratio" "SLOWER, measuring again with $confirm_rounds rounds"
+            first_ratio="$ratio"
+            pair_status=0
+            measure_pair "$shell_command" "$scenario" "$confirm_rounds" 2>"$work_dir/reason" \
+                || pair_status=$?
+            if [[ $pair_status -ne 0 ]]; then
+                fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
+            fi
+            candidate_us="$measured_us"
+            baseline_us="$baseline_measured_us"
             ratio=$(compute_ratio "$candidate_us" "$baseline_us")
-            verdict="ok"
             if is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$min_difference_us"; then
                 verdict="SLOWER"
-                check_failures+=("$shell_command $scenario: ratio $ratio > $max_ratio")
+                check_failures+=("$shell_command $scenario: ratio $first_ratio, then $ratio with $confirm_rounds rounds, > $max_ratio")
+            else
+                verdict="ok"
             fi
-            printf '%-14s %-12s %10s us/message, baseline %10s, ratio %s %s\n' \
-                "$shell_command" "$scenario" "$candidate_us" "$baseline_us" "$ratio" "$verdict"
+            print_comparison "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
+                "$ratio" "$verdict (second measurement, $confirm_rounds rounds)"
         done
 
         # Growth from 16 KB to 256 KB messages: 16 is linear
         if [[ -n "$lines_16k_us" && -n "$lines_256k_us" ]]; then
             scaling=$(compute_scaling "$lines_256k_us" "$lines_16k_us")
-            verdict="ok"
-            if scaling_too_steep "$scaling" "$max_scaling"; then
-                verdict="TOO STEEP"
-                check_failures+=("$shell_command scaling: lines-256k / lines-16k = $scaling > $max_scaling")
+            if ! scaling_too_steep "$scaling" "$max_scaling"; then
+                printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) ok\n' \
+                    "$shell_command" "scaling" "$scaling"
+            else
+                printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) TOO STEEP, measuring again with %s rounds\n' \
+                    "$shell_command" "scaling" "$scaling" "$confirm_rounds"
+                first_scaling="$scaling"
+                scenario_settings "lines-16k"
+                measure "$shell_command" "$logging_file" "lines-16k" "$confirm_rounds" \
+                    2>"$work_dir/reason" || fail_run "$shell_command" "lines-16k" "$(cat "$work_dir/reason")"
+                lines_16k_us="$measured_us"
+                scenario_settings "lines-256k"
+                measure "$shell_command" "$logging_file" "lines-256k" "$confirm_rounds" \
+                    2>"$work_dir/reason" || fail_run "$shell_command" "lines-256k" "$(cat "$work_dir/reason")"
+                lines_256k_us="$measured_us"
+                scaling=$(compute_scaling "$lines_256k_us" "$lines_16k_us")
+                if scaling_too_steep "$scaling" "$max_scaling"; then
+                    verdict="TOO STEEP"
+                    check_failures+=("$shell_command scaling: lines-256k / lines-16k = $first_scaling, then $scaling with $confirm_rounds rounds, > $max_scaling")
+                else
+                    verdict="ok"
+                fi
+                printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) %s (second measurement, %s rounds)\n' \
+                    "$shell_command" "scaling" "$scaling" "$verdict" "$confirm_rounds"
             fi
-            printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) %s\n' \
-                "$shell_command" "scaling" "$scaling" "$verdict"
         fi
     done
 

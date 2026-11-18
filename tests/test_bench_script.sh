@@ -231,6 +231,157 @@ test_bench_unknown_scenario() {
 }
 
 # ---------------------------------------------------------------------------
+# Rounds, counts and confirming a slowdown
+# ---------------------------------------------------------------------------
+
+test_bench_large_scenarios_run_about_a_second() {
+    start_test "the large scenarios log enough messages for about a second of work per run"
+
+    local counts
+    counts=$(bash -c 'source "$1"
+        for name in huge-line lines-64k lines-256k lines-16k plain; do
+            scenario_settings "$name"
+            printf "%s=%s " "$name" "$scenario_count"
+        done' bash "$BENCH_SCRIPT")
+    assert_equals "huge-line=100 lines-64k=100 lines-256k=50 lines-16k=50 plain=300 " "$counts" || return
+
+    pass_test
+}
+
+test_bench_alternates_candidate_and_baseline() {
+    start_test "each round runs the candidate and the baseline, and swaps which goes first"
+
+    # run_round is replaced by a function that records which logging.sh it was given
+    local order_file="$TEST_DIR/round-order"
+    ORDER_FILE="$order_file" bash -c 'source "$1"
+        logging_file=CANDIDATE
+        baseline_file=BASELINE
+        run_round() { printf "%s\n" "$2" >> "$ORDER_FILE"; round_per_message_us=1; round_init_us=1; }
+        scenario_count=1
+        measure_pair bash plain 4' bash "$BENCH_SCRIPT"
+
+    assert_equals "CANDIDATE BASELINE BASELINE CANDIDATE CANDIDATE BASELINE BASELINE CANDIDATE" \
+        "$(tr '\n' ' ' < "$order_file" | sed 's/ $//')" || return
+
+    pass_test
+}
+
+# Run main with the measuring functions replaced by fixed results, so the decision to measure
+# again does not depend on timing. The stub definitions come in the STUBS variable. The
+# arguments go to main.
+run_main_with_stubs() {
+    BENCH_OUTPUT=$(bash -c 'source "$1"; shift; eval "$STUBS"; main "$@"' bash \
+        "$BENCH_SCRIPT" "$@" 2>&1 < /dev/null)
+    BENCH_STATUS=$?
+}
+
+test_bench_confirms_a_slowdown_before_failing() {
+    start_test "a result over the limit is measured again with twice the rounds"
+
+    # The first measurement is 2 times slower, the second is not
+    local stubs='
+time_one_run() { printf "0.001\n"; }
+pair_calls=0
+measure_pair() {
+    pair_calls=$((pair_calls + 1))
+    measured_init_us=1000
+    if [ "$pair_calls" -eq 1 ]; then
+        measured_us=1000; baseline_measured_us=500
+    else
+        measured_us=520; baseline_measured_us=500
+    fi
+}'
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --rounds 5 --scenario plain bash
+    assert_equals "0" "$BENCH_STATUS" "a slowdown that does not repeat passes" || return
+    assert_contains "$BENCH_OUTPUT" "ratio 2.000 SLOWER, measuring again with 10 rounds" || return
+    assert_contains "$BENCH_OUTPUT" "ratio 1.040 ok (second measurement, 10 rounds)" || return
+    assert_not_contains "$BENCH_OUTPUT" "FAIL" || return
+
+    pass_test
+}
+
+test_bench_fails_when_the_slowdown_repeats() {
+    start_test "a result that is over the limit twice fails, and both ratios are printed"
+
+    local stubs='
+time_one_run() { printf "0.001\n"; }
+pair_calls=0
+measure_pair() {
+    pair_calls=$((pair_calls + 1))
+    measured_init_us=1000
+    measured_us=1000; baseline_measured_us=500
+    if [ "$pair_calls" -eq 2 ]; then measured_us=900; fi
+}'
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --rounds 5 --scenario plain bash
+    assert_equals "1" "$BENCH_STATUS" "a slowdown that repeats fails" || return
+    assert_contains "$BENCH_OUTPUT" "ratio 2.000 SLOWER, measuring again with 10 rounds" || return
+    assert_contains "$BENCH_OUTPUT" "ratio 1.800 SLOWER (second measurement, 10 rounds)" || return
+    assert_contains "$BENCH_OUTPUT" "FAIL bash plain: ratio 2.000, then 1.800 with 10 rounds, > 1.15" || return
+
+    pass_test
+}
+
+test_bench_does_not_repeat_a_result_under_the_limit() {
+    start_test "a result under the limit is measured once"
+
+    local stubs='
+time_one_run() { printf "0.001\n"; }
+pair_calls=0
+measure_pair() {
+    pair_calls=$((pair_calls + 1))
+    measured_init_us=1000; measured_us=520; baseline_measured_us=500
+    printf "pair call %s\n" "$pair_calls" >&2
+}'
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --rounds 5 --scenario plain bash
+    assert_equals "0" "$BENCH_STATUS" || return
+    assert_contains "$BENCH_OUTPUT" "ratio 1.040 ok" || return
+    assert_not_contains "$BENCH_OUTPUT" "measuring again" || return
+
+    pass_test
+}
+
+test_bench_confirms_steep_scaling_before_failing() {
+    start_test "scaling over the limit is measured again, and fails only if it is over again"
+
+    # First measurement: 40, over 32. Second: 30, which passes
+    local stubs='
+measure_calls=0
+measure() {
+    measure_calls=$((measure_calls + 1))
+    measured_init_us=1000
+    case "$3" in
+        lines-16k) measured_us=100 ;;
+        lines-256k)
+            if [ "$measure_calls" -le 2 ]; then measured_us=4000; else measured_us=3000; fi ;;
+    esac
+}'
+    STUBS="$stubs" run_main_with_stubs --rounds 5 \
+        --scenario lines-16k --scenario lines-256k bash
+    assert_equals "0" "$BENCH_STATUS" "steep scaling that does not repeat passes" || return
+    assert_contains "$BENCH_OUTPUT" "40.0 (lines-256k / lines-16k, linear is 16) TOO STEEP, measuring again with 10 rounds" || return
+    assert_contains "$BENCH_OUTPUT" "30.0 (lines-256k / lines-16k, linear is 16) ok (second measurement, 10 rounds)" || return
+
+    # Over the limit in both measurements
+    stubs='
+measure() {
+    measured_init_us=1000
+    case "$3" in
+        lines-16k) measured_us=100 ;;
+        lines-256k) measured_us=4000 ;;
+    esac
+}'
+    STUBS="$stubs" run_main_with_stubs --rounds 5 \
+        --scenario lines-16k --scenario lines-256k bash
+    assert_equals "1" "$BENCH_STATUS" "steep scaling that repeats fails" || return
+    assert_contains "$BENCH_OUTPUT" "FAIL bash scaling: lines-256k / lines-16k = 40.0, then 40.0 with 10 rounds, > 32" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
 # End to end
 # ---------------------------------------------------------------------------
 
@@ -283,5 +434,11 @@ test_bench_missing_logging_file
 test_bench_failing_init_logger
 test_bench_wrong_log_line_count
 test_bench_unknown_scenario
+test_bench_large_scenarios_run_about_a_second
+test_bench_alternates_candidate_and_baseline
+test_bench_confirms_a_slowdown_before_failing
+test_bench_fails_when_the_slowdown_repeats
+test_bench_does_not_repeat_a_result_under_the_limit
+test_bench_confirms_steep_scaling_before_failing
 test_bench_reports_an_extra_process_as_slower
 test_bench_run_without_a_baseline
