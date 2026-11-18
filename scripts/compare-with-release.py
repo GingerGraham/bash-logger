@@ -8,7 +8,9 @@ candidate) and compares stdout, stderr, the log files written and the exit statu
 * scenarios that exercise the public API, under bash, bash --posix and zsh
 
 Differences that the upgrade guide documents are listed, with the reason, in
-compare-with-release.json next to this script. Any other difference fails the run.
+compare-with-release.json next to this script. Any other difference fails the run. Modes in
+which the baseline cannot run at all are listed there too, under baseline_unusable, and are
+reported as NOT COMPARED.
 
 Usage:
     scripts/compare-with-release.py [options]
@@ -21,7 +23,8 @@ Options:
     --json-out FILE   write every difference, with both outputs, to FILE
     --strict          fail if a shell or locale needed for a case is not installed
 
-Exit status: 0 when every difference is allowed, 1 when one is not, 2 on a setup error.
+Exit status: 0 when every difference is allowed, 1 when one is not, 2 on a setup error
+(including a configuration that allows a whole mode).
 
 bash and zsh run the baseline, so dash and busybox ash are not compared here. The
 cross-shell suites in tests/ compare them with bash.
@@ -647,6 +650,9 @@ def run_case(case, library_path):
     def normalize(data):
         data = TIMESTAMP_PATTERN.sub(b"<TS>", data)
         data = data.replace(temp_dir.encode(), b"<T>").replace(library_path.encode(), b"<LIB>")
+        # The home directory differs between machines. A rewrite can match <HOME>.
+        if len(environment["HOME"]) > 1:
+            data = data.replace(environment["HOME"].encode(), b"<HOME>")
         data = BASH_LINE_PATTERN.sub(rb"\1N\2", data)
         data = ZSH_LINE_PATTERN.sub(rb"\1N\2", data)
         return data
@@ -655,14 +661,22 @@ def run_case(case, library_path):
             "log": normalize(log_contents), "status": status.encode()}
 
 
-def apply_baseline_rewrites(results, shell, case_name, rewrites):
-    """Rewrite baseline output where the upgrade guide documents a change everywhere."""
+def apply_rewrites(results, shell, case_name, rewrites):
+    """Rewrite one side's output where the upgrade guide documents a change.
+
+    baseline_rewrites change the 2.x output and candidate_rewrites the 3.x output. A rewrite
+    applies to its shells, to every case unless "cases" lists the only ones it is for, except
+    the ones in "except_cases", and to the outputs in "outputs" (default: stdout, stderr and
+    log). Patterns run in multi-line mode, so ^ and $ match at line boundaries.
+    """
     for rewrite in rewrites:
         if shell not in rewrite["shells"] or case_name in rewrite.get("except_cases", []):
             continue
-        pattern = re.compile(rewrite["pattern"].encode())
+        if "cases" in rewrite and case_name not in rewrite["cases"]:
+            continue
+        pattern = re.compile(rewrite["pattern"].encode(), re.MULTILINE)
         replacement = rewrite["replacement"].encode()
-        for output_name in ("stdout", "stderr", "log"):
+        for output_name in rewrite.get("outputs", ("stdout", "stderr", "log")):
             results[output_name] = pattern.sub(replacement, results[output_name])
     return results
 
@@ -673,6 +687,14 @@ def find_allowance(allowed_differences, shell, case_name, differing_outputs):
             continue
         if set(differing_outputs) <= set(allowance["outputs"]):
             return index
+    return None
+
+
+def find_unusable(baseline_unusable, shell, case_name):
+    """Return the baseline_unusable entry for a case, or None when the baseline can run it."""
+    for entry in baseline_unusable:
+        if shell in entry["shells"] and case_name == entry["case"]:
+            return entry
     return None
 
 
@@ -700,6 +722,43 @@ def read_baseline_from_git(version, destination):
         baseline_file.write(show.stdout)
 
 
+def validate_config(config):
+    """Return the problems in the configuration, as a list of messages.
+
+    An allowance must name an x: scenario. One that names a mode from the mode lists would
+    hide every other difference in that mode, unless the baseline cannot run the mode and
+    it is listed in baseline_unusable. Entries in baseline_unusable must name a real case and
+    a test that exists, so that the "covered by" pointer cannot go stale.
+    """
+    problems = []
+    known_cases = {(case["shell"], case["name"]) for case in build_cases()}
+    test_file = os.path.join(REPO_ROOT, "tests", "test_posix_compat.sh")
+    with open(test_file, encoding="utf-8") as test_source:
+        test_names = set(re.findall(r"^(test_\w+)\(\)", test_source.read(), re.MULTILINE))
+
+    unusable = set()
+    for entry in config["baseline_unusable"]:
+        for shell in entry["shells"]:
+            unusable.add((shell, entry["case"]))
+            if (shell, entry["case"]) not in known_cases:
+                problems.append(f"baseline_unusable: {shell}/{entry['case']} is not a case")
+        if entry["covered_by"] not in test_names:
+            problems.append(f"baseline_unusable: {entry['case']} is covered by "
+                            f"{entry['covered_by']}, which is not a test in {test_file}")
+
+    for allowance in config["allowed_differences"]:
+        if allowance["case"].startswith("x:"):
+            continue
+        for shell in allowance["shells"]:
+            if (shell, allowance["case"]) not in unusable:
+                problems.append(
+                    f"allowed_differences: {shell}/{allowance['case']} names a whole mode. "
+                    f"Rewrite the differing lines (baseline_rewrites or candidate_rewrites), "
+                    f"or move the behaviour into an x: scenario and allow that. A mode the "
+                    f"baseline cannot run goes in baseline_unusable.")
+    return problems
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--baseline", help="baseline logging.sh")
@@ -714,6 +773,14 @@ def main():
 
     with open(CONFIG_PATH, encoding="utf-8") as config_file:
         config = json.load(config_file)
+
+    problems = validate_config(config)
+    if problems:
+        config_name = os.path.relpath(CONFIG_PATH, REPO_ROOT)
+        sys.stderr.write(f"{config_name} is not valid:\n")
+        for problem in problems:
+            sys.stderr.write(f"  {problem}\n")
+        return 2
 
     work_dir = tempfile.mkdtemp(prefix="compare-with-release")
     try:
@@ -735,11 +802,17 @@ def compare(arguments, config, baseline_path, candidate_path):
 
     cases_to_run = []
     skipped = []
+    not_compared = []
     for case in build_cases():
         label = f"{case['shell']}/{case['name']}"
         if arguments.filter and arguments.filter not in label:
             continue
-        if case["shell"] in missing_shells:
+        # The baseline cannot run these, so they are neither run nor counted as skipped
+        # (a missing shell or locale does not matter for them, and --strict ignores them)
+        unusable = find_unusable(config["baseline_unusable"], case["shell"], case["name"])
+        if unusable:
+            not_compared.append((label, unusable))
+        elif case["shell"] in missing_shells:
             skipped.append((label, f"{SHELL_COMMANDS[case['shell']][0]} is not installed"))
         elif case["locale"] and normalize_locale_name(case["locale"]) not in locales:
             skipped.append((label, f"locale {case['locale']} is not installed"))
@@ -748,9 +821,11 @@ def compare(arguments, config, baseline_path, candidate_path):
 
     def run_both(case):
         baseline = run_case(case, baseline_path)
-        baseline = apply_baseline_rewrites(baseline, case["shell"], case["name"],
-                                           config["baseline_rewrites"])
+        baseline = apply_rewrites(baseline, case["shell"], case["name"],
+                                  config["baseline_rewrites"])
         candidate = run_case(case, candidate_path)
+        candidate = apply_rewrites(candidate, case["shell"], case["name"],
+                                   config["candidate_rewrites"])
         return case, baseline, candidate
 
     allowed_differences = config["allowed_differences"]
@@ -783,10 +858,13 @@ def compare(arguments, config, baseline_path, candidate_path):
     print(f"Baseline:  {baseline_path} ({config['baseline_version']})")
     print(f"Candidate: {candidate_path}")
     print(f"Cases run: {len(cases_to_run)}, differing: {len(json_records)}, "
-          f"allowed: {len(allowed)}, unexpected: {len(unexpected)}, skipped: {len(skipped)}")
+          f"allowed: {len(allowed)}, unexpected: {len(unexpected)}, skipped: {len(skipped)}, "
+          f"not compared: {len(not_compared)}")
 
     for label, reason in skipped:
         print(f"SKIPPED    {label}: {reason}")
+    for label, entry in not_compared:
+        print(f"NOT COMPARED {label}: {entry['reason']} Covered by {entry['covered_by']}.")
     for case, differing, allowance in sorted(allowed, key=lambda item: item[0]["name"]):
         print(f"ALLOWED    {case['shell']}/{case['name']} {differing}: {allowance['reason']}")
     for case, baseline, candidate, differing in unexpected:
