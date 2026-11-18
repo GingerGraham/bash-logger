@@ -1382,6 +1382,108 @@ test_posix_shell_detection_uses_builtins() {
     pass_test
 }
 
+test_posix_is_readonly_answers() {
+    local shell_command="$1"
+    start_test "[$shell_command] _is_readonly answers correctly with no options and under set -eu"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Every name the library cares about, and the cases that fooled earlier versions. A
+    # readonly name with no value is unset but readonly: assigning to it exits a POSIX shell.
+    local names_snippet='
+readonly_test_ro=1; readonly readonly_test_ro
+readonly_test_rox=1; export readonly_test_rox; readonly readonly_test_rox
+readonly_test_empty=""; readonly readonly_test_empty
+readonly readonly_test_novalue
+readonly_test_set=1
+readonly_test_newline="x
+readonly readonly_test_fake=1"
+for readonly_test_name in readonly_test_unset readonly_test_set readonly_test_ro \
+    readonly_test_rox readonly_test_empty readonly_test_novalue readonly_test_newline \
+    readonly_test_fake COLOR_RED LOG_LEVEL_DEBUG _LOGGER_ESC PATH HOME; do
+    if _is_readonly "$readonly_test_name"; then
+        printf "%s=readonly\n" "$readonly_test_name"
+    else
+        printf "%s=writable\n" "$readonly_test_name"
+    fi
+done
+'
+    local expected="readonly_test_unset=writable
+readonly_test_set=writable
+readonly_test_ro=readonly
+readonly_test_rox=readonly
+readonly_test_empty=readonly
+readonly_test_novalue=readonly
+readonly_test_newline=writable
+readonly_test_fake=writable
+COLOR_RED=readonly
+LOG_LEVEL_DEBUG=readonly
+_LOGGER_ESC=readonly
+PATH=writable
+HOME=writable
+resourced=ok"
+
+    # Sourcing again must still work, and keep the constants: the guards use _is_readonly
+    local resource_snippet="
+. '$PROJECT_ROOT/logging.sh'
+printf 'resourced=ok\n'"
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "$names_snippet$resource_snippet" 2>&1)
+    assert_equals "$expected" "$output" "no options" || return
+
+    output=$(run_snippet_in_shell "$shell_command" C "set -eu
+$names_snippet$resource_snippet" 2>&1)
+    assert_equals "$expected" "$output" "under set -eu" || return
+
+    pass_test
+}
+
+test_posix_sourcing_starts_no_grep() {
+    local shell_command="$1"
+    start_test "[$shell_command] sourcing the library and calling init_logger starts no grep"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # A fake grep first on PATH leaves a marker when it runs. The earlier readonly check
+    # started grep many times, which cost most of the start-up time.
+    local fake_bin="$TEST_DIR/grep_bin"
+    local marker="$TEST_DIR/grep_was_run"
+    mkdir -p "$fake_bin"
+    printf '#!/bin/sh\n: > "%s"\nexec /usr/bin/env -i /bin/sh -c "exit 1"\n' "$marker" > "$fake_bin/grep"
+    chmod +x "$fake_bin/grep"
+
+    local snippet_file="$TEST_DIR/no_grep.sh"
+    printf '%s\n' \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        "init_logger --quiet --no-init-message --no-color" \
+        "printf 'done\\n'" > "$snippet_file"
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$fake_bin:$PATH" LC_ALL=C $shell_command "$snippet_file" 2>&1 < /dev/null)
+    assert_equals "done" "$output" || return
+    assert_file_not_exists "$marker" "grep was started while sourcing" || return
+
+    pass_test
+}
+
+test_posix_is_readonly_path_matches_bash_version() {
+    start_test "bash 4.4 and later use the attribute check, older bash the subshell check"
+
+    local output
+    output=$(run_snippet_in_shell bash C '
+printf "version=%s attributes=%s\n" "$BASH_VERSION" "$_LOGGER_BASH_HAS_ATTRS"
+' 2>&1)
+    case "$BASH_VERSION" in
+        [5-9].*|4.[4-9]*) assert_contains "$output" "attributes=true" || return ;;
+        *) assert_contains "$output" "attributes=false" || return ;;
+    esac
+
+    pass_test
+}
+
 test_posix_log_file_permissions() {
     local shell_command="$1"
     start_test "[$shell_command] a created log file and directory are private, existing ones are kept"
@@ -1513,6 +1615,7 @@ test_posix_busybox_utf8_byte_length
 test_run_with_timeout_stops_process_tree
 test_run_with_timeout_stops_late_descendants
 test_posix_busybox_target_must_be_a_plain_file
+test_posix_is_readonly_path_matches_bash_version
 while IFS= read -r posix_shell; do
     test_posix_caller_detection "$posix_shell"
     test_posix_truncation_bytes "$posix_shell"
@@ -1536,6 +1639,8 @@ while IFS= read -r posix_shell; do
     test_posix_journal_tag_rejects_controls "$posix_shell"
     test_posix_overlong_config_tag_sanitized "$posix_shell"
     test_posix_shell_detection_uses_builtins "$posix_shell"
+    test_posix_is_readonly_answers "$posix_shell"
+    test_posix_sourcing_starts_no_grep "$posix_shell"
     test_posix_log_file_permissions "$posix_shell"
     test_posix_log_file_replaced_by_symlink "$posix_shell"
     test_posix_control_characters_removed "$posix_shell"

@@ -137,11 +137,17 @@ poisoning constants.
   fi
   ```
 
-  `_is_readonly` tests a variable by trying to unset it in a subshell, which fails only for a
+  `_is_readonly` asks the shell for the variable's attributes where it can, with no process
+  started: `${(tP)name}` in zsh, and `${name@a}` in bash 4.4 and later. Other shells (dash,
+  busybox ash, bash 3.2 to 4.3) try to unset the variable in a subshell, which fails only for a
   readonly variable. Do not test with `readonly -p | grep ...`: the output differs between shells,
   and a value that contains a newline and text such as `readonly NAME=` can make a variable look
-  readonly (the PR #147 review showed this). `_logger_readonly` keeps the constant global in zsh
-  when the file is sourced from inside a function. Do not call `readonly` directly.
+  readonly (the PR #147 review showed this). Do not treat an unset name as "not readonly":
+  `readonly NAME` with no value is unset but readonly, and assigning to it exits a POSIX shell.
+  The two builtin forms run through `eval`, so only a plain variable name (a letter or
+  underscore, then letters, digits and underscores) may reach it: keep that check first.
+  `_logger_readonly` keeps the constant global in zsh when the file is sourced from inside a
+  function. Do not call `readonly` directly.
 
 * New mutable state variables (like `LOG_FILE`): these must not be `readonly`. Ensure they
   are reset to a safe default on each `source` so pre-set environment values cannot persist.

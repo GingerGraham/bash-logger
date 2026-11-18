@@ -60,16 +60,6 @@
 #   - Advanced features: docs/journal-logging.md, docs/runtime-configuration.md
 #   - Troubleshooting: docs/troubleshooting.md
 
-# Returns 0 if the named variable is readonly in the current shell (internal).
-# Used by the re-source guards below; must be defined before the first guard.
-# It tries to unset the variable in a subshell, which fails only for a readonly variable.
-# Earlier versions parsed "readonly -p" output instead. dash and busybox ash print values
-# there with literal newlines, so a readonly variable whose value contained a newline and
-# "readonly NAME=..." made NAME look readonly, and an environment value was then kept.
-_is_readonly() {
-    ! (unset "$1") 2>/dev/null
-}
-
 # The shell running this file: "bash", "zsh", or empty for any other shell (internal).
 # Set on every source. A version variable alone is not enough, because it can be inherited
 # from the environment, so the check also looks for a builtin only that shell has.
@@ -85,6 +75,68 @@ if [ -n "${BASH_VERSION:-}" ] && [ "$(command -v shopt 2>/dev/null)" = "shopt" ]
 elif [ -n "${ZSH_VERSION:-}" ] && [ "$(command -v emulate 2>/dev/null)" = "emulate" ]; then
     _LOGGER_SHELL_FAMILY="zsh"
 fi
+
+# bash 4.4 added ${name@a}, the attributes of a variable (internal).
+# Set on every source, after the shell family is known, so an inherited value cannot stay.
+_LOGGER_BASH_HAS_ATTRS="false"
+if [ "$_LOGGER_SHELL_FAMILY" = "bash" ]; then
+    case "${BASH_VERSION:-}" in
+        [5-9].*|4.[4-9]*) _LOGGER_BASH_HAS_ATTRS="true" ;;
+    esac
+fi
+
+# Returns 0 if the named variable is readonly in the current shell (internal).
+# Used by the re-source guards below; must be defined before the first guard.
+# bash 4.4 and later and zsh answer from the variable's attributes, with no process started.
+# Other shells (dash, busybox ash, bash 3.2 to 4.3) try to unset the variable in a subshell,
+# which fails only for a readonly variable: one fork and no exec.
+# Earlier versions parsed "readonly -p" output instead. dash and busybox ash print values
+# there with literal newlines, so a readonly variable whose value contained a newline and
+# "readonly NAME=..." made NAME look readonly, and an environment value was then kept.
+# An unset name can still be readonly (`readonly NAME` with no value), and assigning to it
+# exits a POSIX shell, so no path treats "unset" as "not readonly".
+_is_readonly() {
+    # Only plain variable names reach an eval below: a letter or underscore, then letters,
+    # digits and underscores. The characters are listed instead of given as ranges, as
+    # elsewhere in this file, because a range can follow the locale's collation order.
+    case "$1" in
+        ''|[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_]*|\
+        *[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_]*)
+            return 1
+            ;;
+    esac
+    if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
+        # ${(tP)name} is the type and flags of the parameter named by $1, such as
+        # scalar-readonly. The "-" default keeps an unset name from being an error under
+        # no_unset. dash and busybox ash reject zsh syntax when they read this file, so it
+        # is in a string that only zsh evaluates.
+        local parameter_type=""
+        eval 'parameter_type=${(tP)1-}'
+        case "-${parameter_type}-" in
+            *-readonly-*) return 0 ;;
+        esac
+        return 1
+    fi
+    if [ "$_LOGGER_BASH_HAS_ATTRS" = "true" ]; then
+        # ${name@a} lists the attributes, and r is readonly. It is in a string because older
+        # shells cannot read it. Under set -u it is an error for an unset name, so set -u
+        # is off for this one expansion and put back after it.
+        local attributes=""
+        local nounset_was_on="false"
+        case "$-" in
+            *u*) nounset_was_on="true"; set +u ;;
+        esac
+        eval "attributes=\${$1@a}"
+        if [ "$nounset_was_on" = "true" ]; then
+            set -u
+        fi
+        case "$attributes" in
+            *r*) return 0 ;;
+        esac
+        return 1
+    fi
+    ! (unset "$1") 2>/dev/null
+}
 
 # Make a variable readonly and global (internal).
 # zsh's readonly declares a new local variable when this file is sourced from inside a
