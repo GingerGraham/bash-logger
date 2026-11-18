@@ -749,6 +749,86 @@ printf "%s|%s\n" "$LOG_MAX_LINE_LENGTH" "$LOG_MAX_JOURNAL_LENGTH"
     pass_test
 }
 
+test_posix_length_limits_match_config() {
+    local shell_command="$1"
+    start_test "[$shell_command] CLI length limits are checked as the config file checks them"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Every value is set with the CLI option and with the config key, for both limits. A value
+    # that is invalid in the config file must give the same warning and keep the same limit
+    # on the CLI. 010 is octal for 8 and is valid, 0 means unlimited.
+    local snippet="
+config_file='$TEST_DIR/limit.ini'
+for kind in line journal; do
+    case \"\$kind\" in
+        line) option=--max-line-length; key=max_line_length ;;
+        journal) option=--max-journal-length; key=max_journal_length ;;
+    esac
+    for value in 08 09 0189 1048576 1048577 010 0 12345678901234567890; do
+        LOG_MAX_LINE_LENGTH=4096
+        LOG_MAX_JOURNAL_LENGTH=4096
+        cli_warning=\$(init_logger --quiet --no-init-message \"\$option\" \"\$value\" 2>&1 >/dev/null)
+        init_logger --quiet --no-init-message \"\$option\" \"\$value\" >/dev/null 2>&1
+        cli_value=\"\$LOG_MAX_LINE_LENGTH/\$LOG_MAX_JOURNAL_LENGTH\"
+        LOG_MAX_LINE_LENGTH=4096
+        LOG_MAX_JOURNAL_LENGTH=4096
+        printf '%s = %s\\n' \"\$key\" \"\$value\" > \"\$config_file\"
+        config_warning=\$(init_logger --quiet --no-init-message -c \"\$config_file\" 2>&1 >/dev/null)
+        init_logger --quiet --no-init-message -c \"\$config_file\" >/dev/null 2>&1
+        config_value=\"\$LOG_MAX_LINE_LENGTH/\$LOG_MAX_JOURNAL_LENGTH\"
+        printf '%s %s cli=%s config=%s\\n' \"\$kind\" \"\$value\" \"\$cli_value\" \"\$config_value\"
+        printf '  cli=[%s]\\n' \"\$(printf '%s' \"\$cli_warning\" | tr '\\n' '|')\"
+        printf '  config=[%s]\\n' \"\$(printf '%s' \"\$config_warning\" | tr '\\n' '|')\"
+    done
+done
+# A second call keeps the value from the first one, and the hint says which value that is
+init_logger --quiet --no-init-message --max-line-length 100 >/dev/null 2>&1
+printf 'again: %s\\n' \"\$(init_logger --quiet --no-init-message --max-line-length 08 2>&1 | tr '\\n' '|')\"
+printf 'kept: %s\\n' \"\$LOG_MAX_LINE_LENGTH\"
+"
+    local expected=""
+    local kind option key value limits
+    for kind in line journal; do
+        if [[ "$kind" == "line" ]]; then
+            option="max-line-length"
+            key="max_line_length"
+        else
+            option="max-journal-length"
+            key="max_journal_length"
+        fi
+        for value in 08 09 0189 1048576 1048577 010 0 12345678901234567890; do
+            case "$value" in
+                1048576|010|0)
+                    if [[ "$kind" == "line" ]]; then
+                        limits="$value/4096"
+                    else
+                        limits="4096/$value"
+                    fi
+                    expected="$expected$kind $value cli=$limits config=$limits
+  cli=[]
+  config=[]
+"
+                    ;;
+                *)
+                    expected="$expected$kind $value cli=4096/4096 config=4096/4096
+  cli=[Warning: Invalid $option value '$value', expected integer 0-1048576|  Hint: Keeping the current value of 4096]
+  config=[Warning: Invalid $key value '$value' at line 1, expected integer 0-1048576|  Hint: Keeping the current value of 4096]
+"
+                    ;;
+            esac
+        done
+    done
+    expected="${expected}again: Warning: Invalid max-line-length value '08', expected integer 0-1048576|  Hint: Keeping the current value of 100|
+kept: 100"
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "$snippet" 2>&1)
+    assert_equals "$expected" "$output" || return
+
+    pass_test
+}
+
 test_posix_config_bom() {
     local shell_command="$1"
     start_test "[$shell_command] a UTF-8 BOM at the start of a config file is ignored"
@@ -1344,6 +1424,7 @@ while IFS= read -r posix_shell; do
     test_posix_timestamp_builtin_and_fallback "$posix_shell"
     test_posix_timestamp_ignores_environment "$posix_shell"
     test_posix_max_length_options "$posix_shell"
+    test_posix_length_limits_match_config "$posix_shell"
     test_posix_config_bom "$posix_shell"
     test_posix_truncation_four_byte_character "$posix_shell"
     test_posix_journal_failure_reported_once "$posix_shell"

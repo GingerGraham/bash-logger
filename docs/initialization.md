@@ -74,8 +74,8 @@ The `init_logger` function accepts the following options:
 | `--no-init-message`                             | Suppress the INIT entry written to the log file on initialization                   |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
 | `-A, --unsafe-allow-ansi-codes`                 | Keep escape sequences and other control characters in messages (not recommended)    |
-| `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
-| `--max-journal-length LENGTH`                   | Max message length before formatting for journal output (0 = unlimited)             |
+| `--max-line-length LENGTH`                      | Max message length for console/file output, 0-1048576 (0 = unlimited)               |
+| `--max-journal-length LENGTH`                   | Max message length for journal output, 0-1048576 (0 = unlimited)                    |
 
 **Journal tags:** `-t` and `--tag` are validated in the same way as the `tag` configuration key and `set_journal_tag`: a tag must not be empty, longer than 64 characters,
 or contain control characters or shell metacharacters. An invalid tag prints an error, and the previous tag is kept. See [Tag Rules](journal-logging.md#tag-rules).

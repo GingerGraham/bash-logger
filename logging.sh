@@ -433,6 +433,22 @@ _parse_shell_integer() {
     return 0
 }
 
+# Check a message length limit from a CLI option or a config key (internal).
+# Arguments: value, name used in the warning, location text (" at line 3", or empty), the
+# limit in effect now.
+# The CLI options and the config keys use this one check, so they accept the same values:
+# an integer from 0 to 1048576, read as bash arithmetic does (a leading 0 means octal, so
+# 010 is 8 and 08 is invalid). An invalid value prints a warning that names the accepted
+# range, and the limit in effect stays. Returns 0 for a valid value.
+_validate_length_limit() {
+    if _parse_shell_integer "$1" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+        return 0
+    fi
+    printf '%s\n' "Warning: Invalid $2 value '$1'$3, expected integer 0-1048576" >&2
+    printf '%s\n' "  Hint: Keeping the current value of $4" >&2
+    return 1
+}
+
 # Set _LOGGER_PREFIX to the first <length> characters of text (internal).
 # bash and zsh count characters, as ${text:0:length} always has.
 # Other shells count bytes (printf precision), and a multi-byte UTF-8 character cut
@@ -1293,23 +1309,17 @@ _parse_config_file() {
                 fi
                 ;;
             max_line_length|max-line-length|log_max_line_length|log-max-line-length)
-                # Read as bash arithmetic does (a leading 0 means octal); the value is
-                # stored as written
-                if _parse_shell_integer "$value" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+                # The value is stored as written
+                if _validate_length_limit "$value" "max_line_length" " at line $line_num" \
+                    "$LOG_MAX_LINE_LENGTH"; then
                     LOG_MAX_LINE_LENGTH="$value"
-                else
-                    printf '%s\n' "Warning: Invalid max_line_length value '$value' at line $line_num, expected integer 0-1048576" >&2
-                    printf '%s\n' "  Hint: Using default value of 4096" >&2
                 fi
                 ;;
             max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
-                # Read as bash arithmetic does (a leading 0 means octal); the value is
-                # stored as written
-                if _parse_shell_integer "$value" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+                # The value is stored as written
+                if _validate_length_limit "$value" "max_journal_length" " at line $line_num" \
+                    "$LOG_MAX_JOURNAL_LENGTH"; then
                     LOG_MAX_JOURNAL_LENGTH="$value"
-                else
-                    printf '%s\n' "Warning: Invalid max_journal_length value '$value' at line $line_num, expected integer 0-1048576" >&2
-                    printf '%s\n' "  Hint: Using default value of 4096" >&2
                 fi
                 ;;
             init_message|log_init_message)
@@ -2122,10 +2132,8 @@ init_logger() {
                     printf '%s\n' "Error: --max-line-length requires a value" >&2
                     return 1
                 fi
-                if _is_digits "$2"; then
+                if _validate_length_limit "$2" "max-line-length" "" "$LOG_MAX_LINE_LENGTH"; then
                     LOG_MAX_LINE_LENGTH="$2"
-                else
-                    printf '%s\n' "Warning: Invalid max-line-length value '$2', expected non-negative integer" >&2
                 fi
                 shift 2
                 ;;
@@ -2134,10 +2142,8 @@ init_logger() {
                     printf '%s\n' "Error: --max-journal-length requires a value" >&2
                     return 1
                 fi
-                if _is_digits "$2"; then
+                if _validate_length_limit "$2" "max-journal-length" "" "$LOG_MAX_JOURNAL_LENGTH"; then
                     LOG_MAX_JOURNAL_LENGTH="$2"
-                else
-                    printf '%s\n' "Warning: Invalid max-journal-length value '$2', expected non-negative integer" >&2
                 fi
                 shift 2
                 ;;

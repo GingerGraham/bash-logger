@@ -87,10 +87,17 @@ These also come from the security review of 3.0 and apply in every shell.
 * **A missing option value is an error.** `init_logger --format` (or `--level`, `--log`, `--name`,
   `--tag`, `--stderr-level`) as the last argument now prints `requires a value` and returns 1.
   In bash, 2.x looped forever. A second `--config` with no value does the same.
-* **A line limit that is invalid octal disables truncation.** With `LOG_MAX_LINE_LENGTH` or
-  `LOG_MAX_JOURNAL_LENGTH` set to a value such as `08`, `09` or `0189`, 2.x printed shell errors
-  and lost the message under bash, or exited a script running with `set -e`. 3.0 logs the full
-  message. A leading `0` still means octal, so `010` is 8.
+* **A line limit that is invalid octal disables truncation, when you assign the variable.** With
+  `LOG_MAX_LINE_LENGTH` or `LOG_MAX_JOURNAL_LENGTH` set directly to a value such as `08`, `09` or
+  `0189`, 2.x printed shell errors and lost the message under bash, or exited a script running
+  with `set -e`. 3.0 logs the full message. A leading `0` still means octal, so `010` is 8.
+* **The line limit options reject the values the config file rejects.** `init_logger
+  --max-line-length` and `--max-journal-length` accept an integer from 0 to 1048576, as the
+  `max_line_length` and `max_journal_length` config keys do. A value such as `08` (invalid
+  octal) or `1048577` prints a warning that names the range, and the limit in effect stays: the
+  default of 4096, or the value from an earlier call. 2.x printed shell errors, and 3.0.0 only
+  checked that the value was made of digits, so it accepted both and turned truncation off for
+  `08`. The warning now says which value is kept.
 * **A failed log file write prints one error.** The shell's own redirection error (for example
   `Is a directory`) no longer appears next to the logger's `Failed to write to log file` message.
 * **Levels must be plain numbers.** `CURRENT_LOG_LEVEL` is documented as 0 to 7, and the
@@ -136,8 +143,8 @@ See [Runtime Configuration Notices](output-streams.md#runtime-configuration-noti
 * **`setopt warn_nested_var` reports more internal variables.** The library keeps intermediate
   results in `_LOGGER_` variables, and zsh warns each time a function sets one. The warnings
   need no action.
-* **A leading `0` in a line limit means octal,** as it does in bash. `010` is 8, and `08` disables
-  truncation.
+* **A leading `0` in a line limit means octal,** as it does in bash. `010` is 8, and `08` is
+  rejected (when you assign the variable directly, `08` disables truncation).
 * **Sourcing from inside a function works correctly.** The constants stay global, and the logger
   path lock now applies in zsh as it does in other shells.
 * **Frequent signals with logging handlers can crash zsh 5.9.** This is a zsh bug that 3.0 exposes.

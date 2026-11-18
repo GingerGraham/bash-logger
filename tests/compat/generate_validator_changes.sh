@@ -54,6 +54,12 @@ reason_for_check() {
                 printf '%s' "$control_reason"
             fi
             ;;
+        init_max_line_length)
+            printf '%s' "A CLI line limit that is invalid octal or above 1048576 is rejected with the config file's warning, and the limit in effect stays (#150)"
+            ;;
+        parse_max_line_length)
+            printf '%s' "The config warning for an invalid limit now names the limit in effect, not the default (#150)"
+            ;;
         *) return 0 ;;
     esac
 }
