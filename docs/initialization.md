@@ -430,7 +430,8 @@ init_logger --log "/tmp/my.log" --no-color
 **SCRIPT_NAME is inherited:**
 
 `SCRIPT_NAME` is the only setting that survives sourcing. If the environment sets it and no `--name` option or `script_name` config key is given, `init_logger` uses it as the script name.
-`init_logger` sanitizes the value like any other script name, so characters outside `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` become `_`.
+The library sanitizes the value as soon as it is sourced, like any other script name, so characters outside `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` become `_`. Messages logged before `init_logger`
+runs, and the journal tag that defaults to the script name, therefore never contain a newline or escape sequence from the environment. A name that is already safe is not changed.
 Pass `--name`, or run `unset SCRIPT_NAME` before sourcing, if the name must not depend on the caller's environment.
 
 **Potential Issues:**

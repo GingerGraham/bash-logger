@@ -2818,6 +2818,20 @@ log_to_journal() {
     _log_message "$canonical_level" "$level_value" "$message" "false" "false" "true"
 }
 
+# SCRIPT_NAME is the one setting that survives sourcing (see the top of this file), and
+# logging works before init_logger is called. The %s format token and the journal tag
+# fallback would then use an inherited value as it is, and a newline in it would forge log
+# lines. Sanitize it here, as init_logger, set_script_name and the config parser do.
+# A name that is already safe is not assigned again, so a script that made SCRIPT_NAME readonly
+# keeps working (assigning to a readonly variable exits a POSIX shell). An environment variable
+# is never readonly, so an unsafe inherited value is always cleaned.
+if [ -n "${SCRIPT_NAME:-}" ]; then
+    _replace_unsafe_name_characters "$SCRIPT_NAME"
+    if [ "$_LOGGER_REPLACED" != "$SCRIPT_NAME" ] && ! _is_readonly SCRIPT_NAME; then
+        SCRIPT_NAME="$_LOGGER_REPLACED"
+    fi
+fi
+
 # Only execute initialization if this script is being run directly
 # If it's being sourced, the sourcing script should call init_logger
 # POSIX sh has no reliable way to tell, so this check only runs in bash.

@@ -76,6 +76,10 @@ These also come from the security review of 3.0 and apply in every shell.
   only in a UTF-8 locale, and not for the bidirectional characters at all. The bidirectional marks
   and zero-width characters listed above are still accepted, as is ordinary non-ASCII text such as
   `café`.
+* **An inherited `SCRIPT_NAME` is sanitized when the library is sourced.** Before, only `init_logger`,
+  `set_script_name` and the config parser cleaned it, so a message logged before `init_logger`
+  ran, and the default journal tag, used the value from the environment as it was. A newline in
+  it could forge log lines. A name that is already safe is unchanged.
 * **A config `format` with control characters is rejected.** 2.x and 3.0.0 warned that such a
   format "may be stripped" and used it as it was, so a config file could add escape sequences or a
   carriage return to every console line, log file line and INIT line. The parser now prints
