@@ -55,8 +55,13 @@ wget https://github.com/GingerGraham/bash-logger/releases/latest/download/loggin
 
 On Alpine, `logger` is normally a symlink to `busybox`. The library runs it through the symlink,
 as the applet is selected from that name, and accepts it only when the symlink and `busybox` are
-both in a safe directory. busybox `logger` writes to syslog, so messages reach whichever syslog
-daemon the system runs and not the systemd journal.
+both in a safe directory, and the symlink points straight at a regular `busybox` file. A symlink
+that points at another symlink is rejected, because the chain could be changed after the check
+and the library follows the symlink on every message. busybox `logger` writes to syslog, so
+messages reach whichever syslog daemon the system runs and not the systemd journal.
+
+A `logger` that is a symlink, and that `readlink -f` cannot resolve (`readlink` is missing, or is
+older than macOS 12.3), is not used, because where the link ends cannot be checked.
 
 ## Documented Differences
 

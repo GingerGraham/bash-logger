@@ -516,12 +516,27 @@ test_posix_busybox_logger_symlink() {
 
     # readlink reports what it would for a busybox applet symlink
     local output
+    # _is_plain_file is replaced so that the test does not need a real busybox file at
+    # /usr/bin/busybox: the next case shows what it decides
     output=$(run_snippet_in_shell "$shell_command" C '
 readlink() { printf "%s\n" /usr/bin/busybox; }
+_is_plain_file() { return 0; }
 check_logger_available
 printf "%s|%s\n" "$?" "$LOGGER_PATH"
 ' 2>&1)
     assert_equals "0|$system_logger" "$output" || return
+
+    # A second hop: the first target is spelled as an allowed busybox path but is itself a
+    # link, for example through a directory other users can write to. It is rejected, and
+    # LOGGER_PATH is not set to the chain.
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() { printf "%s\n" /usr/bin/busybox; }
+_is_plain_file() { return 1; }
+check_logger_available
+printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_contains "$output" "status=1 path=[]" || return
+    assert_contains "$output" "unexpected location" || return
 
     # The same symlink outside a safe directory is still rejected
     mkdir -p "$TEST_DIR/unsafe_bin"
@@ -546,6 +561,70 @@ check_logger_available 2>/dev/null
 printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
 ' 2>&1)
     assert_equals "status=1 path=[]" "$output" || return
+
+    pass_test
+}
+
+test_posix_busybox_target_must_be_a_plain_file() {
+    start_test "_is_plain_file accepts a regular file and rejects a link, a directory and a missing path"
+
+    local real_file="$TEST_DIR/busybox"
+    : > "$real_file"
+    ln -s "$real_file" "$TEST_DIR/first_link"
+    ln -s "$TEST_DIR/first_link" "$TEST_DIR/second_link"
+    mkdir -p "$TEST_DIR/a_directory"
+
+    local status_line
+    status_line=$(run_snippet_in_shell bash C "
+for path in '$real_file' '$TEST_DIR/first_link' '$TEST_DIR/second_link' '$TEST_DIR/a_directory' '$TEST_DIR/missing'; do
+    if _is_plain_file \"\$path\"; then printf 'file '; else printf 'no '; fi
+done
+for path in '$real_file' '$TEST_DIR/first_link'; do
+    if _is_symlink \"\$path\"; then printf 'link '; else printf 'plain '; fi
+done
+printf '\\n'
+" 2>&1)
+    assert_equals "file no no no no plain link " "$status_line" || return
+
+    pass_test
+}
+
+test_posix_logger_symlink_that_cannot_be_resolved() {
+    local shell_command="$1"
+    start_test "[$shell_command] a logger link that readlink cannot resolve is rejected (INF-02)"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local system_logger
+    system_logger=$(command -v logger 2>/dev/null)
+    case "$system_logger" in
+        /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger) ;;
+        *)
+            skip_test "logger is not in a safe directory"
+            return 0
+            ;;
+    esac
+
+    # readlink -f fails, as on macOS before 12.3, and the logger is a link: the path is
+    # not followed, so it is not trusted
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() { return 1; }
+_is_symlink() { return 0; }
+check_logger_available
+printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_contains "$output" "status=1 path=[]" || return
+    assert_contains "$output" "cannot be resolved" || return
+
+    # The same failure for a logger that is a plain file in a safe directory is accepted
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() { return 1; }
+_is_symlink() { return 1; }
+check_logger_available
+printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_equals "status=0 path=[$system_logger]" "$output" || return
 
     pass_test
 }
@@ -1433,6 +1512,7 @@ test_posix_lint_check
 test_posix_busybox_utf8_byte_length
 test_run_with_timeout_stops_process_tree
 test_run_with_timeout_stops_late_descendants
+test_posix_busybox_target_must_be_a_plain_file
 while IFS= read -r posix_shell; do
     test_posix_caller_detection "$posix_shell"
     test_posix_truncation_bytes "$posix_shell"
@@ -1447,6 +1527,7 @@ while IFS= read -r posix_shell; do
     test_posix_trap_keeps_message "$posix_shell"
     test_posix_message_not_kept_in_variables "$posix_shell"
     test_posix_busybox_logger_symlink "$posix_shell"
+    test_posix_logger_symlink_that_cannot_be_resolved "$posix_shell"
     test_posix_second_config_without_value "$posix_shell"
     test_posix_config_notice_stream "$posix_shell"
     test_posix_utc_from_epoch "$posix_shell"

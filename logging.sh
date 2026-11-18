@@ -739,6 +739,17 @@ fi
 # Not readonly — resetting to "false" on re-source is correct (new context must re-validate).
 _LOGGER_DISCOVERY_DONE="false"
 
+# Return 0 if a path is a symbolic link (internal).
+# A function of its own, so that the logger checks can be tested without root.
+_is_symlink() {
+    [ -L "$1" ]
+}
+
+# Return 0 if a path is a regular file and not a symbolic link (internal).
+_is_plain_file() {
+    [ -f "$1" ] && [ ! -L "$1" ]
+}
+
 # Find and validate the logger command to prevent PATH manipulation attacks
 # This function finds the logger executable and validates it's in a safe system location
 # Returns 0 if logger is found and valid, 1 otherwise
@@ -755,8 +766,20 @@ _find_and_validate_logger() {
 
     # Resolve any symlinks to get the real path
     local logger_found="$logger_candidate"
-    if command -v readlink >/dev/null 2>&1; then
-        logger_candidate=$(readlink -f "$logger_candidate" 2>/dev/null || printf '%s\n' "$logger_candidate")
+    local logger_resolved=""
+    if command -v readlink >/dev/null 2>&1 \
+        && logger_resolved=$(readlink -f "$logger_candidate" 2>/dev/null) \
+        && [ -n "$logger_resolved" ]; then
+        logger_candidate="$logger_resolved"
+    elif _is_symlink "$logger_found"; then
+        # readlink is missing, or cannot resolve the link (readlink -f needs macOS 12.3).
+        # Where the link ends is unknown, so the path below would be checked without
+        # following the link. Refuse a link that cannot be followed.
+        printf '%s\n' "Warning: logger is a symbolic link that cannot be resolved: $logger_found" >&2
+        printf '%s\n' "  Journal logging disabled for security" >&2
+        USE_JOURNAL="false"
+        _LOGGER_DISCOVERY_DONE="true"
+        return 1
     fi
 
     # busybox selects the applet from the name it is run as, so a logger symlink to a busybox
@@ -768,11 +791,23 @@ _find_and_validate_logger() {
             case "$logger_found" in
                 /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger)
                     local link_target=""
+                    local link_target_path=""
                     link_target=$(readlink "$logger_found" 2>/dev/null)
                     case "$link_target" in
                         /bin/busybox|/usr/bin/busybox|/sbin/busybox|/usr/sbin/busybox|\
                         busybox|../bin/busybox|../../bin/busybox)
-                            logger_candidate="$logger_found"
+                            # The spelling is not enough: the first target must itself be
+                            # a regular file, not a link to somewhere else, or a chain through
+                            # a directory other users can write to would be accepted and
+                            # followed again on every journal write. A relative target is
+                            # read from the directory of the logger link.
+                            case "$link_target" in
+                                /*) link_target_path="$link_target" ;;
+                                *) link_target_path="${logger_found%/*}/$link_target" ;;
+                            esac
+                            if _is_plain_file "$link_target_path"; then
+                                logger_candidate="$logger_found"
+                            fi
                             ;;
                     esac
                     ;;

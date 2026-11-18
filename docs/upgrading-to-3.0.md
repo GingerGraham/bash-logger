@@ -76,6 +76,11 @@ These also come from the security review of 3.0 and apply in every shell.
   only in a UTF-8 locale, and not for the bidirectional characters at all. The bidirectional marks
   and zero-width characters listed above are still accepted, as is ordinary non-ASCII text such as
   `café`.
+* **A `logger` reached through a chain of links is not used.** On Alpine, `logger` is a symlink to
+  `busybox`. 3.0.0 accepted it when the link was spelled as an allowed `busybox` path, even if
+  that path was itself a link to somewhere else. The target must now be a regular file. A
+  `logger` link that `readlink -f` cannot resolve is also refused, where 3.0.0 checked the
+  unresolved path. A `logger` that is a regular file, or a direct link to `busybox`, works as before.
 * **An inherited `SCRIPT_NAME` is sanitized when the library is sourced.** Before, only `init_logger`,
   `set_script_name` and the config parser cleaned it, so a message logged before `init_logger`
   ran, and the default journal tag, used the value from the environment as it was. A newline in
