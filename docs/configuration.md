@@ -137,10 +137,12 @@ Configuration values are validated to ensure security and prevent issues:
 
 * **All values**: Maximum length of 4,096 characters
 * **Log file paths**: Must be absolute paths (start with `/`); no control characters or shell metacharacters
+* **Format**: No control characters (such as an escape character or a carriage return); a format that has any is skipped and the current format stays
 * **Journal tag**: Maximum 64 characters; shell metacharacters will be sanitized
 * **Syslog facility**: Must be one of `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`, or `local0`-`local7`
 * **Log levels**: Must be valid level names (DEBUG-EMERGENCY) or numbers (0-7)
-* **Numeric values** (`max_line_length`, `max_journal_length`): Must be 0-1,048,576 (1MB limit)
+* **Numeric values** (`max_line_length`, `max_journal_length`): Must be 0-1,048,576 (1MB limit). A leading `0` means octal,
+  so `010` is 8 and `08` is invalid. The `--max-line-length` and `--max-journal-length` options accept the same values.
 * **Boolean values**: Must be true/false, yes/no, on/off, or 1/0
 
 Invalid values will generate warnings and either use defaults or sanitize the input. See [Troubleshooting](troubleshooting.md#invalid-configuration-values) for details.

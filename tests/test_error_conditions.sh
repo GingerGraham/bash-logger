@@ -202,7 +202,7 @@ EOF
     init_logger --config "$config_file" 2>"$TEST_STDERR"
 
     assert_file_contains "$TEST_STDERR" "Invalid max_line_length value" || return
-    assert_file_contains "$TEST_STDERR" "Using default" || return
+    assert_file_contains "$TEST_STDERR" "Keeping the current value of 4096" || return
 
     pass_test
 }

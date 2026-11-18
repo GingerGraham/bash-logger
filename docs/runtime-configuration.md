@@ -98,7 +98,7 @@ set_timezone_utc BOOLEAN
 
 **Parameters:**
 
-* `BOOLEAN` - `true` to use UTC, `false` to use local time
+* `BOOLEAN` - `true` to use UTC, `false` to use local time. Also accepted: `yes`, `no`, `on`, `off`, `1` and `0`. Any other value prints an error, changes nothing and returns 1
 
 **Examples:**
 
@@ -211,7 +211,7 @@ set_journal_logging BOOLEAN
 
 **Parameters:**
 
-* `BOOLEAN` - `true` to enable, `false` to disable
+* `BOOLEAN` - `true` to enable, `false` to disable. Also accepted: `yes`, `no`, `on`, `off`, `1` and `0`. Any other value prints an error, changes nothing and returns 1
 
 **Examples:**
 

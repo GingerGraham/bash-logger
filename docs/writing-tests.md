@@ -403,6 +403,11 @@ Do not add an entry to hide a new regression.
 * A mismatch means behaviour changed. Fix the code, or decide that the change is intended.
 * An intended change in how messages are sanitized is recorded in `sanitize_3.0.tsv`, with a reason for each row, by `tests/compat/generate_sanitize_changes.sh`. That script takes both the 2.7.0
   `logging.sh` and the current one. `sanitize.tsv` stays the record of 2.7.0.
+* An intended change in what a validator accepts, rejects or prints is recorded in `validators_3.0.tsv` (and `validators_utf8_3.0.tsv`, which exists only while a UTF-8 row changes), with a reason
+  for each row, by `tests/compat/generate_validator_changes.sh`. Add the reason for the changed check to `reason_for_check` in that script first, then run it. The script fails for a changed
+  check that has no reason, so a change cannot be recorded by accident. `test_validator_equivalence.sh` applies the overlay on top of the golden file and checks that every overlay row differs
+  from the 2.7.0 result and has a reason. `validators.tsv` and `validators_utf8.tsv` stay the record of 2.7.0.
+* A new corpus input needs its 2.7.0 result in the golden file, taken from the 2.7.0 `logging.sh`, so that the overlay can record what changed.
 
 ### Shell helpers
 

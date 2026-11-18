@@ -74,8 +74,8 @@ The `init_logger` function accepts the following options:
 | `--no-init-message`                             | Suppress the INIT entry written to the log file on initialization                   |
 | `-U, --unsafe-allow-newlines`                   | Allow newlines in log messages (not recommended; disables sanitization)             |
 | `-A, --unsafe-allow-ansi-codes`                 | Keep escape sequences and other control characters in messages (not recommended)    |
-| `--max-line-length LENGTH`                      | Max message length before formatting for console/file output (0 = unlimited)        |
-| `--max-journal-length LENGTH`                   | Max message length before formatting for journal output (0 = unlimited)             |
+| `--max-line-length LENGTH`                      | Max message length for console/file output, 0-1048576 (0 = unlimited)               |
+| `--max-journal-length LENGTH`                   | Max message length for journal output, 0-1048576 (0 = unlimited)                    |
 
 **Journal tags:** `-t` and `--tag` are validated in the same way as the `tag` configuration key and `set_journal_tag`: a tag must not be empty, longer than 64 characters,
 or contain control characters or shell metacharacters. An invalid tag prints an error, and the previous tag is kept. See [Tag Rules](journal-logging.md#tag-rules).
@@ -430,7 +430,8 @@ init_logger --log "/tmp/my.log" --no-color
 **SCRIPT_NAME is inherited:**
 
 `SCRIPT_NAME` is the only setting that survives sourcing. If the environment sets it and no `--name` option or `script_name` config key is given, `init_logger` uses it as the script name.
-`init_logger` sanitizes the value like any other script name, so characters outside `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` become `_`.
+The library sanitizes the value as soon as it is sourced, like any other script name, so characters outside `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` become `_`. Messages logged before `init_logger`
+runs, and the journal tag that defaults to the script name, therefore never contain a newline or escape sequence from the environment. A name that is already safe is not changed.
 Pass `--name`, or run `unset SCRIPT_NAME` before sourcing, if the name must not depend on the caller's environment.
 
 **Potential Issues:**

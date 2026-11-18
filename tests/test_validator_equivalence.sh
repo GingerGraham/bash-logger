@@ -13,6 +13,11 @@
 #   validators.tsv        corpus checked with LC_ALL=C
 #   validators_utf8.tsv   valid UTF-8 corpus checked with a UTF-8 locale (Linux only)
 #
+# Both files record 2.7.0. The rows that changed on purpose in 3.0, with the reason for
+# each, are in validators_3.0.tsv and validators_utf8_3.0.tsv (see
+# tests/compat/generate_validator_changes.sh). They replace those rows of the golden file,
+# which stays the record of 2.7.0.
+#
 # TEST_SHELLS and TEST_REQUIRE_SHELLS work as in test_shell_compat.sh.
 
 EQUIVALENCE_DIR="$PROJECT_ROOT/tests/compat"
@@ -25,6 +30,28 @@ EQUIVALENCE_DRIVER="$EQUIVALENCE_DIR/validator_driver.sh"
 equivalence_utf8_locale() {
     [[ "$(uname -s)" == "Linux" ]] || return 0
     utf8_locale_name
+}
+
+# Print a golden file's rows with the rows of its 3.0 overlay replaced by their 3.0 results.
+# The overlay of validators.tsv is validators_3.0.tsv, and that of validators_utf8.tsv is
+# validators_utf8_3.0.tsv. A golden file without an overlay is printed as it is.
+equivalence_expected_rows() {
+    local golden_name="$1"
+    local overlay_file="$EQUIVALENCE_GOLDEN_DIR/${golden_name%.tsv}_3.0.tsv"
+    if [[ ! -f "$overlay_file" ]]; then
+        grep -v '^#' "$EQUIVALENCE_GOLDEN_DIR/$golden_name"
+        return 0
+    fi
+    awk -F '\t' '
+        FNR == 1 { file_number++ }
+        /^#/ { next }
+        file_number == 1 { status[$1 "\t" $2] = $3; checksum[$1 "\t" $2] = $4; next }
+        {
+            key = $1 "\t" $2
+            if (key in status) { $3 = status[key]; $4 = checksum[key] }
+            printf "%s\t%s\t%s\t%s\n", $1, $2, $3, $4
+        }
+    ' "$overlay_file" "$EQUIVALENCE_GOLDEN_DIR/$golden_name"
 }
 
 # Print the check names used in a golden file, space separated
@@ -88,7 +115,7 @@ test_validator_equivalence_in_shell() {
     local checks
     checks=$(equivalence_checks_in "$golden_file")
 
-    grep -v '^#' "$golden_file" > "$expected_file"
+    equivalence_expected_rows "$golden_name" > "$expected_file"
     # shellcheck disable=SC2086  # word splitting of shell_command and checks is intended
     env -i PATH="$PATH" HOME="$TEST_DIR" TMPDIR="$TEST_DIR" LC_ALL="$locale_name" \
         $shell_command "$EQUIVALENCE_DRIVER" "$PROJECT_ROOT/logging.sh" "$corpus_file" $checks \
@@ -127,8 +154,38 @@ test_validator_golden_files_present() {
     pass_test
 }
 
+# Test: every row in a 3.0 overlay is a real change with a reason
+test_validator_changes_are_explained() {
+    start_test "every 3.0 validator change differs from 2.7.0 and has a reason"
+
+    local golden_name
+    local overlay_file
+    local problems=""
+    for golden_name in validators.tsv validators_utf8.tsv; do
+        overlay_file="$EQUIVALENCE_GOLDEN_DIR/${golden_name%.tsv}_3.0.tsv"
+        [[ -f "$overlay_file" ]] || continue
+        assert_file_not_empty "$overlay_file" || return
+        problems="$problems$(awk -F '\t' -v name="$golden_name" '
+            FNR == 1 { file_number++ }
+            /^#/ { next }
+            file_number == 1 { baseline[$1 "\t" $2] = $3 " " $4; next }
+            {
+                key = $1 "\t" $2
+                if (!(key in baseline)) { print name ": not in the golden file: " key; next }
+                if (baseline[key] == "crash -") { print name ": 2.7.0 crashed here: " key }
+                if (baseline[key] == $3 " " $4) { print name ": same as 2.7.0: " key }
+                if ($5 == "") { print name ": no reason: " key }
+            }
+        ' "$EQUIVALENCE_GOLDEN_DIR/$golden_name" "$overlay_file")"
+    done
+    assert_equals "" "$problems" || return
+
+    pass_test
+}
+
 # Run all tests
 test_validator_golden_files_present
+test_validator_changes_are_explained
 
 equivalence_locale=$(equivalence_utf8_locale)
 while IFS= read -r equivalence_shell; do

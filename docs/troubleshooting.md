@@ -302,7 +302,7 @@ Error message:
 
 ```
 Warning: Invalid max_line_length value '999999999' at line 2, expected integer 0-1048576
-  Hint: Using default value of 4096
+  Hint: Keeping the current value of 4096
 ```
 
 1. **Invalid Journal Tag**
@@ -382,10 +382,11 @@ The logger will:
 | -------------------------------- | -------------------------------------------------- | ------------------------------------------- |
 | `level`                          | Valid level name or 0-7                            | Use INFO, display warning with valid values |
 | `log_file`                       | Absolute path, no control chars, no shell patterns | Skip file logging, display error            |
+| `format`                         | No control chars                                   | Skip it, keep the current format, warn      |
 | `tag`                            | Max 64 chars, no control chars, no shell metachars | Truncate to 64 or sanitize, display warning |
 | `-t`, `--tag`, `set_journal_tag` | Same rules as `tag`                                | Keep previous tag, display error or warning |
-| `max_line_length`                | Integer 0-1,048,576                                | Use default (4096), display warning         |
-| `max_journal_length`             | Integer 0-1,048,576                                | Use default (4096), display warning         |
+| `max_line_length`                | Integer 0-1,048,576                                | Keep current (4096), display warning        |
+| `max_journal_length`             | Integer 0-1,048,576                                | Keep current (4096), display warning        |
 | Boolean values                   | true/false, yes/no, on/off, 1/0 (case-insensitive) | Display warning, keep previous value        |
 | All values                       | Max 4,096 characters                               | Truncate, display warning                   |
 | Unknown keys                     | N/A                                                | Display warning with list of valid keys     |

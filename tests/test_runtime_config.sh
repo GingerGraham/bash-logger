@@ -138,6 +138,48 @@ test_set_timezone_utc() {
     pass_test
 }
 
+# Test: set_timezone_utc rejects values that are not booleans (SEC-04, #163)
+test_set_timezone_utc_rejects_invalid() {
+    start_test "set_timezone_utc rejects an invalid value and leaves the setting unchanged"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/tz_invalid.log"
+    LOG_FILE="$log_file"
+    USE_UTC="false"
+
+    local value
+    for value in maybe "" "x
+second line" 2 TRUE1; do
+        set_timezone_utc "$value" 2> "$TEST_DIR/tz_invalid.stderr"
+        assert_equals "1" "$?" "return status for an invalid value" || return
+        assert_equals "false" "$USE_UTC" "USE_UTC after an invalid value" || return
+        assert_file_contains "$TEST_DIR/tz_invalid.stderr" "invalid value" || return
+    done
+    assert_file_not_exists "$log_file" "no CONFIG notice for a rejected value" || return
+
+    pass_test
+}
+
+# Test: set_timezone_utc accepts the boolean spellings of set_unsafe_allow_newlines
+test_set_timezone_utc_accepts_boolean_variants() {
+    start_test "set_timezone_utc accepts true, yes, on, 1 and their opposites in any case"
+
+    init_logger --quiet
+    local value
+    for value in true TRUE Yes on 1; do
+        USE_UTC="false"
+        set_timezone_utc "$value" || { fail_test "$value was rejected"; return; }
+        assert_equals "true" "$USE_UTC" "USE_UTC after $value" || return
+    done
+    for value in false False NO off 0; do
+        USE_UTC="true"
+        set_timezone_utc "$value" || { fail_test "$value was rejected"; return; }
+        assert_equals "false" "$USE_UTC" "USE_UTC after $value" || return
+    done
+
+    pass_test
+}
+
 # Test: set_timezone_utc with false
 test_set_timezone_local() {
     start_test "set_timezone_utc can switch back to local"
@@ -175,6 +217,28 @@ test_set_journal_logging() {
 
     set_journal_logging true
     assert_equals "true" "$USE_JOURNAL" || return
+
+    pass_test
+}
+
+# Test: set_journal_logging rejects values that are not booleans (SEC-04, #163)
+test_set_journal_logging_rejects_invalid() {
+    start_test "set_journal_logging rejects an invalid value and leaves the setting unchanged"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/journal_invalid.log"
+    LOG_FILE="$log_file"
+    USE_JOURNAL="false"
+
+    local value
+    for value in maybe "" "x
+second line" 2; do
+        set_journal_logging "$value" 2> "$TEST_DIR/journal_invalid.stderr"
+        assert_equals "1" "$?" "return status for an invalid value" || return
+        assert_equals "false" "$USE_JOURNAL" "USE_JOURNAL after an invalid value" || return
+        assert_file_contains "$TEST_DIR/journal_invalid.stderr" "invalid value" || return
+    done
+    assert_file_not_exists "$log_file" "no CONFIG notice for a rejected value" || return
 
     pass_test
 }
@@ -1175,6 +1239,129 @@ test_config_notice_write_failure_is_reported() {
     pass_test
 }
 
+# Test: A CONFIG notice with a newline and an escape character comes out sanitized (SEC-04, #163)
+test_config_notice_is_sanitized() {
+    start_test "A CONFIG notice with a newline and ESC is sanitized on the console and in the file"
+
+    init_logger --no-color --no-init-message
+    local log_file="$TEST_DIR/notice_sanitized.log"
+    LOG_FILE="$log_file"
+
+    local esc
+    esc=$(printf '\033')
+    # set_log_format puts the old and the new format in its notice. The old one is assigned
+    # here with a newline, which would start a forged line, and ESC [ 2 J, which would clear
+    # the screen. The new format is a plain one, because a format is the caller's own template
+    # and is used as it is.
+    LOG_FORMAT="a
+2026-11-06 00:00:00 [ERROR] [root] forged ${esc}[2J"
+    set_log_format "[%l] %m" > "$TEST_DIR/notice_console.out" 2>&1
+
+    assert_equals "1" "$(wc -l < "$log_file" | tr -d ' ')" "lines in the log file" || return
+    assert_equals "1" "$(wc -l < "$TEST_DIR/notice_console.out" | tr -d ' ')" \
+        "lines on the console" || return
+    local output_file
+    for output_file in "$log_file" "$TEST_DIR/notice_console.out"; do
+        if grep -q "$esc" "$output_file"; then
+            fail_test "An escape character reached $(basename "$output_file")"
+            return
+        fi
+        assert_file_contains "$output_file" "[CONFIG]" || return
+        assert_file_contains "$output_file" "forged" || return
+    done
+
+    pass_test
+}
+
+# Test: The unsafe opt-ins are about log messages, so they do not apply to CONFIG notices
+test_config_notice_ignores_unsafe_opt_ins() {
+    start_test "CONFIG notices are sanitized in full while the unsafe modes are on"
+
+    init_logger --no-color --no-init-message
+    local log_file="$TEST_DIR/notice_unsafe.log"
+    LOG_FILE="$log_file"
+    LOG_UNSAFE_ALLOW_NEWLINES="true"
+    LOG_UNSAFE_ALLOW_ANSI_CODES="true"
+
+    local esc
+    esc=$(printf '\033')
+    LOG_FORMAT="a
+forged ${esc}[2J"
+    set_log_format "[%l] %m" > /dev/null 2>&1
+
+    assert_equals "1" "$(wc -l < "$log_file" | tr -d ' ')" "lines in the log file" || return
+    if grep -q "$esc" "$log_file"; then
+        fail_test "An escape character reached the log file"
+        return
+    fi
+    # The opt-ins are put back for the messages that a script logs
+    assert_equals "true" "$LOG_UNSAFE_ALLOW_NEWLINES" || return
+    assert_equals "true" "$LOG_UNSAFE_ALLOW_ANSI_CODES" || return
+
+    pass_test
+}
+
+# Test: The old journal tag is sanitized in the "Journal tag changed" notice (from #154)
+test_set_journal_tag_notice_has_no_escape() {
+    start_test "set_journal_tag notice has no escape character when the old tag had one"
+
+    init_logger --no-color --no-init-message
+    local log_file="$TEST_DIR/notice_tag.log"
+    LOG_FILE="$log_file"
+
+    local esc
+    esc=$(printf '\033')
+    # Since #154 no input path leaves an escape character in JOURNAL_TAG, so the old tag is
+    # assigned here, as a script that sets the variable itself would
+    JOURNAL_TAG="old${esc}[2Jtag"
+    set_journal_tag "safe-tag" > /dev/null 2>&1
+
+    assert_file_contains "$log_file" "Journal tag changed" || return
+    if grep -q "$esc" "$log_file"; then
+        fail_test "An escape character reached the log file"
+        return
+    fi
+
+    pass_test
+}
+
+# Test: The journal copy of a CONFIG notice is sanitized too
+test_config_notice_journal_copy_is_sanitized() {
+    start_test "The journal copy of a CONFIG notice has no newline or escape character"
+
+    local stub_logger="$TEST_DIR/stub_logger"
+    local capture_file="$TEST_DIR/journal_notice.log"
+    # The stub writes the arguments it receives on one line of the capture file
+    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s"\n' "$capture_file" > "$stub_logger"
+    chmod +x "$stub_logger"
+
+    local esc old_format
+    esc=$(printf '\033')
+    old_format="a
+2026-11-06 00:00:00 [ERROR] [root] forged ${esc}[2J"
+
+    OLD_FORMAT="$old_format" bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        # Lock the stub as validation would, so the library runs it
+        LOGGER_PATH='$stub_logger'; readonly LOGGER_PATH
+        _find_and_validate_logger() { return 0; }
+        check_logger_available() { return 0; }
+        init_logger --quiet --no-color --no-init-message --journal --tag notice-test
+        LOG_FORMAT=\"\$OLD_FORMAT\"
+        set_log_format '[%l] %m'
+    " > /dev/null 2>&1
+
+    assert_file_contains "$capture_file" "CONFIG: Log format changed" || return
+    assert_equals "1" "$(wc -l < "$capture_file" | tr -d ' ')" \
+        "lines the journal received for one notice" || return
+    if grep -q "$esc" "$capture_file"; then
+        fail_test "An escape character reached the journal"
+        return
+    fi
+
+    pass_test
+}
+
 # Run all tests
 test_set_log_level
 test_set_log_level_string
@@ -1182,8 +1369,11 @@ test_set_log_level_number
 test_set_log_format
 test_set_log_format_persists
 test_set_timezone_utc
+test_set_timezone_utc_rejects_invalid
+test_set_timezone_utc_accepts_boolean_variants
 test_set_timezone_local
 test_set_journal_logging
+test_set_journal_logging_rejects_invalid
 test_set_journal_tag
 test_set_journal_tag_rejects_empty
 test_set_journal_tag_rejects_long_tag
@@ -1237,3 +1427,7 @@ test_config_notice_log_file_ignores_log_level
 test_config_notice_without_log_file
 test_config_notice_unsafe_uses_warning_color
 test_config_notice_write_failure_is_reported
+test_config_notice_is_sanitized
+test_config_notice_ignores_unsafe_opt_ins
+test_set_journal_tag_notice_has_no_escape
+test_config_notice_journal_copy_is_sanitized

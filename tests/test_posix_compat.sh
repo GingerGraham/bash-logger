@@ -516,12 +516,27 @@ test_posix_busybox_logger_symlink() {
 
     # readlink reports what it would for a busybox applet symlink
     local output
+    # _is_plain_file is replaced so that the test does not need a real busybox file at
+    # /usr/bin/busybox: the next case shows what it decides
     output=$(run_snippet_in_shell "$shell_command" C '
 readlink() { printf "%s\n" /usr/bin/busybox; }
+_is_plain_file() { return 0; }
 check_logger_available
 printf "%s|%s\n" "$?" "$LOGGER_PATH"
 ' 2>&1)
     assert_equals "0|$system_logger" "$output" || return
+
+    # A second hop: the first target is spelled as an allowed busybox path but is itself a
+    # link, for example through a directory other users can write to. It is rejected, and
+    # LOGGER_PATH is not set to the chain.
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() { printf "%s\n" /usr/bin/busybox; }
+_is_plain_file() { return 1; }
+check_logger_available
+printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_contains "$output" "status=1 path=[]" || return
+    assert_contains "$output" "unexpected location" || return
 
     # The same symlink outside a safe directory is still rejected
     mkdir -p "$TEST_DIR/unsafe_bin"
@@ -546,6 +561,70 @@ check_logger_available 2>/dev/null
 printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
 ' 2>&1)
     assert_equals "status=1 path=[]" "$output" || return
+
+    pass_test
+}
+
+test_posix_busybox_target_must_be_a_plain_file() {
+    start_test "_is_plain_file accepts a regular file and rejects a link, a directory and a missing path"
+
+    local real_file="$TEST_DIR/busybox"
+    : > "$real_file"
+    ln -s "$real_file" "$TEST_DIR/first_link"
+    ln -s "$TEST_DIR/first_link" "$TEST_DIR/second_link"
+    mkdir -p "$TEST_DIR/a_directory"
+
+    local status_line
+    status_line=$(run_snippet_in_shell bash C "
+for path in '$real_file' '$TEST_DIR/first_link' '$TEST_DIR/second_link' '$TEST_DIR/a_directory' '$TEST_DIR/missing'; do
+    if _is_plain_file \"\$path\"; then printf 'file '; else printf 'no '; fi
+done
+for path in '$real_file' '$TEST_DIR/first_link'; do
+    if _is_symlink \"\$path\"; then printf 'link '; else printf 'plain '; fi
+done
+printf '\\n'
+" 2>&1)
+    assert_equals "file no no no no plain link " "$status_line" || return
+
+    pass_test
+}
+
+test_posix_logger_symlink_that_cannot_be_resolved() {
+    local shell_command="$1"
+    start_test "[$shell_command] a logger link that readlink cannot resolve is rejected (INF-02)"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local system_logger
+    system_logger=$(command -v logger 2>/dev/null)
+    case "$system_logger" in
+        /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger) ;;
+        *)
+            skip_test "logger is not in a safe directory"
+            return 0
+            ;;
+    esac
+
+    # readlink -f fails, as on macOS before 12.3, and the logger is a link: the path is
+    # not followed, so it is not trusted
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() { return 1; }
+_is_symlink() { return 0; }
+check_logger_available
+printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_contains "$output" "status=1 path=[]" || return
+    assert_contains "$output" "cannot be resolved" || return
+
+    # The same failure for a logger that is a plain file in a safe directory is accepted
+    output=$(run_snippet_in_shell "$shell_command" C '
+readlink() { return 1; }
+_is_symlink() { return 1; }
+check_logger_available
+printf "status=%s path=[%s]\n" "$?" "$LOGGER_PATH"
+' 2>&1)
+    assert_equals "status=0 path=[$system_logger]" "$output" || return
 
     pass_test
 }
@@ -745,6 +824,86 @@ init_logger --quiet --max-line-length 50 --max-journal-length 60
 printf "%s|%s\n" "$LOG_MAX_LINE_LENGTH" "$LOG_MAX_JOURNAL_LENGTH"
 ' 2>&1)
     assert_equals "50|60" "$output" || return
+
+    pass_test
+}
+
+test_posix_length_limits_match_config() {
+    local shell_command="$1"
+    start_test "[$shell_command] CLI length limits are checked as the config file checks them"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Every value is set with the CLI option and with the config key, for both limits. A value
+    # that is invalid in the config file must give the same warning and keep the same limit
+    # on the CLI. 010 is octal for 8 and is valid, 0 means unlimited.
+    local snippet="
+config_file='$TEST_DIR/limit.ini'
+for kind in line journal; do
+    case \"\$kind\" in
+        line) option=--max-line-length; key=max_line_length ;;
+        journal) option=--max-journal-length; key=max_journal_length ;;
+    esac
+    for value in 08 09 0189 1048576 1048577 010 0 12345678901234567890; do
+        LOG_MAX_LINE_LENGTH=4096
+        LOG_MAX_JOURNAL_LENGTH=4096
+        cli_warning=\$(init_logger --quiet --no-init-message \"\$option\" \"\$value\" 2>&1 >/dev/null)
+        init_logger --quiet --no-init-message \"\$option\" \"\$value\" >/dev/null 2>&1
+        cli_value=\"\$LOG_MAX_LINE_LENGTH/\$LOG_MAX_JOURNAL_LENGTH\"
+        LOG_MAX_LINE_LENGTH=4096
+        LOG_MAX_JOURNAL_LENGTH=4096
+        printf '%s = %s\\n' \"\$key\" \"\$value\" > \"\$config_file\"
+        config_warning=\$(init_logger --quiet --no-init-message -c \"\$config_file\" 2>&1 >/dev/null)
+        init_logger --quiet --no-init-message -c \"\$config_file\" >/dev/null 2>&1
+        config_value=\"\$LOG_MAX_LINE_LENGTH/\$LOG_MAX_JOURNAL_LENGTH\"
+        printf '%s %s cli=%s config=%s\\n' \"\$kind\" \"\$value\" \"\$cli_value\" \"\$config_value\"
+        printf '  cli=[%s]\\n' \"\$(printf '%s' \"\$cli_warning\" | tr '\\n' '|')\"
+        printf '  config=[%s]\\n' \"\$(printf '%s' \"\$config_warning\" | tr '\\n' '|')\"
+    done
+done
+# A second call keeps the value from the first one, and the hint says which value that is
+init_logger --quiet --no-init-message --max-line-length 100 >/dev/null 2>&1
+printf 'again: %s\\n' \"\$(init_logger --quiet --no-init-message --max-line-length 08 2>&1 | tr '\\n' '|')\"
+printf 'kept: %s\\n' \"\$LOG_MAX_LINE_LENGTH\"
+"
+    local expected=""
+    local kind option key value limits
+    for kind in line journal; do
+        if [[ "$kind" == "line" ]]; then
+            option="max-line-length"
+            key="max_line_length"
+        else
+            option="max-journal-length"
+            key="max_journal_length"
+        fi
+        for value in 08 09 0189 1048576 1048577 010 0 12345678901234567890; do
+            case "$value" in
+                1048576|010|0)
+                    if [[ "$kind" == "line" ]]; then
+                        limits="$value/4096"
+                    else
+                        limits="4096/$value"
+                    fi
+                    expected="$expected$kind $value cli=$limits config=$limits
+  cli=[]
+  config=[]
+"
+                    ;;
+                *)
+                    expected="$expected$kind $value cli=4096/4096 config=4096/4096
+  cli=[Warning: Invalid $option value '$value', expected integer 0-1048576|  Hint: Keeping the current value of 4096]
+  config=[Warning: Invalid $key value '$value' at line 1, expected integer 0-1048576|  Hint: Keeping the current value of 4096]
+"
+                    ;;
+            esac
+        done
+    done
+    expected="${expected}again: Warning: Invalid max-line-length value '08', expected integer 0-1048576|  Hint: Keeping the current value of 100|
+kept: 100"
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "$snippet" 2>&1)
+    assert_equals "$expected" "$output" || return
 
     pass_test
 }
@@ -1100,6 +1259,241 @@ printf 'tag=%s status=%s\n' \"\$JOURNAL_TAG\" \"\$?\"
     pass_test
 }
 
+test_posix_journal_tag_rejects_controls() {
+    local shell_command="$1"
+    start_test "[$shell_command] journal tags reject the controls that messages lose, in every locale"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # U+202E, U+2067, U+009B and U+2028 are bidirectional, C1 and line separator characters
+    # that message sanitizing removes. café is ordinary text that must stay valid.
+    local snippet
+    snippet="
+config_file='$TEST_DIR/tag.conf'
+check_tag() {
+    set_journal_tag \"\$2\" >/dev/null 2>&1
+    set_status=\$?
+    JOURNAL_TAG=''
+    init_logger --quiet --no-init-message --tag \"\$2\" >/dev/null 2>&1
+    cli_tag=\$JOURNAL_TAG
+    printf '[logging]\\ntag = %s\\n' \"\$2\" > \"\$config_file\"
+    JOURNAL_TAG=''
+    init_logger --quiet --no-init-message -c \"\$config_file\" >/dev/null 2>&1
+    case \"\$JOURNAL_TAG\" in
+        *[!A-Za-z0-9._-]*) config_state=\"unsafe\" ;;
+        *) config_state=\"safe\" ;;
+    esac
+    printf '%s set=%s cli=[%s] config=%s\\n' \"\$1\" \"\$set_status\" \"\$cli_tag\" \"\$config_state\"
+}
+check_tag rlo \"\$(printf 'a\\342\\200\\256b')\"
+check_tag rli \"\$(printf 'a\\342\\201\\247b')\"
+check_tag c1 \"\$(printf 'a\\302\\233b')\"
+check_tag ls \"\$(printf 'a\\342\\200\\250b')\"
+cafe=\"\$(printf 'caf\\303\\251')\"
+set_journal_tag \"\$cafe\" >/dev/null 2>&1
+printf 'cafe set=%s tag=[%s]\\n' \"\$?\" \"\$JOURNAL_TAG\"
+"
+    local expected
+    expected="rlo set=1 cli=[] config=safe
+rli set=1 cli=[] config=safe
+c1 set=1 cli=[] config=safe
+ls set=1 cli=[] config=safe
+cafe set=0 tag=[caf$(printf '\303\251')]"
+
+    local locale_name
+    local output
+    for locale_name in C POSIX "$(utf8_locale_name)"; do
+        [[ -n "$locale_name" ]] || continue
+        output=$(run_snippet_in_shell "$shell_command" "$locale_name" "$snippet" 2>/dev/null)
+        assert_equals "$expected" "$output" "tag results under LC_ALL=$locale_name" || return
+    done
+
+    pass_test
+}
+
+test_posix_overlong_config_tag_sanitized() {
+    local shell_command="$1"
+    start_test "[$shell_command] an overlong invalid config tag is cut and sanitized"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # ESC [ 2 J, backspace, U+202E and ; in front of 70 letters
+    local snippet="
+config_file='$TEST_DIR/overlong_tag.conf'
+long=\$(printf '%070d' 0 | tr 0 A)
+printf '[logging]\\ntag = \\033[2J\\010\\342\\200\\256;rm%s\\n' \"\$long\" > \"\$config_file\"
+init_logger --quiet --no-init-message -c \"\$config_file\" >/dev/null 2>&1
+case \"\$JOURNAL_TAG\" in
+    *[!A-Za-z0-9._-]*) printf 'unsafe\\n' ;;
+    '') printf 'empty\\n' ;;
+    *) printf 'safe length=%s\\n' \"\${#JOURNAL_TAG}\" ;;
+esac
+"
+    # The tag is cut to 64 characters. In a UTF-8 locale on musl (Alpine), dash and busybox ash
+    # take the 3-byte U+202E as one character when they replace it, so the safe tag has 62
+    # characters, not 64. So the check is for a safe tag of at most 64 characters.
+    local locale_name
+    local output
+    local tag_length
+    for locale_name in C "$(utf8_locale_name)"; do
+        [[ -n "$locale_name" ]] || continue
+        output=$(run_snippet_in_shell "$shell_command" "$locale_name" "$snippet" 2>/dev/null)
+        assert_contains "$output" "safe length=" "tag under LC_ALL=$locale_name: $output" || return
+        tag_length="${output#safe length=}"
+        if [[ ! "$tag_length" =~ ^[0-9]+$ ]] || [[ "$tag_length" -lt 50 ]] \
+            || [[ "$tag_length" -gt 64 ]]; then
+            fail_test "tag length is '$tag_length', expected 50 to 64, under LC_ALL=$locale_name"
+            return
+        fi
+    done
+
+    pass_test
+}
+
+test_posix_shell_detection_uses_builtins() {
+    local shell_command="$1"
+    start_test "[$shell_command] shell detection ignores a shopt or emulate file on PATH (SEC-02, #161)"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Files named like the bash and zsh builtins, and both version variables inherited from
+    # the environment. command -v succeeds for the files too, but prints their path.
+    local fake_bin="$TEST_DIR/fake_bin"
+    mkdir -p "$fake_bin"
+    printf '#!/bin/sh\nexit 0\n' > "$fake_bin/shopt"
+    printf '#!/bin/sh\nexit 0\n' > "$fake_bin/emulate"
+    chmod +x "$fake_bin/shopt" "$fake_bin/emulate"
+
+    local snippet_file="$TEST_DIR/detect.sh"
+    printf '%s\n' \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        "printf 'family=[%s]\\n' \"\$_LOGGER_SHELL_FAMILY\"" \
+        "init_logger --quiet --no-init-message --format '%l %m' --log '$TEST_DIR/detect.log'" \
+        "log_info after-source" \
+        "printf 'done\\n'" > "$snippet_file"
+
+    # Real bash and zsh are still detected, including bash --posix. Any other shell has an
+    # empty family and works, although both variables say otherwise.
+    local expected_family=""
+    case "${shell_command%% *}" in
+        bash) expected_family="bash" ;;
+        zsh) expected_family="zsh" ;;
+    esac
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$fake_bin:$PATH" LC_ALL=C BASH_VERSION=5.2.0 ZSH_VERSION=5.9 \
+        $shell_command "$snippet_file" 2>&1 < /dev/null)
+
+    assert_contains "$output" "family=[$expected_family]" || return
+    assert_contains "$output" "done" "the script ran to the end" || return
+    assert_file_contains "$TEST_DIR/detect.log" "INFO after-source" || return
+
+    pass_test
+}
+
+test_posix_is_readonly_answers() {
+    local shell_command="$1"
+    start_test "[$shell_command] _is_readonly answers correctly with no options and under set -eu"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Every name the library cares about, and the cases that fooled earlier versions. A
+    # readonly name with no value is unset but readonly: assigning to it exits a POSIX shell.
+    local names_snippet='
+readonly_test_ro=1; readonly readonly_test_ro
+readonly_test_rox=1; export readonly_test_rox; readonly readonly_test_rox
+readonly_test_empty=""; readonly readonly_test_empty
+readonly readonly_test_novalue
+readonly_test_set=1
+readonly_test_newline="x
+readonly readonly_test_fake=1"
+for readonly_test_name in readonly_test_unset readonly_test_set readonly_test_ro \
+    readonly_test_rox readonly_test_empty readonly_test_novalue readonly_test_newline \
+    readonly_test_fake COLOR_RED LOG_LEVEL_DEBUG _LOGGER_ESC PATH HOME; do
+    if _is_readonly "$readonly_test_name"; then
+        printf "%s=readonly\n" "$readonly_test_name"
+    else
+        printf "%s=writable\n" "$readonly_test_name"
+    fi
+done
+'
+    local expected="readonly_test_unset=writable
+readonly_test_set=writable
+readonly_test_ro=readonly
+readonly_test_rox=readonly
+readonly_test_empty=readonly
+readonly_test_novalue=readonly
+readonly_test_newline=writable
+readonly_test_fake=writable
+COLOR_RED=readonly
+LOG_LEVEL_DEBUG=readonly
+_LOGGER_ESC=readonly
+PATH=writable
+HOME=writable
+resourced=ok"
+
+    # Sourcing again must still work, and keep the constants: the guards use _is_readonly
+    local resource_snippet="
+. '$PROJECT_ROOT/logging.sh'
+printf 'resourced=ok\n'"
+
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "$names_snippet$resource_snippet" 2>&1)
+    assert_equals "$expected" "$output" "no options" || return
+
+    output=$(run_snippet_in_shell "$shell_command" C "set -eu
+$names_snippet$resource_snippet" 2>&1)
+    assert_equals "$expected" "$output" "under set -eu" || return
+
+    pass_test
+}
+
+test_posix_sourcing_starts_no_grep() {
+    local shell_command="$1"
+    start_test "[$shell_command] sourcing the library and calling init_logger starts no grep"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # A fake grep first on PATH leaves a marker when it runs. The earlier readonly check
+    # started grep many times, which cost most of the start-up time.
+    local fake_bin="$TEST_DIR/grep_bin"
+    local marker="$TEST_DIR/grep_was_run"
+    mkdir -p "$fake_bin"
+    printf '#!/bin/sh\n: > "%s"\nexec /usr/bin/env -i /bin/sh -c "exit 1"\n' "$marker" > "$fake_bin/grep"
+    chmod +x "$fake_bin/grep"
+
+    local snippet_file="$TEST_DIR/no_grep.sh"
+    printf '%s\n' \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        "init_logger --quiet --no-init-message --no-color" \
+        "printf 'done\\n'" > "$snippet_file"
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$fake_bin:$PATH" LC_ALL=C $shell_command "$snippet_file" 2>&1 < /dev/null)
+    assert_equals "done" "$output" || return
+    assert_file_not_exists "$marker" "grep was started while sourcing" || return
+
+    pass_test
+}
+
+test_posix_is_readonly_path_matches_bash_version() {
+    start_test "bash 5.1 and later use the attribute check, older bash the subshell check"
+
+    local output
+    output=$(run_snippet_in_shell bash C '
+printf "version=%s attributes=%s\n" "$BASH_VERSION" "$_LOGGER_BASH_HAS_ATTRS"
+' 2>&1)
+    case "$BASH_VERSION" in
+        5.[1-9]*|[6-9].*) assert_contains "$output" "attributes=true" || return ;;
+        *) assert_contains "$output" "attributes=false" || return ;;
+    esac
+
+    pass_test
+}
+
 test_posix_log_file_permissions() {
     local shell_command="$1"
     start_test "[$shell_command] a created log file and directory are private, existing ones are kept"
@@ -1230,6 +1624,8 @@ test_posix_lint_check
 test_posix_busybox_utf8_byte_length
 test_run_with_timeout_stops_process_tree
 test_run_with_timeout_stops_late_descendants
+test_posix_busybox_target_must_be_a_plain_file
+test_posix_is_readonly_path_matches_bash_version
 while IFS= read -r posix_shell; do
     test_posix_caller_detection "$posix_shell"
     test_posix_truncation_bytes "$posix_shell"
@@ -1244,11 +1640,17 @@ while IFS= read -r posix_shell; do
     test_posix_trap_keeps_message "$posix_shell"
     test_posix_message_not_kept_in_variables "$posix_shell"
     test_posix_busybox_logger_symlink "$posix_shell"
+    test_posix_logger_symlink_that_cannot_be_resolved "$posix_shell"
     test_posix_second_config_without_value "$posix_shell"
     test_posix_config_notice_stream "$posix_shell"
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
     test_posix_tag_option_validated "$posix_shell"
+    test_posix_journal_tag_rejects_controls "$posix_shell"
+    test_posix_overlong_config_tag_sanitized "$posix_shell"
+    test_posix_shell_detection_uses_builtins "$posix_shell"
+    test_posix_is_readonly_answers "$posix_shell"
+    test_posix_sourcing_starts_no_grep "$posix_shell"
     test_posix_log_file_permissions "$posix_shell"
     test_posix_log_file_replaced_by_symlink "$posix_shell"
     test_posix_control_characters_removed "$posix_shell"
@@ -1261,6 +1663,7 @@ while IFS= read -r posix_shell; do
     test_posix_timestamp_builtin_and_fallback "$posix_shell"
     test_posix_timestamp_ignores_environment "$posix_shell"
     test_posix_max_length_options "$posix_shell"
+    test_posix_length_limits_match_config "$posix_shell"
     test_posix_config_bom "$posix_shell"
     test_posix_truncation_four_byte_character "$posix_shell"
     test_posix_journal_failure_reported_once "$posix_shell"

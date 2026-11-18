@@ -753,7 +753,12 @@ set_timezone_utc BOOLEAN
 
 **Parameters:**
 
-* `BOOLEAN` - `true` to use UTC, `false` to use local time
+* `BOOLEAN` - `true` to use UTC, `false` to use local time. Also accepted: `yes`, `no`, `on`, `off`, `1` and `0`
+
+**Returns:**
+
+* `0` - Success
+* `1` - Invalid value: an error is printed and the setting is unchanged
 
 **Examples:**
 
@@ -793,12 +798,12 @@ set_journal_logging BOOLEAN
 
 **Parameters:**
 
-* `BOOLEAN` - `true` to enable, `false` to disable
+* `BOOLEAN` - `true` to enable, `false` to disable. Also accepted: `yes`, `no`, `on`, `off`, `1` and `0`
 
 **Returns:**
 
 * `0` - Success
-* `1` - Error (e.g., logger command not available when trying to enable)
+* `1` - Error: an invalid value, or the logger command is not available when trying to enable. The setting is unchanged
 
 **Examples:**
 

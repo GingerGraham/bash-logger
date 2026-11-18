@@ -155,7 +155,7 @@
         "stdout",
         "stderr"
       ],
-      "reason": "A line limit that is invalid octal disables truncation; zsh reads a leading 0 as octal",
+      "reason": "A CLI line limit that is invalid octal or above 1048576 is rejected with a warning and the limit in effect stays, as in a config file; 2.x printed shell errors (bash) or kept the value",
       "guide": "#changes-in-bash-and-zsh"
     },
     {

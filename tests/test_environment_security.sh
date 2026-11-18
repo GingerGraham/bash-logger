@@ -588,7 +588,78 @@ test_preset_journal_error_reported_flag_cleared() {
     pass_test
 }
 
+# Test: An inherited SCRIPT_NAME is sanitized when the library is sourced (SEC-06, #165)
+# SCRIPT_NAME is the one setting that survives sourcing, and logging works before init_logger
+# runs, so the value used to reach the %s token and the journal tag fallback as it was.
+test_inherited_script_name_is_sanitized() {
+    local shell_command="$1"
+    start_test "[$shell_command] an inherited SCRIPT_NAME is sanitized before init_logger runs"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local stub_logger="$TEST_DIR/stub_logger"
+    local capture_file="$TEST_DIR/journal_capture.log"
+    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s"\n' "$capture_file" > "$stub_logger"
+    chmod +x "$stub_logger"
+
+    # Lock the stub as validation would, so the library runs it. USE_JOURNAL then sends every
+    # message to the journal, with the tag taken from JOURNAL_TAG or, as here, SCRIPT_NAME.
+    local script_file="$TEST_DIR/inherited_name.sh"
+    printf '%s\n' \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        "LOGGER_PATH='$stub_logger'; readonly LOGGER_PATH" \
+        "_find_and_validate_logger() { return 0; }" \
+        "check_logger_available() { return 0; }" \
+        "USE_JOURNAL=true" \
+        "log_info hi" \
+        "printf 'name=[%s]\\n' \"\$SCRIPT_NAME\"" > "$script_file"
+
+    # The issue's value: a newline that starts a second, forged log line
+    local injected_name="app] forged
+2026-11-06 00:00:00 [ERROR] [root"
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$PATH" LC_ALL=C SCRIPT_NAME="$injected_name" \
+        $shell_command "$script_file" 2>&1 < /dev/null)
+
+    local safe_name="app__forged_2026-11-06_00_00_00__ERROR___root"
+    assert_contains "$output" "[INFO] [$safe_name] hi" "the %s token" || return
+    assert_contains "$output" "name=[$safe_name]" || return
+    assert_equals "0" "$(printf '%s\n' "$output" | grep -c '^2026-11-06')" \
+        "forged lines in the console output" || return
+    assert_equals "2" "$(printf '%s\n' "$output" | wc -l | tr -d ' ')" \
+        "lines in the console output" || return
+
+    assert_equals "1" "$(wc -l < "$capture_file" | tr -d ' ')" \
+        "lines the journal received" || return
+    assert_file_contains "$capture_file" "daemon.info -t $safe_name -- hi" \
+        "the journal tag fallback" || return
+
+    pass_test
+}
+
+# A name that is already safe is kept as it is
+test_safe_script_name_is_kept_when_sourced() {
+    start_test "A safe SCRIPT_NAME from the environment is not changed when sourced"
+
+    local output
+    output=$(SCRIPT_NAME="my-app_1.2" bash -c ". '$PROJECT_ROOT/logging.sh'; printf '%s' \"\$SCRIPT_NAME\"" 2>&1)
+    assert_equals "my-app_1.2" "$output" || return
+
+    # Sourcing twice gives the same name, and a readonly safe name is left alone
+    output=$(SCRIPT_NAME="a b" bash -c ". '$PROJECT_ROOT/logging.sh'; . '$PROJECT_ROOT/logging.sh'; printf '%s' \"\$SCRIPT_NAME\"" 2>&1)
+    assert_equals "a_b" "$output" || return
+    output=$(bash -c "readonly SCRIPT_NAME=mine; . '$PROJECT_ROOT/logging.sh'; printf '%s' \"\$SCRIPT_NAME\"" 2>&1)
+    assert_equals "mine" "$output" || return
+
+    pass_test
+}
+
 # Run all tests
+test_safe_script_name_is_kept_when_sourced
+while IFS= read -r env_security_shell; do
+    test_inherited_script_name_is_sanitized "$env_security_shell"
+done <<< "$(test_shell_list)"
 test_preset_log_file_handling
 test_malicious_path_variable
 test_malicious_ifs_variable

@@ -60,25 +60,86 @@
 #   - Advanced features: docs/journal-logging.md, docs/runtime-configuration.md
 #   - Troubleshooting: docs/troubleshooting.md
 
-# Returns 0 if the named variable is readonly in the current shell (internal).
-# Used by the re-source guards below; must be defined before the first guard.
-# It tries to unset the variable in a subshell, which fails only for a readonly variable.
-# Earlier versions parsed "readonly -p" output instead. dash and busybox ash print values
-# there with literal newlines, so a readonly variable whose value contained a newline and
-# "readonly NAME=..." made NAME look readonly, and an environment value was then kept.
-_is_readonly() {
-    ! (unset "$1") 2>/dev/null
-}
-
 # The shell running this file: "bash", "zsh", or empty for any other shell (internal).
 # Set on every source. A version variable alone is not enough, because it can be inherited
 # from the environment, so the check also looks for a builtin only that shell has.
+# `command -v` prints the bare name for a builtin and the full path for a file on PATH, so
+# comparing the output with the name accepts the builtin only. A shopt or emulate file on
+# PATH, with an inherited BASH_VERSION or ZSH_VERSION, would otherwise select the wrong
+# family in dash or busybox ash and make the next line exit the shell. This costs a command
+# substitution (a fork without exec) in bash and zsh, and nothing elsewhere, because the
+# version variable is empty and the test ends before it.
 _LOGGER_SHELL_FAMILY=""
-if [ -n "${BASH_VERSION:-}" ] && command -v shopt >/dev/null 2>&1; then
+if [ -n "${BASH_VERSION:-}" ] && [ "$(command -v shopt 2>/dev/null)" = "shopt" ]; then
     _LOGGER_SHELL_FAMILY="bash"
-elif [ -n "${ZSH_VERSION:-}" ] && command -v emulate >/dev/null 2>&1; then
+elif [ -n "${ZSH_VERSION:-}" ] && [ "$(command -v emulate 2>/dev/null)" = "emulate" ]; then
     _LOGGER_SHELL_FAMILY="zsh"
 fi
+
+# ${name@a} gives the attributes of a variable (internal). bash 4.4 added it, but bash 4.4
+# gave a different answer from the later versions in the readonly tests, so it is used from
+# bash 5.1, the oldest version that has been checked against them. Older bash uses the
+# subshell probe. Set on every source, after the shell family is known, so an inherited value
+# cannot stay.
+_LOGGER_BASH_HAS_ATTRS="false"
+if [ "$_LOGGER_SHELL_FAMILY" = "bash" ]; then
+    case "${BASH_VERSION:-}" in
+        5.[1-9]*|[6-9].*) _LOGGER_BASH_HAS_ATTRS="true" ;;
+    esac
+fi
+
+# Returns 0 if the named variable is readonly in the current shell (internal).
+# Used by the re-source guards below; must be defined before the first guard.
+# bash 5.1 and later and zsh answer from the variable's attributes, with no process started.
+# Other shells (dash, busybox ash, bash up to 5.0) try to unset the variable in a subshell,
+# which fails only for a readonly variable: one fork and no exec.
+# Earlier versions parsed "readonly -p" output instead. dash and busybox ash print values
+# there with literal newlines, so a readonly variable whose value contained a newline and
+# "readonly NAME=..." made NAME look readonly, and an environment value was then kept.
+# An unset name can still be readonly (`readonly NAME` with no value), and assigning to it
+# exits a POSIX shell, so no path treats "unset" as "not readonly".
+_is_readonly() {
+    # Only plain variable names reach an eval below: a letter or underscore, then letters,
+    # digits and underscores. The characters are listed instead of given as ranges, as
+    # elsewhere in this file, because a range can follow the locale's collation order.
+    case "$1" in
+        ''|[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_]*|\
+        *[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_]*)
+            return 1
+            ;;
+    esac
+    if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
+        # ${(tP)name} is the type and flags of the parameter named by $1, such as
+        # scalar-readonly. The "-" default keeps an unset name from being an error under
+        # no_unset. dash and busybox ash reject zsh syntax when they read this file, so it
+        # is in a string that only zsh evaluates.
+        local parameter_type=""
+        eval 'parameter_type=${(tP)1-}'
+        case "-${parameter_type}-" in
+            *-readonly-*) return 0 ;;
+        esac
+        return 1
+    fi
+    if [ "$_LOGGER_BASH_HAS_ATTRS" = "true" ]; then
+        # ${name@a} lists the attributes, and r is readonly. It is in a string because older
+        # shells cannot read it. Under set -u it is an error for an unset name, so set -u
+        # is off for this one expansion and put back after it.
+        local attributes=""
+        local nounset_was_on="false"
+        case "$-" in
+            *u*) nounset_was_on="true"; set +u ;;
+        esac
+        eval "attributes=\${$1@a}"
+        if [ "$nounset_was_on" = "true" ]; then
+            set -u
+        fi
+        case "$attributes" in
+            *r*) return 0 ;;
+        esac
+        return 1
+    fi
+    ! (unset "$1") 2>/dev/null
+}
 
 # Make a variable readonly and global (internal).
 # zsh's readonly declares a new local variable when this file is sourced from inside a
@@ -109,9 +170,10 @@ if ! _is_readonly _LOGGER_ESC; then
     _LOGGER_BOM=$(printf '\357\273\277')
     # UTF-8 encodings of the non-ASCII control characters, one per line: C1 controls
     # U+0080 to U+009F (C2 80 to C2 9F), LINE SEPARATOR U+2028 (E2 80 A8) and
-    # PARAGRAPH SEPARATOR U+2029 (E2 80 A9). In a UTF-8 locale bash and zsh count these
-    # as [[:cntrl:]]; dash and busybox ash do not, so _contains_control_characters
-    # checks for them explicitly.
+    # PARAGRAPH SEPARATOR U+2029 (E2 80 A9). In a UTF-8 locale bash and zsh count some of
+    # these as [[:cntrl:]]; dash and busybox ash do not. Message sanitizing removes them in
+    # every shell, and _contains_strippable_characters (so also
+    # _contains_control_characters) matches them by their bytes, whatever the locale.
     _LOGGER_UTF8_CONTROLS=$(printf '%b\n' \
         '\0302\0200' '\0302\0201' '\0302\0202' '\0302\0203' '\0302\0204' '\0302\0205' \
         '\0302\0206' '\0302\0207' '\0302\0210' '\0302\0211' '\0302\0212' '\0302\0213' \
@@ -232,22 +294,6 @@ _shell_counts_characters() {
     [ -n "$_LOGGER_SHELL_FAMILY" ]
 }
 
-# Return 0 if the locale environment selects UTF-8 (internal).
-# Uses the same precedence as the C library: LC_ALL, then LC_CTYPE, then LANG.
-_is_utf8_locale() {
-    local active_locale="${LC_ALL:-}"
-    if [ -z "$active_locale" ]; then
-        active_locale="${LC_CTYPE:-}"
-    fi
-    if [ -z "$active_locale" ]; then
-        active_locale="${LANG:-}"
-    fi
-    case "$active_locale" in
-        *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*) return 0 ;;
-    esac
-    return 1
-}
-
 # Set _LOGGER_CHARACTER_COUNT to the number of characters in a value (internal).
 # bash and zsh count characters directly. In other shells ${#value} may count bytes,
 # so values with non-ASCII bytes are counted with "wc -m", which follows the locale
@@ -271,29 +317,16 @@ _count_characters() {
 }
 
 # Return 0 if a value contains a control character (internal).
-# Matches what the earlier [[ $value =~ [[:cntrl:]] ]] check matched in bash: ASCII
-# control characters, and in a UTF-8 locale the non-ASCII control characters as well.
+# ASCII control characters (including newline, carriage return and tab, which message
+# sanitizing replaces rather than removes) are matched by [[:cntrl:]]. Everything else that
+# message sanitizing removes is matched by _contains_strippable_characters: the C1 controls,
+# U+2028, U+2029 and the bidirectional formatting characters, as whole UTF-8 sequences in
+# any locale. A tag, path or format therefore cannot contain what a message could not.
 _contains_control_characters() {
     case "$1" in
         *[[:cntrl:]]*) return 0 ;;
     esac
-    if ! _is_utf8_locale; then
-        return 1
-    fi
-    # Only values with a non-ASCII byte can contain a non-ASCII control character
-    case "$1" in
-        *[!\ -~]*) ;;
-        *) return 1 ;;
-    esac
-    local utf8_control=""
-    while IFS= read -r utf8_control; do
-        case "$1" in
-            *"$utf8_control"*) return 0 ;;
-        esac
-    done <<UTF8_CONTROLS
-$_LOGGER_UTF8_CONTROLS
-UTF8_CONTROLS
-    return 1
+    _contains_strippable_characters "$1"
 }
 
 # Return 0 if a value contains a shell metacharacter (internal).
@@ -459,6 +492,22 @@ _parse_shell_integer() {
     esac
     _LOGGER_INTEGER="$value"
     return 0
+}
+
+# Check a message length limit from a CLI option or a config key (internal).
+# Arguments: value, name used in the warning, location text (" at line 3", or empty), the
+# limit in effect now.
+# The CLI options and the config keys use this one check, so they accept the same values:
+# an integer from 0 to 1048576, read as bash arithmetic does (a leading 0 means octal, so
+# 010 is 8 and 08 is invalid). An invalid value prints a warning that names the accepted
+# range, and the limit in effect stays. Returns 0 for a valid value.
+_validate_length_limit() {
+    if _parse_shell_integer "$1" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+        return 0
+    fi
+    printf '%s\n' "Warning: Invalid $2 value '$1'$3, expected integer 0-1048576" >&2
+    printf '%s\n' "  Hint: Keeping the current value of $4" >&2
+    return 1
 }
 
 # Set _LOGGER_PREFIX to the first <length> characters of text (internal).
@@ -745,6 +794,17 @@ fi
 # Not readonly — resetting to "false" on re-source is correct (new context must re-validate).
 _LOGGER_DISCOVERY_DONE="false"
 
+# Return 0 if a path is a symbolic link (internal).
+# A function of its own, so that the logger checks can be tested without root.
+_is_symlink() {
+    [ -L "$1" ]
+}
+
+# Return 0 if a path is a regular file and not a symbolic link (internal).
+_is_plain_file() {
+    [ -f "$1" ] && [ ! -L "$1" ]
+}
+
 # Find and validate the logger command to prevent PATH manipulation attacks
 # This function finds the logger executable and validates it's in a safe system location
 # Returns 0 if logger is found and valid, 1 otherwise
@@ -761,8 +821,20 @@ _find_and_validate_logger() {
 
     # Resolve any symlinks to get the real path
     local logger_found="$logger_candidate"
-    if command -v readlink >/dev/null 2>&1; then
-        logger_candidate=$(readlink -f "$logger_candidate" 2>/dev/null || printf '%s\n' "$logger_candidate")
+    local logger_resolved=""
+    if command -v readlink >/dev/null 2>&1 \
+        && logger_resolved=$(readlink -f "$logger_candidate" 2>/dev/null) \
+        && [ -n "$logger_resolved" ]; then
+        logger_candidate="$logger_resolved"
+    elif _is_symlink "$logger_found"; then
+        # readlink is missing, or cannot resolve the link (readlink -f needs macOS 12.3).
+        # Where the link ends is unknown, so the path below would be checked without
+        # following the link. Refuse a link that cannot be followed.
+        printf '%s\n' "Warning: logger is a symbolic link that cannot be resolved: $logger_found" >&2
+        printf '%s\n' "  Journal logging disabled for security" >&2
+        USE_JOURNAL="false"
+        _LOGGER_DISCOVERY_DONE="true"
+        return 1
     fi
 
     # busybox selects the applet from the name it is run as, so a logger symlink to a busybox
@@ -774,11 +846,23 @@ _find_and_validate_logger() {
             case "$logger_found" in
                 /bin/logger|/usr/bin/logger|/usr/local/bin/logger|/sbin/logger|/usr/sbin/logger)
                     local link_target=""
+                    local link_target_path=""
                     link_target=$(readlink "$logger_found" 2>/dev/null)
                     case "$link_target" in
                         /bin/busybox|/usr/bin/busybox|/sbin/busybox|/usr/sbin/busybox|\
                         busybox|../bin/busybox|../../bin/busybox)
-                            logger_candidate="$logger_found"
+                            # The spelling is not enough: the first target must itself be
+                            # a regular file, not a link to somewhere else, or a chain through
+                            # a directory other users can write to would be accepted and
+                            # followed again on every journal write. A relative target is
+                            # read from the directory of the logger link.
+                            case "$link_target" in
+                                /*) link_target_path="$link_target" ;;
+                                *) link_target_path="${logger_found%/*}/$link_target" ;;
+                            esac
+                            if _is_plain_file "$link_target_path"; then
+                                logger_candidate="$logger_found"
+                            fi
                             ;;
                     esac
                     ;;
@@ -950,9 +1034,14 @@ _validate_config_format() {
     _replace_all "$_LOGGER_REPLACED" "%z" ""
     clean_format="$_LOGGER_REPLACED"
 
-    # Check remaining string for control characters (excluding valid format specifiers)
+    # Reject a format with control characters left (excluding valid format specifiers). The
+    # config parser then skips it and keeps the current format. The length was checked for
+    # every config value before this point, so a failure here is a control character. The
+    # -f option and set_log_format take the format from the calling script and are not
+    # checked here.
     if ! _validate_string "$clean_format" "$CONFIG_MAX_VALUE_LENGTH" "configuration format at line $line_num" "true" "true" >/dev/null 2>&1; then
-        printf '%s\n' "Warning: Configuration format at line $line_num contains control characters (may be stripped)" >&2
+        printf '%s\n' "Warning: Configuration format at line $line_num contains control characters and is rejected" >&2
+        return 1
     fi
 
     return 0
@@ -1209,8 +1298,10 @@ _parse_config_file() {
                     # Truncate or sanitize if validation failed
                     _count_characters "$value"
                     if [ "$_LOGGER_CHARACTER_COUNT" -gt 64 ]; then
+                        # Cut the tag first, then replace unsafe characters in what is left
                         _text_prefix "$value" 64
-                        JOURNAL_TAG="$_LOGGER_PREFIX"
+                        _replace_unsafe_name_characters "$_LOGGER_PREFIX"
+                        JOURNAL_TAG="$_LOGGER_REPLACED"
                         printf '%s\n' "  Hint: Truncated journal tag to 64 characters" >&2
                     else
                         # Strip problematic characters
@@ -1319,23 +1410,17 @@ _parse_config_file() {
                 fi
                 ;;
             max_line_length|max-line-length|log_max_line_length|log-max-line-length)
-                # Read as bash arithmetic does (a leading 0 means octal); the value is
-                # stored as written
-                if _parse_shell_integer "$value" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+                # The value is stored as written
+                if _validate_length_limit "$value" "max_line_length" " at line $line_num" \
+                    "$LOG_MAX_LINE_LENGTH"; then
                     LOG_MAX_LINE_LENGTH="$value"
-                else
-                    printf '%s\n' "Warning: Invalid max_line_length value '$value' at line $line_num, expected integer 0-1048576" >&2
-                    printf '%s\n' "  Hint: Using default value of 4096" >&2
                 fi
                 ;;
             max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
-                # Read as bash arithmetic does (a leading 0 means octal); the value is
-                # stored as written
-                if _parse_shell_integer "$value" && [ "$_LOGGER_INTEGER" -le 1048576 ]; then
+                # The value is stored as written
+                if _validate_length_limit "$value" "max_journal_length" " at line $line_num" \
+                    "$LOG_MAX_JOURNAL_LENGTH"; then
                     LOG_MAX_JOURNAL_LENGTH="$value"
-                else
-                    printf '%s\n' "Warning: Invalid max_journal_length value '$value' at line $line_num, expected integer 0-1048576" >&2
-                    printf '%s\n' "  Hint: Using default value of 4096" >&2
                 fi
                 ;;
             init_message|log_init_message)
@@ -1605,8 +1690,9 @@ _strip_ansi_codes_into() {
     _LOGGER_TEXT="$1"
 
     # If unsafe mode is enabled, skip stripping and return input as-is. The other control
-    # characters are kept too: BEL ends an OSC sequence such as a hyperlink.
-    if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
+    # characters are kept too: BEL ends an OSC sequence such as a hyperlink. The optional
+    # second argument replaces LOG_UNSAFE_ALLOW_ANSI_CODES for this call.
+    if [ "${2:-$LOG_UNSAFE_ALLOW_ANSI_CODES}" = "true" ]; then
         return 0
     fi
 
@@ -1715,7 +1801,9 @@ _sanitize_log_message_into() {
 
     # Sanitize newlines if not in unsafe mode
     # This is independent from ANSI code stripping to prevent security bypass
-    if [ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]; then
+    # The optional second and third arguments ("true" or "false") replace
+    # LOG_UNSAFE_ALLOW_NEWLINES and LOG_UNSAFE_ALLOW_ANSI_CODES for this call.
+    if [ "${2:-$LOG_UNSAFE_ALLOW_NEWLINES}" != "true" ]; then
         # Replace control characters with spaces to prevent log injection
         # These characters can break log formats and enable log injection attacks
         # newline (LF), carriage return (CR) and tab (HT)
@@ -1725,7 +1813,7 @@ _sanitize_log_message_into() {
 
     # Strip ANSI codes from user input to prevent terminal manipulation
     # This is independent from newline sanitization
-    _strip_ansi_codes_into "$message"
+    _strip_ansi_codes_into "$message" "${3:-}"
     _strip_trailing_newlines
 }
 
@@ -2148,10 +2236,8 @@ init_logger() {
                     printf '%s\n' "Error: --max-line-length requires a value" >&2
                     return 1
                 fi
-                if _is_digits "$2"; then
+                if _validate_length_limit "$2" "max-line-length" "" "$LOG_MAX_LINE_LENGTH"; then
                     LOG_MAX_LINE_LENGTH="$2"
-                else
-                    printf '%s\n' "Warning: Invalid max-line-length value '$2', expected non-negative integer" >&2
                 fi
                 shift 2
                 ;;
@@ -2160,10 +2246,8 @@ init_logger() {
                     printf '%s\n' "Error: --max-journal-length requires a value" >&2
                     return 1
                 fi
-                if _is_digits "$2"; then
+                if _validate_length_limit "$2" "max-journal-length" "" "$LOG_MAX_JOURNAL_LENGTH"; then
                     LOG_MAX_JOURNAL_LENGTH="$2"
-                else
-                    printf '%s\n' "Warning: Invalid max-journal-length value '$2', expected non-negative integer" >&2
                 fi
                 shift 2
                 ;;
@@ -2304,6 +2388,46 @@ _log_set_config_to_file() {
     return 0
 }
 
+# Sanitize the text of a CONFIG notice (internal). Sets _LOGGER_TEXT.
+# The text of a notice is made of setter arguments and library values, not of a log message,
+# and it is written to the console, the log file and the journal. It is therefore always
+# cleaned in full, whatever LOG_UNSAFE_ALLOW_NEWLINES and LOG_UNSAFE_ALLOW_ANSI_CODES say:
+# those opt-ins are about the messages a script logs, so they are overridden for this call.
+_sanitize_config_notice_into() {
+    _sanitize_log_message_into "$1" "false" "false"
+}
+
+# Report a runtime configuration change as a CONFIG notice (internal).
+# Every set_* function ends with this call, so a notice is sanitized in one place.
+# Arguments:
+#   1  the text of the notice
+#   2  console color (default: purple)
+#   3  journal tag (default: JOURNAL_TAG, or SCRIPT_NAME when there is none)
+#   4  text for the journal copy (default: the text of the notice)
+#   5  "true" to write the journal copy even when journal logging is off (default: false)
+# The notice goes to the console, the log file when there is one, and the journal when it
+# is enabled.
+_config_notice() {
+    local journal_tag="${3:-${JOURNAL_TAG:-$SCRIPT_NAME}}"
+    local journal_force="${5:-false}"
+
+    _sanitize_config_notice_into "$1"
+    local message="$_LOGGER_TEXT"
+    local journal_message="$message"
+    if [ -n "${4:-}" ]; then
+        _sanitize_config_notice_into "$4"
+        journal_message="$_LOGGER_TEXT"
+    fi
+
+    _format_log_message_into "CONFIG" "$message"
+    local log_entry="$_LOGGER_TEXT"
+
+    _log_set_config_to_console "$log_entry" "${2:-}"
+    _log_set_config_to_file "$log_entry"
+
+    _write_to_journal "notice" "$journal_tag" "CONFIG: $journal_message" "$journal_force"
+}
+
 # Function to change log level after initialization
 set_log_level() {
     local level="$1"
@@ -2315,30 +2439,22 @@ set_log_level() {
 
     # Create a special log entry that bypasses level checks
     local message="Log level changed from $old_level to $new_level"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 set_timezone_utc() {
-    local use_utc="$1"
+    local new_value=""
+    new_value=$(_parse_bool_value "$1") || {
+        _sanitize_config_notice_into "$1"
+        printf '%s\n' "Error: set_timezone_utc: invalid value '$_LOGGER_TEXT'" >&2
+        printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$USE_UTC"
-    USE_UTC="$use_utc"
+    USE_UTC="$new_value"
 
     local message="Timezone setting changed from $old_setting to $USE_UTC"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to change log format
@@ -2347,20 +2463,20 @@ set_log_format() {
     LOG_FORMAT="$1"
 
     local message="Log format changed from \"$old_format\" to \"$LOG_FORMAT\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to toggle journal logging
 set_journal_logging() {
+    local new_value=""
+    new_value=$(_parse_bool_value "$1") || {
+        _sanitize_config_notice_into "$1"
+        printf '%s\n' "Error: set_journal_logging: invalid value '$_LOGGER_TEXT'" >&2
+        printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$USE_JOURNAL"
-    USE_JOURNAL="$1"
+    USE_JOURNAL="$new_value"
 
     # Check if logger is available when enabling journal logging
     if [ "$USE_JOURNAL" = "true" ]; then
@@ -2372,17 +2488,14 @@ set_journal_logging() {
     fi
 
     local message="Journal logging changed from $old_setting to $USE_JOURNAL"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
 
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Log to journal if it was previously enabled or just being enabled
-    # Only attempt journal write when logger path is set
+    # The journal copy is written when journal logging was on or has just been turned on,
+    # even though it is off now when it was just turned off
+    local journal_force="false"
     if [ "$old_setting" = "true" ] || [ "$USE_JOURNAL" = "true" ]; then
-        _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message" "true"
+        journal_force="true"
     fi
+    _config_notice "$message" "" "" "" "$journal_force"
 }
 
 # Function to set journal tag
@@ -2395,14 +2508,9 @@ set_journal_tag() {
     JOURNAL_TAG="$1"
 
     local message="Journal tag changed from \"$old_tag\" to \"$JOURNAL_TAG\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
 
     # Log to journal if enabled, using the old tag
-    _write_to_journal "notice" "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
+    _config_notice "$message" "" "${old_tag:-$SCRIPT_NAME}" "Journal tag changing to \"$JOURNAL_TAG\""
 }
 
 # Function to set syslog facility
@@ -2416,14 +2524,7 @@ set_syslog_facility() {
     SYSLOG_FACILITY="$(_to_lower "$1")"
 
     local message="Syslog facility changed from \"$old_facility\" to \"$SYSLOG_FACILITY\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to set color mode
@@ -2452,14 +2553,7 @@ set_color_mode() {
     USE_COLORS="$new_value"
 
     local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to set script name dynamically
@@ -2469,14 +2563,7 @@ set_script_name() {
     SCRIPT_NAME=$(_sanitize_script_name "$1")
 
     local message="Script name changed from \"$old_name\" to \"$SCRIPT_NAME\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to enable/disable unsafe mode for newlines in log messages
@@ -2498,19 +2585,13 @@ set_unsafe_allow_newlines() {
     fi
 
     local message="Unsafe newline mode changed from $old_setting to $LOG_UNSAFE_ALLOW_NEWLINES$safety_notice"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Use warning color if enabling unsafe mode
     local log_entry_color=""
     if [ "$LOG_UNSAFE_ALLOW_NEWLINES" = "true" ]; then
         log_entry_color="${COLOR_RED}"
     fi
-    _log_set_config_to_console "${log_entry}" "${log_entry_color}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message" "$log_entry_color"
 }
 
 # Function to enable/disable unsafe mode for ANSI codes in log messages
@@ -2532,19 +2613,13 @@ set_unsafe_allow_ansi_codes() {
     fi
 
     local message="Unsafe ANSI codes mode changed from $old_setting to $LOG_UNSAFE_ALLOW_ANSI_CODES$safety_notice"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Use warning color if enabling unsafe mode
     local log_entry_color=""
     if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
         log_entry_color="${COLOR_RED}"
     fi
-    _log_set_config_to_console "${log_entry}" "${log_entry_color}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message" "$log_entry_color"
 }
 
 # Logs to console (internal)
@@ -2838,6 +2913,20 @@ log_to_journal() {
 
     _log_message "$canonical_level" "$level_value" "$message" "false" "false" "true"
 }
+
+# SCRIPT_NAME is the one setting that survives sourcing (see the top of this file), and
+# logging works before init_logger is called. The %s format token and the journal tag
+# fallback would then use an inherited value as it is, and a newline in it would forge log
+# lines. Sanitize it here, as init_logger, set_script_name and the config parser do.
+# A name that is already safe is not assigned again, so a script that made SCRIPT_NAME readonly
+# keeps working (assigning to a readonly variable exits a POSIX shell). An environment variable
+# is never readonly, so an unsafe inherited value is always cleaned.
+if [ -n "${SCRIPT_NAME:-}" ]; then
+    _replace_unsafe_name_characters "$SCRIPT_NAME"
+    if [ "$_LOGGER_REPLACED" != "$SCRIPT_NAME" ] && ! _is_readonly SCRIPT_NAME; then
+        SCRIPT_NAME="$_LOGGER_REPLACED"
+    fi
+fi
 
 # Only execute initialization if this script is being run directly
 # If it's being sourced, the sourcing script should call init_logger

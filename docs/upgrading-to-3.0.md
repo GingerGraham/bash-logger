@@ -70,6 +70,29 @@ These also come from the security review of 3.0 and apply in every shell.
   tests, must now also make it readonly. `log_to_journal` also stops when validation fails.
 * **`-t` and `--tag` are validated** as the `tag` config key and `set_journal_tag` are. An
   invalid tag prints an error, and the previous tag is kept.
+* **Tags reject what messages lose, in every locale.** A tag and a config file path cannot
+  contain the C1 controls, U+2028, U+2029 or the bidirectional formatting characters U+202A to
+  U+202E and U+2066 to U+2069. 2.x and 3.0.0 checked for the non-ASCII ones
+  only in a UTF-8 locale, and not for the bidirectional characters at all. The bidirectional marks
+  and zero-width characters listed above are still accepted, as is ordinary non-ASCII text such as
+  `café`.
+* **A `logger` reached through a chain of links is not used.** On Alpine, `logger` is a symlink to
+  `busybox`. 3.0.0 accepted it when the link was spelled as an allowed `busybox` path, even if
+  that path was itself a link to somewhere else. The target must now be a regular file. A
+  `logger` link that `readlink -f` cannot resolve is also refused, where 3.0.0 checked the
+  unresolved path. A `logger` that is a regular file, or a direct link to `busybox`, works as before.
+* **An inherited `SCRIPT_NAME` is sanitized when the library is sourced.** Before, only `init_logger`,
+  `set_script_name` and the config parser cleaned it, so a message logged before `init_logger`
+  ran, and the default journal tag, used the value from the environment as it was. A newline in
+  it could forge log lines. A name that is already safe is unchanged.
+* **A config `format` with control characters is rejected.** 2.x and 3.0.0 warned that such a
+  format "may be stripped" and used it as it was, so a config file could add escape sequences or a
+  carriage return to every console line, log file line and INIT line. The parser now prints
+  `contains control characters and is rejected`, skips the value and keeps the current format.
+  `--format` and `set_log_format` take the format from the calling script and are unchanged.
+* **An overlong invalid config tag is sanitized as well as truncated.** A `tag` value of more
+  than 64 characters that fails validation is cut to 64 characters, and then the characters
+  other than letters, digits, `.`, `_` and `-` are replaced with `_`. 2.x only cut it.
 
 ## Changes in bash and zsh
 
@@ -78,10 +101,17 @@ These also come from the security review of 3.0 and apply in every shell.
 * **A missing option value is an error.** `init_logger --format` (or `--level`, `--log`, `--name`,
   `--tag`, `--stderr-level`) as the last argument now prints `requires a value` and returns 1.
   In bash, 2.x looped forever. A second `--config` with no value does the same.
-* **A line limit that is invalid octal disables truncation.** With `LOG_MAX_LINE_LENGTH` or
-  `LOG_MAX_JOURNAL_LENGTH` set to a value such as `08`, `09` or `0189`, 2.x printed shell errors
-  and lost the message under bash, or exited a script running with `set -e`. 3.0 logs the full
-  message. A leading `0` still means octal, so `010` is 8.
+* **A line limit that is invalid octal disables truncation, when you assign the variable.** With
+  `LOG_MAX_LINE_LENGTH` or `LOG_MAX_JOURNAL_LENGTH` set directly to a value such as `08`, `09` or
+  `0189`, 2.x printed shell errors and lost the message under bash, or exited a script running
+  with `set -e`. 3.0 logs the full message. A leading `0` still means octal, so `010` is 8.
+* **The line limit options reject the values the config file rejects.** `init_logger
+  --max-line-length` and `--max-journal-length` accept an integer from 0 to 1048576, as the
+  `max_line_length` and `max_journal_length` config keys do. A value such as `08` (invalid
+  octal) or `1048577` prints a warning that names the range, and the limit in effect stays: the
+  default of 4096, or the value from an earlier call. 2.x printed shell errors, and 3.0.0 only
+  checked that the value was made of digits, so it accepted both and turned truncation off for
+  `08`. The warning now says which value is kept.
 * **A failed log file write prints one error.** The shell's own redirection error (for example
   `Is a directory`) no longer appears next to the logger's `Failed to write to log file` message.
 * **Levels must be plain numbers.** `CURRENT_LOG_LEVEL` is documented as 0 to 7, and the
@@ -110,8 +140,22 @@ The notices that the `set_*` functions print, such as `Log format changed`, chan
 * **A failed log file write is handled like any other message.** It is reported once, and the
   notice goes to stderr. In 2.x the failure was silent, and it exited a script running with
   `set -e`.
+* **The text of a notice is sanitized.** Newlines, escape sequences and other control characters
+  in it are replaced or removed before it is written to the console, the log file and the
+  journal, so a value passed to a `set_*` function cannot forge a line. This applies even while
+  `--unsafe-allow-newlines` or `--unsafe-allow-ansi-codes` is on, because those options are about
+  the messages a script logs. A format you set with `set_log_format` is still your own template
+  and is used as you wrote it; only its text inside the notice is cleaned.
 
 See [Runtime Configuration Notices](output-streams.md#runtime-configuration-notices).
+
+Two setters also check their argument now, as `set_unsafe_allow_newlines` does:
+
+* **`set_timezone_utc` and `set_journal_logging` reject values that are not booleans.** 2.x and
+  3.0.0 stored whatever you passed. Now only `true`, `false`, `yes`, `no`, `on`, `off`, `1` and
+  `0` (in any case) are accepted. Any other value prints an error, changes nothing and returns 1.
+  A value such as `yes` used to leave UTC off, because only the exact string `true` turned it on;
+  it now turns it on.
 
 ## Changes in zsh only
 
@@ -127,8 +171,8 @@ See [Runtime Configuration Notices](output-streams.md#runtime-configuration-noti
 * **`setopt warn_nested_var` reports more internal variables.** The library keeps intermediate
   results in `_LOGGER_` variables, and zsh warns each time a function sets one. The warnings
   need no action.
-* **A leading `0` in a line limit means octal,** as it does in bash. `010` is 8, and `08` disables
-  truncation.
+* **A leading `0` in a line limit means octal,** as it does in bash. `010` is 8, and `08` is
+  rejected (when you assign the variable directly, `08` disables truncation).
 * **Sourcing from inside a function works correctly.** The constants stay global, and the logger
   path lock now applies in zsh as it does in other shells.
 * **Frequent signals with logging handlers can crash zsh 5.9.** This is a zsh bug that 3.0 exposes.
@@ -144,17 +188,16 @@ counting bytes. See [Shell Compatibility](shell-compatibility.md#documented-diff
 The library adds internal functions and variables. Internal function names start with `_` and
 variable names start with `_LOGGER_`. If your script defines one of these names, rename yours:
 
-`_append_to_log_file`, `_bash_timestamp_into`, `_cap_message_length_into`,
-`_contains_control_characters`, `_contains_strippable_characters`,
-`_contains_shell_metacharacters`, `_count_characters`, `_current_timestamp_into`,
-`_find_caller_script`, `_format_log_message_into`, `_get_log_level_color_into`,
-`_get_syslog_priority_into`, `_has_word_after_separator`, `_is_digits`, `_is_utf8_locale`,
-`_log_set_config_to_console`, `_log_set_config_to_file`, `_logger_readonly`,
-`_parse_shell_integer`, `_replace_all`, `_replace_line_control_chars`,
-`_replace_unsafe_name_characters`, `_require_option_value`, `_sanitize_log_message_into`,
-`_shell_counts_characters`, `_strip_ansi_codes_into`, `_strip_trailing_newlines`, `_text_length`,
-`_text_prefix`, `_truncate_log_message_into`, `_utc_timestamp_from_epoch`, `_write_log_message`,
-`_zsh_timestamp_into`.
+`_append_to_log_file`, `_bash_timestamp_into`, `_cap_message_length_into`, `_config_notice`,
+`_contains_control_characters`, `_contains_shell_metacharacters`, `_contains_strippable_characters`,
+`_count_characters`, `_current_timestamp_into`, `_find_caller_script`, `_format_log_message_into`,
+`_get_log_level_color_into`, `_get_syslog_priority_into`, `_has_word_after_separator`, `_is_digits`,
+`_is_plain_file`, `_is_symlink`, `_log_set_config_to_console`, `_log_set_config_to_file`,
+`_logger_readonly`, `_parse_shell_integer`, `_replace_all`, `_replace_line_control_chars`,
+`_replace_unsafe_name_characters`, `_require_option_value`, `_sanitize_config_notice_into`,
+`_sanitize_log_message_into`, `_shell_counts_characters`, `_strip_ansi_codes_into`,
+`_strip_trailing_newlines`, `_text_length`, `_text_prefix`, `_truncate_log_message_into`,
+`_utc_timestamp_from_epoch`, `_validate_length_limit`, `_write_log_message`, `_zsh_timestamp_into`.
 
 No internal function was removed.
 
