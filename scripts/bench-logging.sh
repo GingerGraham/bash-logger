@@ -8,6 +8,8 @@
 # Options:
 #   --scenario NAME      Run only this scenario; repeat for more (default: all, see below)
 #   --rounds N           Runs per shell and scenario; the median is reported (default: 5)
+#   --count N            Log N messages per run in every scenario, instead of the count each
+#                        scenario has (a small N makes a quick test run)
 #   --logging FILE       logging.sh to measure (default: the one in this repository)
 #   --baseline FILE      Also measure this logging.sh in every shell and compare
 #   --max-ratio R        With --baseline, fail when candidate/baseline exceeds R and the
@@ -39,11 +41,15 @@
 #   scripts/bench-logging.sh bash dash "busybox sh" zsh
 #   scripts/bench-logging.sh --scenario plain --scenario lines-64k dash
 #   scripts/bench-logging.sh --baseline /tmp/main-logging.sh bash zsh
-
-set -euo pipefail
+#
+# The file can be sourced, as the tests do: it then defines its functions and runs nothing.
+# The verdict functions (compute_ratio, is_slower, compute_scaling, scaling_too_steep and
+# median) take plain numbers.
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 round_count=5
+# Empty means each scenario uses its own message count
+count_override=""
 logging_file="$script_dir/../logging.sh"
 baseline_file=""
 max_ratio="1.15"
@@ -56,25 +62,44 @@ selected_scenarios=()
 all_scenarios=(plain filtered console format ansi long-line utf8 huge-line
     lines-4k lines-16k lines-64k lines-256k)
 
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --scenario) selected_scenarios+=("$2"); shift 2 ;;
-        --rounds) round_count="$2"; shift 2 ;;
-        --logging) logging_file="$2"; shift 2 ;;
-        --baseline) baseline_file="$2"; shift 2 ;;
-        --max-ratio) max_ratio="$2"; shift 2 ;;
-        --max-scaling) max_scaling="$2"; shift 2 ;;
-        -h|--help) sed -n '3,44p' "$0"; exit 0 ;;
-        -*) echo "Unknown option: $1" >&2; exit 2 ;;
-        *) shells+=("$1"); shift ;;
-    esac
-done
-if [[ ${#shells[@]} -eq 0 ]]; then
-    shells=("bash")
-fi
-if [[ ${#selected_scenarios[@]} -eq 0 ]]; then
-    selected_scenarios=("${all_scenarios[@]}")
-fi
+# Print the usage text at the top of this file
+print_usage() {
+    awk 'NR >= 3 && /^#/ { sub(/^# ?/, ""); print; next } NR >= 3 { exit }' \
+        "${BASH_SOURCE[0]}"
+}
+
+# Read the command line into the settings above
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --scenario) selected_scenarios+=("$2"); shift 2 ;;
+            --rounds) round_count="$2"; shift 2 ;;
+            --count)
+                case "$2" in
+                    ''|*[!0-9]*|0)
+                        echo "Error: --count needs a positive integer, not '$2'" >&2
+                        exit 2
+                        ;;
+                esac
+                count_override="$2"
+                shift 2
+                ;;
+            --logging) logging_file="$2"; shift 2 ;;
+            --baseline) baseline_file="$2"; shift 2 ;;
+            --max-ratio) max_ratio="$2"; shift 2 ;;
+            --max-scaling) max_scaling="$2"; shift 2 ;;
+            -h|--help) print_usage; exit 0 ;;
+            -*) echo "Unknown option: $1" >&2; exit 2 ;;
+            *) shells+=("$1"); shift ;;
+        esac
+    done
+    if [[ ${#shells[@]} -eq 0 ]]; then
+        shells=("bash")
+    fi
+    if [[ ${#selected_scenarios[@]} -eq 0 ]]; then
+        selected_scenarios=("${all_scenarios[@]}")
+    fi
+}
 
 # Print a path as an absolute path. "." searches PATH for a name without a slash, so
 # the benchmarked file must always be given with its directory.
@@ -85,13 +110,6 @@ absolute_path() {
         *) printf '%s/%s\n' "$PWD" "$path" ;;
     esac
 }
-logging_file=$(absolute_path "$logging_file")
-if [[ -n "$baseline_file" ]]; then
-    baseline_file=$(absolute_path "$baseline_file")
-fi
-
-work_dir=$(mktemp -d)
-trap 'rm -rf "$work_dir"' EXIT
 
 # Scenario settings: message count, log function, extra init_logger arguments
 scenario_settings() {
@@ -118,6 +136,9 @@ scenario_settings() {
             exit 2
             ;;
     esac
+    if [[ -n "$count_override" ]]; then
+        scenario_count="$count_override"
+    fi
 }
 
 # Write the message for a scenario to $work_dir/message.<scenario>, once
@@ -149,9 +170,10 @@ write_message() {
     esac > "$message_file"
 }
 
-# The timed program, in POSIX sh so every shell runs the same code.
-# BENCH_INIT_ARGS is split with eval because zsh does not split an unquoted variable.
-cat > "$work_dir/bench.sh" <<'BENCH'
+# Write the timed program to $work_dir/bench.sh, in POSIX sh so every shell runs the same
+# code. BENCH_INIT_ARGS is split with eval because zsh does not split an unquoted variable.
+write_bench_program() {
+    cat > "$work_dir/bench.sh" <<'BENCH'
 . "$BENCH_LOGGING" || exit 90
 eval "set -- $BENCH_INIT_ARGS"
 init_logger "$@" --log "$BENCH_DIR/bench.log" || exit 91
@@ -162,6 +184,7 @@ while [ "$iteration" -lt "$BENCH_COUNT" ]; do
     iteration=$((iteration + 1))
 done
 BENCH
+}
 
 # Run the benchmark program once, check the result and print its elapsed seconds.
 # Returns 1 (after printing the reason to stderr) if the run failed.
@@ -213,6 +236,34 @@ median() {
         }'
 }
 
+# Print candidate / baseline, to three decimals.
+# Arguments: candidate microseconds, baseline microseconds
+compute_ratio() {
+    awk -v c="$1" -v b="$2" 'BEGIN { printf "%.3f\n", c / b }'
+}
+
+# Return 0 when the candidate is slower than the baseline: its ratio is above the limit and it
+# is at least the minimum difference slower, because a smaller difference is timing noise.
+# Arguments: candidate microseconds, baseline microseconds, maximum ratio, minimum difference
+is_slower() {
+    local ratio
+    ratio=$(compute_ratio "$1" "$2")
+    awk -v c="$1" -v b="$2" -v r="$ratio" -v m="$3" -v floor="$4" \
+        'BEGIN { exit !(c - b >= floor && r > m) }'
+}
+
+# Print the growth from the 16 KB to the 256 KB scenario, to one decimal (linear is 16).
+# Arguments: lines-256k microseconds, lines-16k microseconds
+compute_scaling() {
+    awk -v a="$1" -v b="$2" 'BEGIN { printf "%.1f\n", a / b }'
+}
+
+# Return 0 when the growth is above the limit.
+# Arguments: scaling, maximum scaling
+scaling_too_steep() {
+    awk -v s="$1" -v m="$2" 'BEGIN { exit !(s > m) }'
+}
+
 # Measure one logging.sh under one shell and scenario.
 # Sets measured_us (median per message) and measured_init_us (median of the
 # zero-message runs, less the bare shell start-up). Returns 1 if a run failed.
@@ -259,79 +310,110 @@ fail_run() {
     exit 1
 }
 
-check_failures=()
-for shell_command in "${shells[@]}"; do
-    baseline_available="false"
+main() {
+    set -euo pipefail
+
+    parse_arguments "$@"
+    logging_file=$(absolute_path "$logging_file")
     if [[ -n "$baseline_file" ]]; then
-        baseline_available="true"
+        baseline_file=$(absolute_path "$baseline_file")
     fi
-    lines_16k_us=""
-    lines_256k_us=""
-    init_reported="false"
 
-    for scenario in "${selected_scenarios[@]}"; do
-        scenario_settings "$scenario"
-        write_message "$scenario"
+    work_dir=$(mktemp -d)
+    trap 'rm -rf "$work_dir"' EXIT
+    write_bench_program
 
-        if ! measure "$shell_command" "$logging_file" "$scenario" 2>"$work_dir/reason"; then
-            fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
+    local check_failures=()
+    local shell_command=""
+    local scenario=""
+    local baseline_available=""
+    local lines_16k_us=""
+    local lines_256k_us=""
+    local init_reported=""
+    local candidate_us=""
+    local baseline_us=""
+    local ratio=""
+    local scaling=""
+    local verdict=""
+
+    for shell_command in "${shells[@]}"; do
+        baseline_available="false"
+        if [[ -n "$baseline_file" ]]; then
+            baseline_available="true"
         fi
-        candidate_us="$measured_us"
+        lines_16k_us=""
+        lines_256k_us=""
+        init_reported="false"
 
-        if [[ "$init_reported" == "false" ]]; then
-            printf '%-14s %-12s %10s us (source + init_logger, information only)\n' \
-                "$shell_command" "init" "$measured_init_us"
-            init_reported="true"
-        fi
+        for scenario in "${selected_scenarios[@]}"; do
+            scenario_settings "$scenario"
+            write_message "$scenario"
 
-        case "$scenario" in
-            lines-16k) lines_16k_us="$candidate_us" ;;
-            lines-256k) lines_256k_us="$candidate_us" ;;
-        esac
+            if ! measure "$shell_command" "$logging_file" "$scenario" 2>"$work_dir/reason"; then
+                fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
+            fi
+            candidate_us="$measured_us"
 
-        if [[ "$baseline_available" != "true" ]]; then
-            printf '%-14s %-12s %10s us/message\n' "$shell_command" "$scenario" "$candidate_us"
-            continue
-        fi
+            if [[ "$init_reported" == "false" ]]; then
+                printf '%-14s %-12s %10s us (source + init_logger, information only)\n' \
+                    "$shell_command" "init" "$measured_init_us"
+                init_reported="true"
+            fi
 
-        # The baseline may not run in every shell (main is bash/zsh only before
-        # Issue #143); that is reported once and is not a failure
-        if ! measure "$shell_command" "$baseline_file" "$scenario" 2>"$work_dir/reason"; then
-            printf '%-14s %-12s %10s us/message, baseline unavailable (%s)\n' \
-                "$shell_command" "$scenario" "$candidate_us" "$(cat "$work_dir/reason")"
-            baseline_available="false"
-            continue
+            case "$scenario" in
+                lines-16k) lines_16k_us="$candidate_us" ;;
+                lines-256k) lines_256k_us="$candidate_us" ;;
+            esac
+
+            if [[ "$baseline_available" != "true" ]]; then
+                printf '%-14s %-12s %10s us/message\n' "$shell_command" "$scenario" \
+                    "$candidate_us"
+                continue
+            fi
+
+            # The baseline may not run in every shell (main is bash/zsh only before
+            # Issue #143); that is reported once and is not a failure
+            if ! measure "$shell_command" "$baseline_file" "$scenario" 2>"$work_dir/reason"; then
+                printf '%-14s %-12s %10s us/message, baseline unavailable (%s)\n' \
+                    "$shell_command" "$scenario" "$candidate_us" "$(cat "$work_dir/reason")"
+                baseline_available="false"
+                continue
+            fi
+            baseline_us="$measured_us"
+            ratio=$(compute_ratio "$candidate_us" "$baseline_us")
+            verdict="ok"
+            if is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$min_difference_us"; then
+                verdict="SLOWER"
+                check_failures+=("$shell_command $scenario: ratio $ratio > $max_ratio")
+            fi
+            printf '%-14s %-12s %10s us/message, baseline %10s, ratio %s %s\n' \
+                "$shell_command" "$scenario" "$candidate_us" "$baseline_us" "$ratio" "$verdict"
+        done
+
+        # Growth from 16 KB to 256 KB messages: 16 is linear
+        if [[ -n "$lines_16k_us" && -n "$lines_256k_us" ]]; then
+            scaling=$(compute_scaling "$lines_256k_us" "$lines_16k_us")
+            verdict="ok"
+            if scaling_too_steep "$scaling" "$max_scaling"; then
+                verdict="TOO STEEP"
+                check_failures+=("$shell_command scaling: lines-256k / lines-16k = $scaling > $max_scaling")
+            fi
+            printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) %s\n' \
+                "$shell_command" "scaling" "$scaling" "$verdict"
         fi
-        baseline_us="$measured_us"
-        ratio=$(awk -v c="$candidate_us" -v b="$baseline_us" 'BEGIN { printf "%.3f\n", c / b }')
-        verdict="ok"
-        if awk -v c="$candidate_us" -v b="$baseline_us" -v r="$ratio" -v m="$max_ratio" \
-            -v floor="$min_difference_us" 'BEGIN { exit !(c - b >= floor && r > m) }'; then
-            verdict="SLOWER"
-            check_failures+=("$shell_command $scenario: ratio $ratio > $max_ratio")
-        fi
-        printf '%-14s %-12s %10s us/message, baseline %10s, ratio %s %s\n' \
-            "$shell_command" "$scenario" "$candidate_us" "$baseline_us" "$ratio" "$verdict"
     done
 
-    # Growth from 16 KB to 256 KB messages: 16 is linear
-    if [[ -n "$lines_16k_us" && -n "$lines_256k_us" ]]; then
-        scaling=$(awk -v a="$lines_256k_us" -v b="$lines_16k_us" 'BEGIN { printf "%.1f\n", a / b }')
-        verdict="ok"
-        if awk -v s="$scaling" -v m="$max_scaling" 'BEGIN { exit !(s > m) }'; then
-            verdict="TOO STEEP"
-            check_failures+=("$shell_command scaling: lines-256k / lines-16k = $scaling > $max_scaling")
-        fi
-        printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) %s\n' \
-            "$shell_command" "scaling" "$scaling" "$verdict"
+    if [[ ${#check_failures[@]} -gt 0 ]]; then
+        echo "" >&2
+        for failure in "${check_failures[@]}"; do
+            echo "FAIL $failure" >&2
+        done
+        exit 1
     fi
-done
+    exit 0
+}
 
-if [[ ${#check_failures[@]} -gt 0 ]]; then
-    echo "" >&2
-    for failure in "${check_failures[@]}"; do
-        echo "FAIL $failure" >&2
-    done
-    exit 1
+# Run only when executed, not when sourced
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
 fi
-exit 0
