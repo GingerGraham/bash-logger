@@ -1048,7 +1048,7 @@ of the per-message cost. That start-up cost is printed once per shell as an info
 | Scenario     | Messages per run | What it logs                                                   |
 | ------------ | ---------------- | -------------------------------------------------------------- |
 | `plain`      | 300              | 60 ASCII characters with `log_info`                            |
-| `filtered`   | 2000             | `log_debug` below the log level, so every call is filtered out |
+| `filtered`   | 10000            | `log_debug` below the log level, so every call is filtered out |
 | `console`    | 300              | 60 ASCII characters to the console with colour                 |
 | `format`     | 300              | 60 ASCII characters with a custom `--format`                   |
 | `ansi`       | 200              | 60 characters containing escape sequences that are sanitized   |
@@ -1095,8 +1095,10 @@ believing a result close to a limit.
 A comparison with the baseline fails when both of these hold:
 
 * The ratio of the branch to the baseline is above `--max-ratio` (default 1.15).
-* The branch is at least 100 microseconds per message slower. A smaller difference is timing
-  noise whatever the ratio, because a fast scenario can double on a 20 microsecond change.
+* The branch is at least 100 microseconds per message slower (`--min-difference`). A smaller
+  difference is timing noise whatever the ratio. The `filtered` scenario costs only 7 to 25
+  microseconds per message, so it uses a floor of 2 microseconds instead: with 100 it could
+  never fail.
 
 The scaling check compares `lines-256k` with `lines-16k`. A message 16 times longer should cost
 about 16 times more. The check fails when the growth is above `--max-scaling` (default 32), which
@@ -1146,9 +1148,10 @@ gh workflow run tests.yml --ref <branch> -f calibrate=true -f calibration_runs=2
 `calibrate` replaces the benchmark job with one job per shell and scenario group, followed by a
 job that merges their results into one table on the run's summary page. For every shell and
 scenario the table shows the number of comparisons, the minimum, median and maximum ratio, the
-number of comparisons over the limit, and the number still over it after measuring again. The
-last number is what would fail a pull request. The maximum ratio should be well under the
-limit, and the last number should be zero.
+largest slowdown in microseconds per message, the number of comparisons over the limit, and the
+number still over it after measuring again. The last number is what would fail a pull request.
+The maximum ratio should be well under the limit, the largest slowdown well under the floor, and
+the last number should be zero.
 
 The same mode runs locally: `scripts/bench-logging.sh --calibrate 20 --scenario plain bash`.
 Add `--calibration-file FILE` to keep the rows as tab-separated values.

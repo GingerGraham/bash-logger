@@ -382,6 +382,76 @@ measure() {
 }
 
 # ---------------------------------------------------------------------------
+# The filtered scenario's own floor
+# ---------------------------------------------------------------------------
+
+test_bench_filtered_scenario_has_its_own_floor() {
+    start_test "the filtered scenario uses a 2 microsecond floor and the others use 100"
+
+    local settings
+    settings=$(bash -c 'source "$1"
+        for name in filtered plain huge-line; do
+            scenario_settings "$name"
+            printf "%s=%s/%s " "$name" "$scenario_count" "$scenario_floor_us"
+        done' bash "$BENCH_SCRIPT")
+    assert_equals "filtered=10000/2 plain=300/100 huge-line=100/100 " "$settings" || return
+
+    settings=$(bash -c 'source "$1"; min_difference_us=250; scenario_settings plain
+        printf "%s" "$scenario_floor_us"' bash "$BENCH_SCRIPT")
+    assert_equals "250" "$settings" "--min-difference changes the general floor" || return
+
+    pass_test
+}
+
+test_bench_min_difference_needs_a_whole_number() {
+    start_test "--min-difference rejects text and an empty value"
+
+    run_bench --min-difference abc --scenario plain
+    assert_equals "2" "$BENCH_STATUS" || return
+    assert_contains "$BENCH_OUTPUT" "--min-difference needs a whole number of microseconds, not 'abc'" || return
+
+    run_bench --min-difference "" --scenario plain
+    assert_equals "2" "$BENCH_STATUS" || return
+
+    pass_test
+}
+
+test_bench_filtered_slowdown_of_a_few_microseconds_fails() {
+    start_test "a 7 to 10 microsecond slowdown fails in filtered and is ignored in plain"
+
+    # 10 against 7 microseconds is ratio 1.429 and a 3 microsecond difference, over the
+    # filtered floor of 2 and under the general floor of 100
+    local stubs='
+time_one_run() { printf "0.001\n"; }
+measure_pair() {
+    measured_init_us=1000; measured_us=10; baseline_measured_us=7
+}'
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --rounds 5 --scenario filtered bash
+    assert_equals "1" "$BENCH_STATUS" "filtered fails" || return
+    assert_contains "$BENCH_OUTPUT" "FAIL bash filtered: ratio 1.429, then 1.429 with 10 rounds" || return
+
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --rounds 5 --scenario plain bash
+    assert_equals "0" "$BENCH_STATUS" "plain passes" || return
+    assert_contains "$BENCH_OUTPUT" "ratio 1.429 ok" || return
+
+    # 7 against 6 microseconds is ratio 1.167, over the limit, but a 1 microsecond difference
+    # is under the filtered floor
+    stubs='
+time_one_run() { printf "0.001\n"; }
+measure_pair() {
+    measured_init_us=1000; measured_us=7; baseline_measured_us=6
+}'
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --rounds 5 --scenario filtered bash
+    assert_equals "0" "$BENCH_STATUS" "a 1 microsecond difference is ignored" || return
+    assert_contains "$BENCH_OUTPUT" "ratio 1.167 ok" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
 # Markdown summary
 # ---------------------------------------------------------------------------
 
@@ -509,8 +579,8 @@ measure_pair() {
         --scenario plain bash
     assert_equals "0" "$BENCH_STATUS" "a calibration run exits 0 whatever the ratios" || return
     assert_contains "$BENCH_OUTPUT" \
-        "bash           plain          3 runs, min 1.000, median 2.000, max 2.000, over the limit 2, still over after measuring again 1" || return
-    assert_equals "$(printf 'bash\tplain\t3\t1.000\t2.000\t2.000\t2\t1')" "$(cat "$tsv_file")" || return
+        "bash           plain          3 runs, min 1.000, median 2.000, max 2.000, largest slowdown 500.0 us, over the limit 2, still over after measuring again 1" || return
+    assert_equals "$(printf 'bash\tplain\t3\t1.000\t2.000\t2.000\t500.0\t2\t1')" "$(cat "$tsv_file")" || return
 
     pass_test
 }
@@ -540,8 +610,8 @@ measure() {
     assert_equals "0" "$BENCH_STATUS" || return
     # 4000 / 100 = 40 is over 32 in both runs; measured again it is 30, which is under
     assert_contains "$BENCH_OUTPUT" \
-        "bash           scaling        2 runs, min 40.000, median 40.000, max 40.000, over the limit 2, still over after measuring again 0" || return
-    assert_contains "$(cat "$tsv_file")" "$(printf 'bash\tscaling\t2\t40.000\t40.000\t40.000\t2\t0')" || return
+        "bash           scaling        2 runs, min 40.000, median 40.000, max 40.000, largest slowdown n/a, over the limit 2, still over after measuring again 0" || return
+    assert_contains "$(cat "$tsv_file")" "$(printf 'bash\tscaling\t2\t40.000\t40.000\t40.000\t-\t2\t0')" || return
 
     pass_test
 }
@@ -616,6 +686,9 @@ test_bench_confirms_a_slowdown_before_failing
 test_bench_fails_when_the_slowdown_repeats
 test_bench_does_not_repeat_a_result_under_the_limit
 test_bench_confirms_steep_scaling_before_failing
+test_bench_filtered_scenario_has_its_own_floor
+test_bench_min_difference_needs_a_whole_number
+test_bench_filtered_slowdown_of_a_few_microseconds_fails
 test_bench_summary_lists_limits_versions_and_results
 test_bench_summary_is_written_when_the_run_fails
 test_bench_summary_is_written_when_a_run_fails

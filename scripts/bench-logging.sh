@@ -19,14 +19,18 @@
 #   --summary FILE       Append the results as a markdown table to FILE, with the limits,
 #                        the shell versions and the number of CPUs. The workflow passes
 #                        $GITHUB_STEP_SUMMARY. The table is written when the run fails too.
+#   --min-difference US  The smallest slowdown, in microseconds per message, that can fail a
+#                        comparison (default: 100; the filtered scenario uses 2, because it
+#                        costs 7 to 25 microseconds a message)
 #   --calibrate N        Do not compare releases. Compare logging.sh with a copy of itself N
 #                        times per shell and scenario, and print the minimum, median and
-#                        maximum ratio and how many comparisons were over the limit. The
+#                        maximum ratio, the largest slowdown in microseconds per message,
+#                        and how many comparisons were over the limit. The
 #                        thresholds should sit well above the maximum. Exits 0 unless a run
 #                        fails, so the numbers can be read after a bad result.
 #   --calibration-file F With --calibrate, also write one tab-separated row per shell and
-#                        scenario to F: shell, scenario, runs, min, median, max, over the
-#                        limit, over the limit after measuring again
+#                        scenario to F: shell, scenario, runs, min, median, max, largest
+#                        slowdown, over the limit, over the limit after measuring again
 #
 # Shells default to "bash". A shell command can include flags when quoted, e.g.
 # "bash --posix" or "busybox sh".
@@ -74,6 +78,9 @@ max_ratio="1.15"
 max_scaling="32"
 # A candidate/baseline difference smaller than this is timing noise, whatever the ratio
 min_difference_us=100
+# The filtered scenario costs 7 to 25 microseconds per message, so a 100 microsecond difference
+# is out of reach there and the general floor would let any slowdown of that path pass
+filtered_min_difference_us=2
 # Empty means a normal run; a number makes it a calibration run of that many comparisons
 calibrate_runs=""
 calibration_file=""
@@ -111,6 +118,16 @@ parse_arguments() {
             --baseline) baseline_file="$2"; shift 2 ;;
             --max-ratio) max_ratio="$2"; shift 2 ;;
             --max-scaling) max_scaling="$2"; shift 2 ;;
+            --min-difference)
+                case "$2" in
+                    ''|*[!0-9]*)
+                        echo "Error: --min-difference needs a whole number of microseconds, not '$2'" >&2
+                        exit 2
+                        ;;
+                esac
+                min_difference_us="$2"
+                shift 2
+                ;;
             --calibrate)
                 case "$2" in
                     ''|*[!0-9]*|0)
@@ -158,9 +175,15 @@ scenario_settings() {
     scenario_count=""
     scenario_function="log_info"
     scenario_args="--quiet --no-color"
+    scenario_floor_us="$min_difference_us"
     case "$scenario" in
         plain) scenario_count=300 ;;
-        filtered) scenario_count=2000; scenario_function="log_debug" ;;
+        filtered)
+            # About 7 to 25 microseconds a message: this many give a run of 0.1 to 0.3 seconds
+            scenario_count=10000
+            scenario_function="log_debug"
+            scenario_floor_us="$filtered_min_difference_us"
+            ;;
         console) scenario_count=300; scenario_args="--color" ;;
         format) scenario_count=300; scenario_args="--quiet --no-color --format '%d:%z:%l:%s:%m'" ;;
         ansi) scenario_count=200 ;;
@@ -445,7 +468,8 @@ ratio_statistics() {
 
 # Print one calibration row, and append it to the calibration file when there is one.
 # Arguments: shell command, scenario, runs, ratios (one per line), runs over the limit,
-# runs over the limit after measuring again
+# runs over the limit after measuring again, and the candidate minus baseline difference of each
+# run in microseconds (one per line, empty for the scaling row)
 report_calibration() {
     local shell_command="$1"
     local scenario="$2"
@@ -453,6 +477,9 @@ report_calibration() {
     local ratios="$4"
     local over_first="$5"
     local over_confirmed="$6"
+    local differences="${7:-}"
+    local largest_slowdown="-"
+    local slowdown_text="n/a"
     local statistics=""
     local minimum=""
     local middle=""
@@ -460,12 +487,17 @@ report_calibration() {
 
     statistics=$(printf '%s\n' "$ratios" | sed '/^$/d' | ratio_statistics)
     read -r minimum middle maximum <<< "$statistics"
-    printf '%-14s %-12s %3s runs, min %s, median %s, max %s, over the limit %s, still over after measuring again %s\n' \
+    if [[ -n "$differences" ]]; then
+        largest_slowdown=$(printf '%s\n' "$differences" | sed '/^$/d' | sort -n | tail -n 1)
+        slowdown_text="$largest_slowdown us"
+    fi
+    printf '%-14s %-12s %3s runs, min %s, median %s, max %s, largest slowdown %s, over the limit %s, still over after measuring again %s\n' \
         "$shell_command" "$scenario" "$runs" "$minimum" "$middle" "$maximum" \
-        "$over_first" "$over_confirmed"
+        "$slowdown_text" "$over_first" "$over_confirmed"
     if [[ -n "$calibration_file" ]]; then
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$shell_command" "$scenario" "$runs" \
-            "$minimum" "$middle" "$maximum" "$over_first" "$over_confirmed" >> "$calibration_file"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$shell_command" "$scenario" "$runs" \
+            "$minimum" "$middle" "$maximum" "$largest_slowdown" "$over_first" \
+            "$over_confirmed" >> "$calibration_file"
     fi
 }
 
@@ -479,6 +511,8 @@ calibrate_scenario() {
     local run=0
     local ratios=""
     local ratio=""
+    local differences=""
+    local difference=""
     local over_first=0
     local over_confirmed=0
     local pair_status=0
@@ -496,18 +530,22 @@ calibrate_scenario() {
         ratio=$(compute_ratio "$measured_us" "$baseline_measured_us")
         ratios="$ratios
 $ratio"
-        if is_slower "$measured_us" "$baseline_measured_us" "$max_ratio" "$min_difference_us"; then
+        difference=$(awk -v c="$measured_us" -v b="$baseline_measured_us" \
+            'BEGIN { printf "%.1f\n", c - b }')
+        differences="$differences
+$difference"
+        if is_slower "$measured_us" "$baseline_measured_us" "$max_ratio" "$scenario_floor_us"; then
             over_first=$((over_first + 1))
             measure_pair "$shell_command" "$scenario" "$confirm_rounds" 2>"$work_dir/reason" \
                 || fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
-            if is_slower "$measured_us" "$baseline_measured_us" "$max_ratio" "$min_difference_us"; then
+            if is_slower "$measured_us" "$baseline_measured_us" "$max_ratio" "$scenario_floor_us"; then
                 over_confirmed=$((over_confirmed + 1))
             fi
         fi
         run=$((run + 1))
     done
     report_calibration "$shell_command" "$scenario" "$calibrate_runs" "$ratios" \
-        "$over_first" "$over_confirmed"
+        "$over_first" "$over_confirmed" "$differences"
 }
 
 # Report the growth from lines-16k to lines-256k for each calibration run, from the samples
@@ -554,8 +592,9 @@ run_calibration() {
     fi
     printf 'Calibration: %s comparisons of logging.sh with a copy of itself per shell and scenario,\n' \
         "$calibrate_runs"
-    printf '%s rounds each, limits: ratio %s with a difference of at least %s us, scaling %s\n' \
-        "$round_count" "$max_ratio" "$min_difference_us" "$max_scaling"
+    printf '%s rounds each, limits: ratio %s with a difference of at least %s us (%s us for filtered), scaling %s\n' \
+        "$round_count" "$max_ratio" "$min_difference_us" "$filtered_min_difference_us" \
+        "$max_scaling"
 
     for shell_command in "${shells[@]}"; do
         has_16k="false"
@@ -625,8 +664,9 @@ write_summary() {
     fi
     {
         printf '## Per-message benchmark: %s\n\n' "$result"
-        printf 'Limits: candidate/baseline above %s with a difference of at least %s us, and\n' \
-            "$max_ratio" "$min_difference_us"
+        printf 'Limits: candidate/baseline above %s with a difference of at least %s us (%s us\n' \
+            "$max_ratio" "$min_difference_us" "$filtered_min_difference_us"
+        printf 'for the filtered scenario), and\n'
         printf 'lines-256k / lines-16k above %s (linear is 16). A result over a limit is measured\n' \
             "$max_scaling"
         printf 'again with %s rounds instead of %s, and fails only if it is over again.\n\n' \
@@ -766,7 +806,7 @@ main() {
 
             baseline_us="$baseline_measured_us"
             ratio=$(compute_ratio "$candidate_us" "$baseline_us")
-            if ! is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$min_difference_us"; then
+            if ! is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$scenario_floor_us"; then
                 print_comparison "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
                     "$ratio" "ok"
                 record_row "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
@@ -788,7 +828,7 @@ main() {
             candidate_us="$measured_us"
             baseline_us="$baseline_measured_us"
             ratio=$(compute_ratio "$candidate_us" "$baseline_us")
-            if is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$min_difference_us"; then
+            if is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$scenario_floor_us"; then
                 verdict="SLOWER"
                 check_failures+=("$shell_command $scenario: ratio $first_ratio, then $ratio with $confirm_rounds rounds, > $max_ratio")
             else
