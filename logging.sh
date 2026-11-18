@@ -2311,9 +2311,14 @@ set_log_level() {
 }
 
 set_timezone_utc() {
-    local use_utc="$1"
+    local new_value=""
+    new_value=$(_parse_bool_value "$1") || {
+        printf '%s\n' "Error: set_timezone_utc: invalid value '$1'" >&2
+        printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$USE_UTC"
-    USE_UTC="$use_utc"
+    USE_UTC="$new_value"
 
     local message="Timezone setting changed from $old_setting to $USE_UTC"
     local log_entry=""
@@ -2344,8 +2349,14 @@ set_log_format() {
 
 # Function to toggle journal logging
 set_journal_logging() {
+    local new_value=""
+    new_value=$(_parse_bool_value "$1") || {
+        printf '%s\n' "Error: set_journal_logging: invalid value '$1'" >&2
+        printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
+        return 1
+    }
     local old_setting="$USE_JOURNAL"
-    USE_JOURNAL="$1"
+    USE_JOURNAL="$new_value"
 
     # Check if logger is available when enabling journal logging
     if [ "$USE_JOURNAL" = "true" ]; then

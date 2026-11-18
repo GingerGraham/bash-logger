@@ -138,6 +138,48 @@ test_set_timezone_utc() {
     pass_test
 }
 
+# Test: set_timezone_utc rejects values that are not booleans (SEC-04, #163)
+test_set_timezone_utc_rejects_invalid() {
+    start_test "set_timezone_utc rejects an invalid value and leaves the setting unchanged"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/tz_invalid.log"
+    LOG_FILE="$log_file"
+    USE_UTC="false"
+
+    local value
+    for value in maybe "" "x
+second line" 2 TRUE1; do
+        set_timezone_utc "$value" 2> "$TEST_DIR/tz_invalid.stderr"
+        assert_equals "1" "$?" "return status for an invalid value" || return
+        assert_equals "false" "$USE_UTC" "USE_UTC after an invalid value" || return
+        assert_file_contains "$TEST_DIR/tz_invalid.stderr" "invalid value" || return
+    done
+    assert_file_not_exists "$log_file" "no CONFIG notice for a rejected value" || return
+
+    pass_test
+}
+
+# Test: set_timezone_utc accepts the boolean spellings of set_unsafe_allow_newlines
+test_set_timezone_utc_accepts_boolean_variants() {
+    start_test "set_timezone_utc accepts true, yes, on, 1 and their opposites in any case"
+
+    init_logger --quiet
+    local value
+    for value in true TRUE Yes on 1; do
+        USE_UTC="false"
+        set_timezone_utc "$value" || { fail_test "$value was rejected"; return; }
+        assert_equals "true" "$USE_UTC" "USE_UTC after $value" || return
+    done
+    for value in false False NO off 0; do
+        USE_UTC="true"
+        set_timezone_utc "$value" || { fail_test "$value was rejected"; return; }
+        assert_equals "false" "$USE_UTC" "USE_UTC after $value" || return
+    done
+
+    pass_test
+}
+
 # Test: set_timezone_utc with false
 test_set_timezone_local() {
     start_test "set_timezone_utc can switch back to local"
@@ -175,6 +217,28 @@ test_set_journal_logging() {
 
     set_journal_logging true
     assert_equals "true" "$USE_JOURNAL" || return
+
+    pass_test
+}
+
+# Test: set_journal_logging rejects values that are not booleans (SEC-04, #163)
+test_set_journal_logging_rejects_invalid() {
+    start_test "set_journal_logging rejects an invalid value and leaves the setting unchanged"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/journal_invalid.log"
+    LOG_FILE="$log_file"
+    USE_JOURNAL="false"
+
+    local value
+    for value in maybe "" "x
+second line" 2; do
+        set_journal_logging "$value" 2> "$TEST_DIR/journal_invalid.stderr"
+        assert_equals "1" "$?" "return status for an invalid value" || return
+        assert_equals "false" "$USE_JOURNAL" "USE_JOURNAL after an invalid value" || return
+        assert_file_contains "$TEST_DIR/journal_invalid.stderr" "invalid value" || return
+    done
+    assert_file_not_exists "$log_file" "no CONFIG notice for a rejected value" || return
 
     pass_test
 }
@@ -1182,8 +1246,11 @@ test_set_log_level_number
 test_set_log_format
 test_set_log_format_persists
 test_set_timezone_utc
+test_set_timezone_utc_rejects_invalid
+test_set_timezone_utc_accepts_boolean_variants
 test_set_timezone_local
 test_set_journal_logging
+test_set_journal_logging_rejects_invalid
 test_set_journal_tag
 test_set_journal_tag_rejects_empty
 test_set_journal_tag_rejects_long_tag

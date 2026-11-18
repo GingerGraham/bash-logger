@@ -134,6 +134,14 @@ The notices that the `set_*` functions print, such as `Log format changed`, chan
 
 See [Runtime Configuration Notices](output-streams.md#runtime-configuration-notices).
 
+Two setters also check their argument now, as `set_unsafe_allow_newlines` does:
+
+* **`set_timezone_utc` and `set_journal_logging` reject values that are not booleans.** 2.x and
+  3.0.0 stored whatever you passed. Now only `true`, `false`, `yes`, `no`, `on`, `off`, `1` and
+  `0` (in any case) are accepted. Any other value prints an error, changes nothing and returns 1.
+  A value such as `yes` used to leave UTC off, because only the exact string `true` turned it on;
+  it now turns it on.
+
 ## Changes in zsh only
 
 * **The script name is detected.** Log lines show the calling script's name. 2.x showed
