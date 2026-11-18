@@ -137,6 +137,7 @@ Configuration values are validated to ensure security and prevent issues:
 
 * **All values**: Maximum length of 4,096 characters
 * **Log file paths**: Must be absolute paths (start with `/`); no control characters or shell metacharacters
+* **Format**: No control characters (such as an escape character or a carriage return); a format that has any is skipped and the current format stays
 * **Journal tag**: Maximum 64 characters; shell metacharacters will be sanitized
 * **Syslog facility**: Must be one of `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`, or `local0`-`local7`
 * **Log levels**: Must be valid level names (DEBUG-EMERGENCY) or numbers (0-7)

@@ -76,6 +76,11 @@ These also come from the security review of 3.0 and apply in every shell.
   only in a UTF-8 locale, and not for the bidirectional characters at all. The bidirectional marks
   and zero-width characters listed above are still accepted, as is ordinary non-ASCII text such as
   `café`.
+* **A config `format` with control characters is rejected.** 2.x and 3.0.0 warned that such a
+  format "may be stripped" and used it as it was, so a config file could add escape sequences or a
+  carriage return to every console line, log file line and INIT line. The parser now prints
+  `contains control characters and is rejected`, skips the value and keeps the current format.
+  `--format` and `set_log_format` take the format from the calling script and are unchanged.
 * **An overlong invalid config tag is sanitized as well as truncated.** A `tag` value of more
   than 64 characters that fails validation is cut to 64 characters, and then the characters
   other than letters, digits, `.`, `_` and `-` are replaced with `_`. 2.x only cut it.

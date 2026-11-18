@@ -43,9 +43,11 @@ logging_script="$(cd "$(dirname "$logging_script")" && pwd)/$(basename "$logging
 reason_for_check() {
     local control_reason="Rejects C1 controls, U+2028, U+2029 and bidirectional controls in every locale (#154)"
     case "$1" in
-        string|config_file_path|config_format|config_journal_tag|journal_tag|parse_format|\
-        parse_log_file)
+        string|config_file_path|config_journal_tag|journal_tag|parse_log_file)
             printf '%s' "$control_reason"
+            ;;
+        config_format|parse_format)
+            printf '%s' "A config format with control characters is rejected, and the controls from #154 count as well (#164, #154)"
             ;;
         parse_tag)
             if [[ "$2" == "validators.tsv" && "$3" -le 749 ]]; then

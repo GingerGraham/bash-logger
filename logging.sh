@@ -938,9 +938,14 @@ _validate_config_format() {
     _replace_all "$_LOGGER_REPLACED" "%z" ""
     clean_format="$_LOGGER_REPLACED"
 
-    # Check remaining string for control characters (excluding valid format specifiers)
+    # Reject a format with control characters left (excluding valid format specifiers). The
+    # config parser then skips it and keeps the current format. The length was checked for
+    # every config value before this point, so a failure here is a control character. The
+    # -f option and set_log_format take the format from the calling script and are not
+    # checked here.
     if ! _validate_string "$clean_format" "$CONFIG_MAX_VALUE_LENGTH" "configuration format at line $line_num" "true" "true" >/dev/null 2>&1; then
-        printf '%s\n' "Warning: Configuration format at line $line_num contains control characters (may be stripped)" >&2
+        printf '%s\n' "Warning: Configuration format at line $line_num contains control characters and is rejected" >&2
+        return 1
     fi
 
     return 0

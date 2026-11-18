@@ -382,6 +382,7 @@ The logger will:
 | -------------------------------- | -------------------------------------------------- | ------------------------------------------- |
 | `level`                          | Valid level name or 0-7                            | Use INFO, display warning with valid values |
 | `log_file`                       | Absolute path, no control chars, no shell patterns | Skip file logging, display error            |
+| `format`                         | No control chars                                   | Skip it, keep the current format, warn      |
 | `tag`                            | Max 64 chars, no control chars, no shell metachars | Truncate to 64 or sanitize, display warning |
 | `-t`, `--tag`, `set_journal_tag` | Same rules as `tag`                                | Keep previous tag, display error or warning |
 | `max_line_length`                | Integer 0-1,048,576                                | Keep current (4096), display warning        |

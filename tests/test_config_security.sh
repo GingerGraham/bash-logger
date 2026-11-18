@@ -615,6 +615,41 @@ test_overlong_config_tag_is_sanitized() {
     pass_test
 }
 
+# Test: A config format with control characters is rejected (SEC-05, #164)
+test_format_with_control_characters_in_config() {
+    start_test "Config format with ESC, CR and an OSC title is rejected and the default is used"
+
+    local config_file="$TEST_TMP_DIR/control_format.conf"
+    local log_file="$TEST_DIR/control_format.log"
+    local esc cr bel
+    esc=$(printf '\033')
+    cr=$(printf '\r')
+    bel=$(printf '\007')
+
+    # The reproduction in #164: clear the line, return to its start, and set the window title
+    printf 'format=%s\n' "${esc}[2K${cr}%d [%l] %m${esc}]0;title${bel}" > "$config_file"
+
+    init_logger --config "$config_file" --log "$log_file" --no-init-message --no-color \
+        > /dev/null 2> "$TEST_DIR/init.stderr"
+    log_info "hi" > "$TEST_DIR/console.out" 2> "$TEST_DIR/console.err"
+
+    assert_file_contains "$TEST_DIR/init.stderr" "contains control characters and is rejected" || return
+    assert_file_contains "$TEST_DIR/init.stderr" "Skipping invalid format string" || return
+    assert_equals "%d [%l] [%s] %m" "$LOG_FORMAT" "the default format is used" || return
+    assert_file_contains "$log_file" "[INFO]" || return
+
+    local output_file
+    for output_file in "$log_file" "$TEST_DIR/console.out" "$TEST_DIR/console.err"; do
+        if grep -q "$esc" "$output_file" || grep -q "$cr" "$output_file" \
+            || grep -q "$bel" "$output_file"; then
+            fail_test "Control characters from the format reached $(basename "$output_file")"
+            return
+        fi
+    done
+
+    pass_test
+}
+
 # Run all tests
 test_long_config_values
 test_shell_metacharacters_in_config
@@ -641,3 +676,4 @@ test_mixed_valid_malicious_config
 test_comments_with_code
 test_duplicate_keys_in_config
 test_overlong_config_tag_is_sanitized
+test_format_with_control_characters_in_config
