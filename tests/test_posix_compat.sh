@@ -1261,6 +1261,48 @@ esac
     pass_test
 }
 
+test_posix_shell_detection_uses_builtins() {
+    local shell_command="$1"
+    start_test "[$shell_command] shell detection ignores a shopt or emulate file on PATH (SEC-02, #161)"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # Files named like the bash and zsh builtins, and both version variables inherited from
+    # the environment. command -v succeeds for the files too, but prints their path.
+    local fake_bin="$TEST_DIR/fake_bin"
+    mkdir -p "$fake_bin"
+    printf '#!/bin/sh\nexit 0\n' > "$fake_bin/shopt"
+    printf '#!/bin/sh\nexit 0\n' > "$fake_bin/emulate"
+    chmod +x "$fake_bin/shopt" "$fake_bin/emulate"
+
+    local snippet_file="$TEST_DIR/detect.sh"
+    printf '%s\n' \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        "printf 'family=[%s]\\n' \"\$_LOGGER_SHELL_FAMILY\"" \
+        "init_logger --quiet --no-init-message --format '%l %m' --log '$TEST_DIR/detect.log'" \
+        "log_info after-source" \
+        "printf 'done\\n'" > "$snippet_file"
+
+    # Real bash and zsh are still detected, including bash --posix. Any other shell has an
+    # empty family and works, although both variables say otherwise.
+    local expected_family=""
+    case "${shell_command%% *}" in
+        bash) expected_family="bash" ;;
+        zsh) expected_family="zsh" ;;
+    esac
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$fake_bin:$PATH" LC_ALL=C BASH_VERSION=5.2.0 ZSH_VERSION=5.9 \
+        $shell_command "$snippet_file" 2>&1 < /dev/null)
+
+    assert_contains "$output" "family=[$expected_family]" || return
+    assert_contains "$output" "done" "the script ran to the end" || return
+    assert_file_contains "$TEST_DIR/detect.log" "INFO after-source" || return
+
+    pass_test
+}
+
 test_posix_log_file_permissions() {
     local shell_command="$1"
     start_test "[$shell_command] a created log file and directory are private, existing ones are kept"
@@ -1412,6 +1454,7 @@ while IFS= read -r posix_shell; do
     test_posix_tag_option_validated "$posix_shell"
     test_posix_journal_tag_rejects_controls "$posix_shell"
     test_posix_overlong_config_tag_sanitized "$posix_shell"
+    test_posix_shell_detection_uses_builtins "$posix_shell"
     test_posix_log_file_permissions "$posix_shell"
     test_posix_log_file_replaced_by_symlink "$posix_shell"
     test_posix_control_characters_removed "$posix_shell"

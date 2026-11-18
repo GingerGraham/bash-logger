@@ -73,10 +73,16 @@ _is_readonly() {
 # The shell running this file: "bash", "zsh", or empty for any other shell (internal).
 # Set on every source. A version variable alone is not enough, because it can be inherited
 # from the environment, so the check also looks for a builtin only that shell has.
+# `command -v` prints the bare name for a builtin and the full path for a file on PATH, so
+# comparing the output with the name accepts the builtin only. A shopt or emulate file on
+# PATH, with an inherited BASH_VERSION or ZSH_VERSION, would otherwise select the wrong
+# family in dash or busybox ash and make the next line exit the shell. This costs a command
+# substitution (a fork without exec) in bash and zsh, and nothing elsewhere, because the
+# version variable is empty and the test ends before it.
 _LOGGER_SHELL_FAMILY=""
-if [ -n "${BASH_VERSION:-}" ] && command -v shopt >/dev/null 2>&1; then
+if [ -n "${BASH_VERSION:-}" ] && [ "$(command -v shopt 2>/dev/null)" = "shopt" ]; then
     _LOGGER_SHELL_FAMILY="bash"
-elif [ -n "${ZSH_VERSION:-}" ] && command -v emulate >/dev/null 2>&1; then
+elif [ -n "${ZSH_VERSION:-}" ] && [ "$(command -v emulate 2>/dev/null)" = "emulate" ]; then
     _LOGGER_SHELL_FAMILY="zsh"
 fi
 
