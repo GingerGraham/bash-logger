@@ -188,17 +188,16 @@ counting bytes. See [Shell Compatibility](shell-compatibility.md#documented-diff
 The library adds internal functions and variables. Internal function names start with `_` and
 variable names start with `_LOGGER_`. If your script defines one of these names, rename yours:
 
-`_append_to_log_file`, `_bash_timestamp_into`, `_cap_message_length_into`,
-`_contains_control_characters`, `_contains_strippable_characters`,
-`_contains_shell_metacharacters`, `_count_characters`, `_current_timestamp_into`,
-`_find_caller_script`, `_format_log_message_into`, `_get_log_level_color_into`,
-`_get_syslog_priority_into`, `_has_word_after_separator`, `_is_digits`,
-`_log_set_config_to_console`, `_log_set_config_to_file`, `_logger_readonly`,
-`_parse_shell_integer`, `_replace_all`, `_replace_line_control_chars`,
-`_replace_unsafe_name_characters`, `_require_option_value`, `_sanitize_log_message_into`,
-`_shell_counts_characters`, `_strip_ansi_codes_into`, `_strip_trailing_newlines`, `_text_length`,
-`_text_prefix`, `_truncate_log_message_into`, `_utc_timestamp_from_epoch`, `_write_log_message`,
-`_zsh_timestamp_into`.
+`_append_to_log_file`, `_bash_timestamp_into`, `_cap_message_length_into`, `_config_notice`,
+`_contains_control_characters`, `_contains_shell_metacharacters`, `_contains_strippable_characters`,
+`_count_characters`, `_current_timestamp_into`, `_find_caller_script`, `_format_log_message_into`,
+`_get_log_level_color_into`, `_get_syslog_priority_into`, `_has_word_after_separator`, `_is_digits`,
+`_is_plain_file`, `_is_symlink`, `_log_set_config_to_console`, `_log_set_config_to_file`,
+`_logger_readonly`, `_parse_shell_integer`, `_replace_all`, `_replace_line_control_chars`,
+`_replace_unsafe_name_characters`, `_require_option_value`, `_sanitize_config_notice_into`,
+`_sanitize_log_message_into`, `_shell_counts_characters`, `_strip_ansi_codes_into`,
+`_strip_trailing_newlines`, `_text_length`, `_text_prefix`, `_truncate_log_message_into`,
+`_utc_timestamp_from_epoch`, `_validate_length_limit`, `_write_log_message`, `_zsh_timestamp_into`.
 
 No internal function was removed.
 
