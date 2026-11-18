@@ -1181,8 +1181,10 @@ _parse_config_file() {
                     # Truncate or sanitize if validation failed
                     _count_characters "$value"
                     if [ "$_LOGGER_CHARACTER_COUNT" -gt 64 ]; then
+                        # Cut the tag first, then replace unsafe characters in what is left
                         _text_prefix "$value" 64
-                        JOURNAL_TAG="$_LOGGER_PREFIX"
+                        _replace_unsafe_name_characters "$_LOGGER_PREFIX"
+                        JOURNAL_TAG="$_LOGGER_REPLACED"
                         printf '%s\n' "  Hint: Truncated journal tag to 64 characters" >&2
                     else
                         # Strip problematic characters

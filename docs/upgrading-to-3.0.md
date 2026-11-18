@@ -76,6 +76,9 @@ These also come from the security review of 3.0 and apply in every shell.
   only in a UTF-8 locale, and not for the bidirectional characters at all. The bidirectional marks
   and zero-width characters listed above are still accepted, as is ordinary non-ASCII text such as
   `café`.
+* **An overlong invalid config tag is sanitized as well as truncated.** A `tag` value of more
+  than 64 characters that fails validation is cut to 64 characters, and then the characters
+  other than letters, digits, `.`, `_` and `-` are replaced with `_`. 2.x only cut it.
 
 ## Changes in bash and zsh
 

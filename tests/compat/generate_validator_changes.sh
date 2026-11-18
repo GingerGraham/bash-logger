@@ -36,12 +36,23 @@ fi
 logging_script="$(cd "$(dirname "$logging_script")" && pwd)/$(basename "$logging_script")"
 
 # Print the reason a check's result changed in 3.0, or nothing when none is recorded.
-# Arguments: check name, golden file name
+# Arguments: check name, golden file name, corpus id
+# Corpus ids above 749 in validator_corpus.txt were added for #154 (see
+# generate_validator_golden.sh), so a change there is the control character check, not the
+# overlong tag fix, which changes four of the original inputs.
 reason_for_check() {
+    local control_reason="Rejects C1 controls, U+2028, U+2029 and bidirectional controls in every locale (#154)"
     case "$1" in
         string|config_file_path|config_format|config_journal_tag|journal_tag|parse_format|\
-        parse_log_file|parse_tag)
-            printf '%s' "Rejects C1 controls, U+2028, U+2029 and bidirectional controls in every locale (#154)"
+        parse_log_file)
+            printf '%s' "$control_reason"
+            ;;
+        parse_tag)
+            if [[ "$2" == "validators.tsv" && "$3" -le 749 ]]; then
+                printf '%s' "Sanitizes an overlong invalid config tag after cutting it to 64 characters (#154)"
+            else
+                printf '%s' "$control_reason"
+            fi
             ;;
         *) return 0 ;;
     esac
@@ -84,7 +95,7 @@ write_overlay() {
     : > "$rows_file"
     while IFS=$'\t' read -r check_name corpus_id status checksum; do
         local reason
-        reason=$(reason_for_check "$check_name" "$golden_name")
+        reason=$(reason_for_check "$check_name" "$golden_name" "$corpus_id")
         if [[ -z "$reason" ]]; then
             echo "Error: $golden_name $check_name $corpus_id changed, and no reason is" \
                 "recorded for $check_name in reason_for_check" >&2

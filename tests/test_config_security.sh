@@ -589,6 +589,32 @@ EOF
     fi
 }
 
+# Test: An overlong invalid tag is cut and then sanitized (SEC-03, reported in #162 and #154)
+test_overlong_config_tag_is_sanitized() {
+    start_test "Overlong config tag with an OSC title, BEL and a command substitution is sanitized"
+
+    local config_file="$TEST_TMP_DIR/overlong_tag.conf"
+    local padding
+    padding=$(printf 'A%.0s' {1..70})
+
+    # The reproduction in #162: an OSC title sequence, BEL and $(id) at the start of a tag
+    # that is longer than 64 characters, so that it is cut before it is sanitized
+    printf '[logging]\ntag = \033]0;title\007$(id)%s\n' "$padding" > "$config_file"
+
+    init_logger --config "$config_file" --quiet --no-init-message > /dev/null 2>&1
+
+    if [[ ! "$JOURNAL_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        fail_test "JOURNAL_TAG still has unsafe characters: $(printf '%s' "$JOURNAL_TAG" | od -An -c | head -1)"
+        return
+    fi
+    if [[ ${#JOURNAL_TAG} -gt 64 ]]; then
+        fail_test "JOURNAL_TAG is ${#JOURNAL_TAG} characters, over the limit of 64"
+        return
+    fi
+
+    pass_test
+}
+
 # Run all tests
 test_long_config_values
 test_shell_metacharacters_in_config
@@ -614,3 +640,4 @@ test_boolean_injection_in_config
 test_mixed_valid_malicious_config
 test_comments_with_code
 test_duplicate_keys_in_config
+test_overlong_config_tag_is_sanitized

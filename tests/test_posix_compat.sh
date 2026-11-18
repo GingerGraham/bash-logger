@@ -1152,6 +1152,35 @@ cafe set=0 tag=[caf$(printf '\303\251')]"
     pass_test
 }
 
+test_posix_overlong_config_tag_sanitized() {
+    local shell_command="$1"
+    start_test "[$shell_command] an overlong invalid config tag is cut and sanitized"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # ESC [ 2 J, backspace, U+202E and ; in front of 70 letters
+    local snippet="
+config_file='$TEST_DIR/overlong_tag.conf'
+long=\$(printf '%070d' 0 | tr 0 A)
+printf '[logging]\\ntag = \\033[2J\\010\\342\\200\\256;rm%s\\n' \"\$long\" > \"\$config_file\"
+init_logger --quiet --no-init-message -c \"\$config_file\" >/dev/null 2>&1
+case \"\$JOURNAL_TAG\" in
+    *[!A-Za-z0-9._-]*) printf 'unsafe\\n' ;;
+    '') printf 'empty\\n' ;;
+    *) printf 'safe length=%s\\n' \"\${#JOURNAL_TAG}\" ;;
+esac
+"
+    local locale_name
+    local output
+    for locale_name in C "$(utf8_locale_name)"; do
+        [[ -n "$locale_name" ]] || continue
+        output=$(run_snippet_in_shell "$shell_command" "$locale_name" "$snippet" 2>/dev/null)
+        assert_equals "safe length=64" "$output" "tag under LC_ALL=$locale_name" || return
+    done
+
+    pass_test
+}
+
 test_posix_log_file_permissions() {
     local shell_command="$1"
     start_test "[$shell_command] a created log file and directory are private, existing ones are kept"
@@ -1302,6 +1331,7 @@ while IFS= read -r posix_shell; do
     test_posix_version_variables_from_environment "$posix_shell"
     test_posix_tag_option_validated "$posix_shell"
     test_posix_journal_tag_rejects_controls "$posix_shell"
+    test_posix_overlong_config_tag_sanitized "$posix_shell"
     test_posix_log_file_permissions "$posix_shell"
     test_posix_log_file_replaced_by_symlink "$posix_shell"
     test_posix_control_characters_removed "$posix_shell"
