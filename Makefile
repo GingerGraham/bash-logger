@@ -18,7 +18,7 @@ DOCS = README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURIT
 # Shell for execution
 SHELL := /bin/bash
 
-.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit test-fail-fast coverage coverage-junit coverage-debug sonar sonar-analysis lint lint-shell lint-markdown check demo demos clean pre-commit
+.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit test-fail-fast coverage coverage-junit coverage-debug sonar sonar-analysis lint lint-shell lint-markdown check bench demo demos clean pre-commit
 
 all: help
 
@@ -41,6 +41,7 @@ help:
 	@echo "  make sonar           Run SonarQube scanner (syncs version from logging.sh)"
 	@echo "  make sonar-analysis  Run coverage, JUnit tests, and SonarQube scan"
 	@echo "  make demo            Run all demo scripts"
+	@echo "  make bench           Compare per-message cost with origin/main (see BENCH_ARGS)"
 	@echo "  make lint            Run all linters (shellcheck + markdownlint)"
 	@echo "  make lint-shell      Run shellcheck only"
 	@echo "  make lint-markdown   Run markdownlint only"
@@ -49,6 +50,11 @@ help:
 	@echo "  make clean           Remove temporary files"
 	@echo ""
 	@echo "Note: pre-commit must be installed to run linting and pre-commit targets."
+	@echo ""
+	@echo "Benchmark options:"
+	@echo "  BENCH_BASELINE=file  logging.sh to compare with (default: origin/main)"
+	@echo "  BENCH_ARGS='...'     Extra arguments for scripts/bench-logging.sh, e.g."
+	@echo "                       BENCH_ARGS='--scenario plain bash dash \"busybox sh\"'"
 	@echo ""
 	@echo "Installation options:"
 	@echo "  PREFIX=/path         Change installation prefix (default: /usr/local)"
@@ -249,6 +255,24 @@ lint-markdown:
 	fi
 	@echo "Running markdownlint (via pre-commit)..."
 	@pre-commit run markdownlint --all-files
+
+# Per-message benchmark against the main branch's logging.sh. Run "git fetch origin main"
+# first so that origin/main is current.
+BENCH_BASELINE ?=
+BENCH_ARGS ?=
+
+bench:
+	@baseline="$(BENCH_BASELINE)"; \
+	if [ -z "$$baseline" ]; then \
+		baseline=$$(mktemp); \
+		trap 'rm -f "$$baseline"' EXIT; \
+		if ! git show origin/main:logging.sh > "$$baseline"; then \
+			echo "Error: cannot read origin/main:logging.sh. Run: git fetch origin main"; \
+			echo "Or compare with another file: make bench BENCH_BASELINE=path/to/logging.sh"; \
+			exit 1; \
+		fi; \
+	fi; \
+	./scripts/bench-logging.sh --baseline "$$baseline" $(BENCH_ARGS)
 
 lint: lint-shell lint-markdown
 	@echo ""

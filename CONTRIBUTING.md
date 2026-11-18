@@ -136,7 +136,12 @@ The project supports additional code quality tools for local development:
 | `make test-fail-fast` | Run tests, stop at first failure              | Bash 3.2+                                     |
 | `make coverage`       | Run tests with code coverage                  | [kcov](https://github.com/SimonKagstrom/kcov) |
 | `make coverage-debug` | Run kcov coverage, stop at first failure      | kcov                                          |
+| `make bench`          | Compare per-message speed with `origin/main`  | zsh, dash, busybox for the other shells       |
 | `make sonar-analysis` | Full coverage + SonarQube scan                | kcov, sonar-scanner, secret-tool              |
+
+Every pull request is benchmarked against `main`. See
+[Performance benchmarks](docs/testing.md#performance-benchmarks) for what is measured, how to run
+it locally with `make bench`, and what to do when the `Per-message Benchmark` job fails.
 
 > **Note:** The `sonar` and `sonar-analysis` targets are configured for the maintainer's
 > private SonarQube instance. See [Testing Documentation](docs/testing.md#code-coverage-and-static-analysis)
