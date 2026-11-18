@@ -16,6 +16,14 @@
 #                        difference is at least 100 microseconds (default: 1.15)
 #   --max-scaling R      Fail when lines-256k / lines-16k per-message time exceeds R in a
 #                        shell; linear growth is 16 (default: 32)
+#   --calibrate N        Do not compare releases. Compare logging.sh with a copy of itself N
+#                        times per shell and scenario, and print the minimum, median and
+#                        maximum ratio and how many comparisons were over the limit. The
+#                        thresholds should sit well above the maximum. Exits 0 unless a run
+#                        fails, so the numbers can be read after a bad result.
+#   --calibration-file F With --calibrate, also write one tab-separated row per shell and
+#                        scenario to F: shell, scenario, runs, min, median, max, over the
+#                        limit, over the limit after measuring again
 #
 # Shells default to "bash". A shell command can include flags when quoted, e.g.
 # "bash --posix" or "busybox sh".
@@ -63,6 +71,10 @@ max_ratio="1.15"
 max_scaling="32"
 # A candidate/baseline difference smaller than this is timing noise, whatever the ratio
 min_difference_us=100
+# Empty means a normal run; a number makes it a calibration run of that many comparisons
+calibrate_runs=""
+calibration_file=""
+confirm_rounds=10
 shells=()
 selected_scenarios=()
 
@@ -95,6 +107,17 @@ parse_arguments() {
             --baseline) baseline_file="$2"; shift 2 ;;
             --max-ratio) max_ratio="$2"; shift 2 ;;
             --max-scaling) max_scaling="$2"; shift 2 ;;
+            --calibrate)
+                case "$2" in
+                    ''|*[!0-9]*|0)
+                        echo "Error: --calibrate needs a positive integer, not '$2'" >&2
+                        exit 2
+                        ;;
+                esac
+                calibrate_runs="$2"
+                shift 2
+                ;;
+            --calibration-file) calibration_file="$2"; shift 2 ;;
             -h|--help) print_usage; exit 0 ;;
             -*) echo "Unknown option: $1" >&2; exit 2 ;;
             *) shells+=("$1"); shift ;;
@@ -106,6 +129,12 @@ parse_arguments() {
     if [[ ${#selected_scenarios[@]} -eq 0 ]]; then
         selected_scenarios=("${all_scenarios[@]}")
     fi
+    if [[ -n "$calibrate_runs" && -n "$baseline_file" ]]; then
+        echo "Error: --calibrate compares logging.sh with a copy of itself; do not use --baseline" >&2
+        exit 2
+    fi
+    # A result over a limit is measured again with twice the rounds
+    confirm_rounds=$((round_count * 2))
 }
 
 # Print a path as an absolute path. "." searches PATH for a name without a slash, so
@@ -378,6 +407,167 @@ fail_run() {
     exit 1
 }
 
+# Measure lines-16k and lines-256k again, candidate only, and set remeasured_scaling to the
+# growth between them. Stops the script if a run fails.
+# Arguments: shell command, number of rounds
+remeasure_scaling() {
+    local shell_command="$1"
+    local rounds="$2"
+    local small_us=""
+    local large_us=""
+
+    scenario_settings "lines-16k"
+    measure "$shell_command" "$logging_file" "lines-16k" "$rounds" 2>"$work_dir/reason" \
+        || fail_run "$shell_command" "lines-16k" "$(cat "$work_dir/reason")"
+    small_us="$measured_us"
+    scenario_settings "lines-256k"
+    measure "$shell_command" "$logging_file" "lines-256k" "$rounds" 2>"$work_dir/reason" \
+        || fail_run "$shell_command" "lines-256k" "$(cat "$work_dir/reason")"
+    large_us="$measured_us"
+    remeasured_scaling=$(compute_scaling "$large_us" "$small_us")
+}
+
+# Print the minimum, median and maximum of the numbers given one per line on stdin, to three
+# decimals, on one line
+ratio_statistics() {
+    sort -n | awk '{ value[NR] = $1 }
+        END {
+            if (NR % 2) { middle = value[(NR + 1) / 2] }
+            else { middle = (value[NR / 2] + value[NR / 2 + 1]) / 2 }
+            printf "%.3f %.3f %.3f\n", value[1], middle, value[NR]
+        }'
+}
+
+# Print one calibration row, and append it to the calibration file when there is one.
+# Arguments: shell command, scenario, runs, ratios (one per line), runs over the limit,
+# runs over the limit after measuring again
+report_calibration() {
+    local shell_command="$1"
+    local scenario="$2"
+    local runs="$3"
+    local ratios="$4"
+    local over_first="$5"
+    local over_confirmed="$6"
+    local statistics=""
+    local minimum=""
+    local middle=""
+    local maximum=""
+
+    statistics=$(printf '%s\n' "$ratios" | sed '/^$/d' | ratio_statistics)
+    read -r minimum middle maximum <<< "$statistics"
+    printf '%-14s %-12s %3s runs, min %s, median %s, max %s, over the limit %s, still over after measuring again %s\n' \
+        "$shell_command" "$scenario" "$runs" "$minimum" "$middle" "$maximum" \
+        "$over_first" "$over_confirmed"
+    if [[ -n "$calibration_file" ]]; then
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$shell_command" "$scenario" "$runs" \
+            "$minimum" "$middle" "$maximum" "$over_first" "$over_confirmed" >> "$calibration_file"
+    fi
+}
+
+# Compare logging.sh with a copy of itself, calibrate_runs times, for one shell and scenario,
+# and report the spread of the ratio. The candidate time of each run is kept in
+# $work_dir/samples.<scenario> for the scaling report.
+# Arguments: shell command, scenario
+calibrate_scenario() {
+    local shell_command="$1"
+    local scenario="$2"
+    local run=0
+    local ratios=""
+    local ratio=""
+    local over_first=0
+    local over_confirmed=0
+    local pair_status=0
+
+    scenario_settings "$scenario"
+    write_message "$scenario"
+    : > "$work_dir/samples.$scenario"
+    while [[ $run -lt $calibrate_runs ]]; do
+        pair_status=0
+        measure_pair "$shell_command" "$scenario" 2>"$work_dir/reason" || pair_status=$?
+        if [[ $pair_status -ne 0 ]]; then
+            fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
+        fi
+        printf '%s\n' "$measured_us" >> "$work_dir/samples.$scenario"
+        ratio=$(compute_ratio "$measured_us" "$baseline_measured_us")
+        ratios="$ratios
+$ratio"
+        if is_slower "$measured_us" "$baseline_measured_us" "$max_ratio" "$min_difference_us"; then
+            over_first=$((over_first + 1))
+            measure_pair "$shell_command" "$scenario" "$confirm_rounds" 2>"$work_dir/reason" \
+                || fail_run "$shell_command" "$scenario" "$(cat "$work_dir/reason")"
+            if is_slower "$measured_us" "$baseline_measured_us" "$max_ratio" "$min_difference_us"; then
+                over_confirmed=$((over_confirmed + 1))
+            fi
+        fi
+        run=$((run + 1))
+    done
+    report_calibration "$shell_command" "$scenario" "$calibrate_runs" "$ratios" \
+        "$over_first" "$over_confirmed"
+}
+
+# Report the growth from lines-16k to lines-256k for each calibration run, from the samples
+# calibrate_scenario kept. Both scenarios must have been calibrated for this shell.
+# Arguments: shell command
+calibrate_scaling() {
+    local shell_command="$1"
+    local small_us=""
+    local large_us=""
+    local scaling=""
+    local scalings=""
+    local over_first=0
+    local over_confirmed=0
+    local runs=0
+
+    while read -r small_us large_us; do
+        scaling=$(compute_scaling "$large_us" "$small_us")
+        scalings="$scalings
+$scaling"
+        if scaling_too_steep "$scaling" "$max_scaling"; then
+            over_first=$((over_first + 1))
+            remeasure_scaling "$shell_command" "$confirm_rounds"
+            if scaling_too_steep "$remeasured_scaling" "$max_scaling"; then
+                over_confirmed=$((over_confirmed + 1))
+            fi
+        fi
+        runs=$((runs + 1))
+    done < <(paste -d' ' "$work_dir/samples.lines-16k" "$work_dir/samples.lines-256k")
+    report_calibration "$shell_command" "scaling" "$runs" "$scalings" \
+        "$over_first" "$over_confirmed"
+}
+
+# Calibration run: every shell and scenario compares logging.sh with a copy of itself
+run_calibration() {
+    local shell_command=""
+    local scenario=""
+    local has_16k=""
+    local has_256k=""
+
+    baseline_file="$work_dir/identical-copy.sh"
+    cp "$logging_file" "$baseline_file"
+    if [[ -n "$calibration_file" ]]; then
+        : > "$calibration_file"
+    fi
+    printf 'Calibration: %s comparisons of logging.sh with a copy of itself per shell and scenario,\n' \
+        "$calibrate_runs"
+    printf '%s rounds each, limits: ratio %s with a difference of at least %s us, scaling %s\n' \
+        "$round_count" "$max_ratio" "$min_difference_us" "$max_scaling"
+
+    for shell_command in "${shells[@]}"; do
+        has_16k="false"
+        has_256k="false"
+        for scenario in "${selected_scenarios[@]}"; do
+            calibrate_scenario "$shell_command" "$scenario"
+            case "$scenario" in
+                lines-16k) has_16k="true" ;;
+                lines-256k) has_256k="true" ;;
+            esac
+        done
+        if [[ "$has_16k" == "true" && "$has_256k" == "true" ]]; then
+            calibrate_scaling "$shell_command"
+        fi
+    done
+}
+
 # Print one result row of a comparison with the baseline
 # Arguments: shell command, scenario, candidate, baseline, ratio, verdict text
 print_comparison() {
@@ -413,7 +603,11 @@ main() {
     local first_scaling=""
     local verdict=""
     local pair_status=0
-    local confirm_rounds=$((round_count * 2))
+
+    if [[ -n "$calibrate_runs" ]]; then
+        run_calibration
+        exit 0
+    fi
 
     for shell_command in "${shells[@]}"; do
         baseline_available="false"
@@ -517,15 +711,8 @@ main() {
                 printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) TOO STEEP, measuring again with %s rounds\n' \
                     "$shell_command" "scaling" "$scaling" "$confirm_rounds"
                 first_scaling="$scaling"
-                scenario_settings "lines-16k"
-                measure "$shell_command" "$logging_file" "lines-16k" "$confirm_rounds" \
-                    2>"$work_dir/reason" || fail_run "$shell_command" "lines-16k" "$(cat "$work_dir/reason")"
-                lines_16k_us="$measured_us"
-                scenario_settings "lines-256k"
-                measure "$shell_command" "$logging_file" "lines-256k" "$confirm_rounds" \
-                    2>"$work_dir/reason" || fail_run "$shell_command" "lines-256k" "$(cat "$work_dir/reason")"
-                lines_256k_us="$measured_us"
-                scaling=$(compute_scaling "$lines_256k_us" "$lines_16k_us")
+                remeasure_scaling "$shell_command" "$confirm_rounds"
+                scaling="$remeasured_scaling"
                 if scaling_too_steep "$scaling" "$max_scaling"; then
                     verdict="TOO STEEP"
                     check_failures+=("$shell_command scaling: lines-256k / lines-16k = $first_scaling, then $scaling with $confirm_rounds rounds, > $max_scaling")

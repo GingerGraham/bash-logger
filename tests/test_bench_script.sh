@@ -382,6 +382,107 @@ measure() {
 }
 
 # ---------------------------------------------------------------------------
+# Calibration
+# ---------------------------------------------------------------------------
+
+test_bench_ratio_statistics() {
+    start_test "ratio_statistics prints the minimum, median and maximum to three decimals"
+
+    assert_equals "0.900 1.000 1.250" "$(printf '1.25\n0.9\n1.0\n' | run_function ratio_statistics)" || return
+    assert_equals "1.000 1.500 2.000" "$(printf '2\n1\n' | run_function ratio_statistics)" \
+        "an even count averages the middle two" || return
+
+    pass_test
+}
+
+test_bench_calibrate_rejects_bad_arguments() {
+    start_test "--calibrate needs a positive integer and cannot be combined with --baseline"
+
+    run_bench --calibrate 0 --scenario plain
+    assert_equals "2" "$BENCH_STATUS" || return
+    assert_contains "$BENCH_OUTPUT" "--calibrate needs a positive integer, not '0'" || return
+
+    run_bench --calibrate abc --scenario plain
+    assert_equals "2" "$BENCH_STATUS" || return
+
+    run_bench --calibrate 2 --baseline "$PROJECT_ROOT/logging.sh" --scenario plain
+    assert_equals "2" "$BENCH_STATUS" || return
+    assert_contains "$BENCH_OUTPUT" "do not use --baseline" || return
+
+    pass_test
+}
+
+test_bench_calibration_counts_runs_over_the_limit() {
+    start_test "a calibration run reports the spread, the runs over the limit and those still over"
+
+    # Candidate/baseline ratios of the first measurement of each run: 1.0, 2.0, 2.0. The
+    # second and third runs are over the limit and are measured again: the first of them
+    # stays over (2.0), the other does not (1.0). Calls: 1 | 2, 3 (again) | 4, 5 (again).
+    local stubs='
+pair_calls=0
+measure_pair() {
+    pair_calls=$((pair_calls + 1))
+    measured_init_us=1000
+    baseline_measured_us=500
+    case "$pair_calls" in
+        1|5) measured_us=500 ;;
+        *) measured_us=1000 ;;
+    esac
+}'
+    local tsv_file="$TEST_DIR/calibration.tsv"
+    STUBS="$stubs" run_main_with_stubs --calibrate 3 --calibration-file "$tsv_file" \
+        --scenario plain bash
+    assert_equals "0" "$BENCH_STATUS" "a calibration run exits 0 whatever the ratios" || return
+    assert_contains "$BENCH_OUTPUT" \
+        "bash           plain          3 runs, min 1.000, median 2.000, max 2.000, over the limit 2, still over after measuring again 1" || return
+    assert_equals "$(printf 'bash\tplain\t3\t1.000\t2.000\t2.000\t2\t1')" "$(cat "$tsv_file")" || return
+
+    pass_test
+}
+
+test_bench_calibration_reports_scaling() {
+    start_test "a calibration run reports the lines-256k / lines-16k growth and measures it again"
+
+    local stubs='
+measure_pair() {
+    measured_init_us=1000
+    baseline_measured_us=100
+    case "$2" in
+        lines-16k) measured_us=100 ;;
+        lines-256k) measured_us=4000 ;;
+    esac
+}
+measure() {
+    measured_init_us=1000
+    case "$3" in
+        lines-16k) measured_us=100 ;;
+        lines-256k) measured_us=3000 ;;
+    esac
+}'
+    local tsv_file="$TEST_DIR/calibration-scaling.tsv"
+    STUBS="$stubs" run_main_with_stubs --calibrate 2 --calibration-file "$tsv_file" \
+        --scenario lines-16k --scenario lines-256k bash
+    assert_equals "0" "$BENCH_STATUS" || return
+    # 4000 / 100 = 40 is over 32 in both runs; measured again it is 30, which is under
+    assert_contains "$BENCH_OUTPUT" \
+        "bash           scaling        2 runs, min 40.000, median 40.000, max 40.000, over the limit 2, still over after measuring again 0" || return
+    assert_contains "$(cat "$tsv_file")" "$(printf 'bash\tscaling\t2\t40.000\t40.000\t40.000\t2\t0')" || return
+
+    pass_test
+}
+
+test_bench_calibration_compares_the_file_with_a_copy() {
+    start_test "a real calibration run compares logging.sh with itself and finds no slowdown"
+
+    run_bench --calibrate 2 --rounds 2 --count 20 --scenario plain bash
+    assert_equals "0" "$BENCH_STATUS" "$BENCH_OUTPUT" || return
+    assert_contains "$BENCH_OUTPUT" "Calibration: 2 comparisons of logging.sh with a copy of itself" || return
+    assert_contains "$BENCH_OUTPUT" "plain          2 runs, min" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
 # End to end
 # ---------------------------------------------------------------------------
 
@@ -440,5 +541,10 @@ test_bench_confirms_a_slowdown_before_failing
 test_bench_fails_when_the_slowdown_repeats
 test_bench_does_not_repeat_a_result_under_the_limit
 test_bench_confirms_steep_scaling_before_failing
+test_bench_ratio_statistics
+test_bench_calibrate_rejects_bad_arguments
+test_bench_calibration_counts_runs_over_the_limit
+test_bench_calibration_reports_scaling
+test_bench_calibration_compares_the_file_with_a_copy
 test_bench_reports_an_extra_process_as_slower
 test_bench_run_without_a_baseline
