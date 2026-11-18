@@ -231,6 +231,7 @@ jobs:
         shell: bash
         run: |
           scripts/bench-logging.sh --baseline "$RUNNER_TEMP/baseline-logging.sh" \
+            --summary "$GITHUB_STEP_SUMMARY" \
             bash "bash --posix" zsh dash "busybox sh" | tee bench-results.txt
 
       - name: Upload benchmark results

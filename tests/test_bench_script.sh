@@ -382,6 +382,81 @@ measure() {
 }
 
 # ---------------------------------------------------------------------------
+# Markdown summary
+# ---------------------------------------------------------------------------
+
+test_bench_summary_lists_limits_versions_and_results() {
+    start_test "--summary appends the limits, CPUs, shell versions and a row per result"
+
+    local summary_file="$TEST_DIR/summary.md"
+    printf 'existing line\n' > "$summary_file"
+    local stubs='
+time_one_run() { printf "0.001\n"; }
+measure_pair() {
+    measured_init_us=1000; measured_us=520; baseline_measured_us=500
+}'
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --summary "$summary_file" --rounds 5 --scenario plain bash
+    assert_equals "0" "$BENCH_STATUS" || return
+
+    local summary
+    summary=$(cat "$summary_file")
+    assert_contains "$summary" "existing line" "the summary is appended, not replaced" || return
+    assert_contains "$summary" "## Per-message benchmark: passed" || return
+    assert_contains "$summary" "above 1.15 with a difference of at least 100 us" || return
+    assert_contains "$summary" "lines-256k / lines-16k above 32" || return
+    assert_contains "$summary" "CPUs: " || return
+    assert_contains "$summary" '* `bash`: bash ' || return
+    assert_contains "$summary" "| Shell | Scenario | us/message | Baseline | Ratio | Result |" || return
+    assert_contains "$summary" '| `bash` | plain | 520 | 500 | 1.040 | ok |' || return
+
+    pass_test
+}
+
+test_bench_summary_is_written_when_the_run_fails() {
+    start_test "--summary is written when a comparison fails, and says so"
+
+    local summary_file="$TEST_DIR/summary-failed.md"
+    local stubs='
+time_one_run() { printf "0.001\n"; }
+measure_pair() {
+    measured_init_us=1000; measured_us=1000; baseline_measured_us=500
+}'
+    STUBS="$stubs" run_main_with_stubs --baseline "$TEST_DIR/unused-baseline.sh" \
+        --summary "$summary_file" --rounds 5 --scenario plain bash
+    assert_equals "1" "$BENCH_STATUS" || return
+
+    local summary
+    summary=$(cat "$summary_file")
+    assert_contains "$summary" "## Per-message benchmark: failed (exit status 1)" || return
+    assert_contains "$summary" "SLOWER (second measurement, 10 rounds; first ratio 2.000)" || return
+
+    pass_test
+}
+
+test_bench_summary_is_written_when_a_run_fails() {
+    start_test "--summary is written when a run itself fails"
+
+    local summary_file="$TEST_DIR/summary-run-failed.md"
+    run_bench --logging "$TEST_DIR/does-not-exist.sh" --summary "$summary_file" \
+        --rounds 1 --count 2 --scenario plain bash
+    assert_equals "1" "$BENCH_STATUS" || return
+    assert_contains "$(cat "$summary_file")" "failed (exit status 1)" || return
+
+    pass_test
+}
+
+test_bench_no_summary_without_the_option() {
+    start_test "no summary is written unless --summary is given"
+
+    run_bench --rounds 1 --count 2 --scenario plain bash
+    assert_equals "0" "$BENCH_STATUS" || return
+    assert_not_contains "$BENCH_OUTPUT" "Per-message benchmark" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
 # Calibration
 # ---------------------------------------------------------------------------
 
@@ -541,6 +616,10 @@ test_bench_confirms_a_slowdown_before_failing
 test_bench_fails_when_the_slowdown_repeats
 test_bench_does_not_repeat_a_result_under_the_limit
 test_bench_confirms_steep_scaling_before_failing
+test_bench_summary_lists_limits_versions_and_results
+test_bench_summary_is_written_when_the_run_fails
+test_bench_summary_is_written_when_a_run_fails
+test_bench_no_summary_without_the_option
 test_bench_ratio_statistics
 test_bench_calibrate_rejects_bad_arguments
 test_bench_calibration_counts_runs_over_the_limit

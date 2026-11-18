@@ -16,6 +16,9 @@
 #                        difference is at least 100 microseconds (default: 1.15)
 #   --max-scaling R      Fail when lines-256k / lines-16k per-message time exceeds R in a
 #                        shell; linear growth is 16 (default: 32)
+#   --summary FILE       Append the results as a markdown table to FILE, with the limits,
+#                        the shell versions and the number of CPUs. The workflow passes
+#                        $GITHUB_STEP_SUMMARY. The table is written when the run fails too.
 #   --calibrate N        Do not compare releases. Compare logging.sh with a copy of itself N
 #                        times per shell and scenario, and print the minimum, median and
 #                        maximum ratio and how many comparisons were over the limit. The
@@ -74,6 +77,7 @@ min_difference_us=100
 # Empty means a normal run; a number makes it a calibration run of that many comparisons
 calibrate_runs=""
 calibration_file=""
+summary_file=""
 confirm_rounds=10
 shells=()
 selected_scenarios=()
@@ -118,6 +122,7 @@ parse_arguments() {
                 shift 2
                 ;;
             --calibration-file) calibration_file="$2"; shift 2 ;;
+            --summary) summary_file="$2"; shift 2 ;;
             -h|--help) print_usage; exit 0 ;;
             -*) echo "Unknown option: $1" >&2; exit 2 ;;
             *) shells+=("$1"); shift ;;
@@ -568,6 +573,90 @@ run_calibration() {
     done
 }
 
+# Keep one result row for the markdown summary.
+# Arguments: shell command, scenario, candidate, baseline, ratio, result text. Use - for a
+# column that does not apply.
+record_row() {
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" "$6" >> "$work_dir/rows.tsv"
+}
+
+# Print the number of CPUs, or "unknown"
+cpu_count() {
+    nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || printf 'unknown\n'
+}
+
+# Print the version of a shell command ("bash --posix", "busybox sh"), or "unknown". dash has
+# no version option, so its package version is used where dpkg is available.
+shell_version() {
+    local shell_command="$1"
+    local program="${shell_command%% *}"
+    local version=""
+
+    case "$program" in
+        bash|zsh)
+            # shellcheck disable=SC2086  # word splitting of shell_command is intended
+            version=$($shell_command -c 'printf "%s" "${BASH_VERSION:-}${ZSH_VERSION:-}"' \
+                2>/dev/null) || version=""
+            version="$program $version"
+            ;;
+        dash)
+            version=$(dpkg-query -W -f='dash ${Version}' dash 2>/dev/null) || version=""
+            ;;
+        busybox)
+            version=$("$program" 2>&1 | sed -n '1p') || version=""
+            ;;
+    esac
+    if [[ -z "${version// /}" || "$version" == "$program " ]]; then
+        version="unknown"
+    fi
+    printf '%s\n' "$version"
+}
+
+# Append the markdown summary to the summary file: the limits, where it ran, the shell
+# versions and one table row for every result that was recorded.
+# Arguments: exit status of the run
+write_summary() {
+    local run_status="$1"
+    local shell_command=""
+    local result="passed"
+
+    if [[ "$run_status" -ne 0 ]]; then
+        result="failed (exit status $run_status)"
+    fi
+    {
+        printf '## Per-message benchmark: %s\n\n' "$result"
+        printf 'Limits: candidate/baseline above %s with a difference of at least %s us, and\n' \
+            "$max_ratio" "$min_difference_us"
+        printf 'lines-256k / lines-16k above %s (linear is 16). A result over a limit is measured\n' \
+            "$max_scaling"
+        printf 'again with %s rounds instead of %s, and fails only if it is over again.\n\n' \
+            "$confirm_rounds" "$round_count"
+        printf 'CPUs: %s\n\n' "$(cpu_count)"
+        printf 'Shells:\n\n'
+        for shell_command in "${shells[@]}"; do
+            printf '* `%s`: %s\n' "$shell_command" "$(shell_version "$shell_command")"
+        done
+        printf '\n| Shell | Scenario | us/message | Baseline | Ratio | Result |\n'
+        printf '| --- | --- | ---: | ---: | ---: | --- |\n'
+        if [[ -f "$work_dir/rows.tsv" ]]; then
+            awk -F '\t' '{ printf "| `%s` | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6 }' \
+                "$work_dir/rows.tsv"
+        fi
+        printf '\n'
+    } >> "$summary_file"
+}
+
+# Runs when the script exits, whatever the reason: write the summary and remove the work files
+cleanup() {
+    local run_status=$?
+    if [[ -n "$summary_file" && -n "${work_dir:-}" && -z "$calibrate_runs" ]]; then
+        write_summary "$run_status" || true
+    fi
+    if [[ -n "${work_dir:-}" ]]; then
+        rm -rf "$work_dir"
+    fi
+}
+
 # Print one result row of a comparison with the baseline
 # Arguments: shell command, scenario, candidate, baseline, ratio, verdict text
 print_comparison() {
@@ -584,7 +673,7 @@ main() {
     fi
 
     work_dir=$(mktemp -d)
-    trap 'rm -rf "$work_dir"' EXIT
+    trap cleanup EXIT
     write_bench_program
 
     local check_failures=()
@@ -650,6 +739,8 @@ main() {
             if [[ "$init_reported" == "false" ]]; then
                 printf '%-14s %-12s %10s us (source + init_logger, information only)\n' \
                     "$shell_command" "init" "$measured_init_us"
+                record_row "$shell_command" "init" "$measured_init_us" "-" "-" \
+                    "information only (source + init_logger)"
                 init_reported="true"
             fi
 
@@ -662,9 +753,13 @@ main() {
                 if [[ -n "$baseline_note" ]]; then
                     printf '%-14s %-12s %10s us/message, baseline unavailable (%s)\n' \
                         "$shell_command" "$scenario" "$candidate_us" "$baseline_note"
+                    record_row "$shell_command" "$scenario" "$candidate_us" "-" "-" \
+                        "baseline unavailable ($baseline_note)"
                 else
                     printf '%-14s %-12s %10s us/message\n' "$shell_command" "$scenario" \
                         "$candidate_us"
+                    record_row "$shell_command" "$scenario" "$candidate_us" "-" "-" \
+                        "no baseline"
                 fi
                 continue
             fi
@@ -673,6 +768,8 @@ main() {
             ratio=$(compute_ratio "$candidate_us" "$baseline_us")
             if ! is_slower "$candidate_us" "$baseline_us" "$max_ratio" "$min_difference_us"; then
                 print_comparison "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
+                    "$ratio" "ok"
+                record_row "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
                     "$ratio" "ok"
                 continue
             fi
@@ -699,6 +796,8 @@ main() {
             fi
             print_comparison "$shell_command" "$scenario" "$candidate_us" "$baseline_us" \
                 "$ratio" "$verdict (second measurement, $confirm_rounds rounds)"
+            record_row "$shell_command" "$scenario" "$candidate_us" "$baseline_us" "$ratio" \
+                "$verdict (second measurement, $confirm_rounds rounds; first ratio $first_ratio)"
         done
 
         # Growth from 16 KB to 256 KB messages: 16 is linear
@@ -707,6 +806,7 @@ main() {
             if ! scaling_too_steep "$scaling" "$max_scaling"; then
                 printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) ok\n' \
                     "$shell_command" "scaling" "$scaling"
+                record_row "$shell_command" "scaling lines-256k / lines-16k" "-" "-" "$scaling" "ok"
             else
                 printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) TOO STEEP, measuring again with %s rounds\n' \
                     "$shell_command" "scaling" "$scaling" "$confirm_rounds"
@@ -721,6 +821,8 @@ main() {
                 fi
                 printf '%-14s %-12s %10s (lines-256k / lines-16k, linear is 16) %s (second measurement, %s rounds)\n' \
                     "$shell_command" "scaling" "$scaling" "$verdict" "$confirm_rounds"
+                record_row "$shell_command" "scaling lines-256k / lines-16k" "-" "-" "$scaling" \
+                    "$verdict (second measurement, $confirm_rounds rounds; first value $first_scaling)"
             fi
         fi
     done
