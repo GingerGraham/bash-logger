@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2](https://github.com/GingerGraham/bash-logger/compare/3.0.1...3.0.2) (2026-11-18)
+
+### Bug Fixes
+
+* **logging:** quote two arithmetic tests so digits in IFS cannot split them ([#184](https://github.com/GingerGraham/bash-logger/issues/184))
+
+### Code Refactoring
+
+* **bench:** split benchmark verdicts into functions
+
+### Documentation
+
+* **docs:** document the performance benchmark
+
 ## [3.0.1](https://github.com/GingerGraham/bash-logger/compare/3.0.0...3.0.1) (2026-11-18)
 
 ### Bug Fixes
