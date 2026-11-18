@@ -5,6 +5,17 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      calibrate:
+        description: >-
+          Run the benchmark calibration instead of the per-message benchmark: compare
+          logging.sh with a copy of itself, to measure how far the ratio moves on this runner
+        type: boolean
+        default: false
+      calibration_runs:
+        description: Identical-file comparisons per shell and scenario (calibration only)
+        type: string
+        default: "20"
 
 jobs:
   test:
@@ -188,6 +199,9 @@ jobs:
           retention-days: 30
 
   benchmark:
+    # A calibration run replaces this job: both need a quiet runner, and the calibration jobs
+    # below use one runner per shell and scenario group
+    if: ${{ !inputs.calibrate }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -206,8 +220,9 @@ jobs:
       # The base branch's logging.sh is the baseline in every shell where it runs (shells it
       # cannot run in are reported as "baseline unavailable"). The job fails if a run fails,
       # if a scenario is slower than the baseline by more than --max-ratio (default 1.15,
-      # ignored under a 100 microsecond difference), or if lines-256k / lines-16k exceeds
-      # --max-scaling (default 32; linear growth is 16). Every scenario runs, 5 rounds each.
+      # ignored under a 100 microsecond difference, or 2 for the filtered scenario), or if
+      # lines-256k / lines-16k exceeds --max-scaling (default 32; linear growth is 16). Every
+      # scenario runs, 5 rounds each.
       - name: Get baseline logging.sh
         env:
           BASE_REF: ${{ github.base_ref || 'main' }}
@@ -217,6 +232,7 @@ jobs:
         shell: bash
         run: |
           scripts/bench-logging.sh --baseline "$RUNNER_TEMP/baseline-logging.sh" \
+            --summary "$GITHUB_STEP_SUMMARY" \
             bash "bash --posix" zsh dash "busybox sh" | tee bench-results.txt
 
       - name: Upload benchmark results
@@ -225,4 +241,102 @@ jobs:
         with:
           name: benchmark-results
           path: bench-results.txt
+          retention-days: 30
+
+  # Calibration of the benchmark thresholds (Issue #156). Started by hand with
+  #   gh workflow run tests.yml --ref <branch> -f calibrate=true -f calibration_runs=20
+  # Each job compares logging.sh with a copy of itself, so any ratio above 1 is noise, and
+  # prints the minimum, median and maximum ratio. The scenarios are split into three groups so
+  # that no job runs for more than about an hour: the large messages take about a second per
+  # run, and every comparison is 5 rounds of a run for each side.
+  benchmark-calibration:
+    if: ${{ inputs.calibrate }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    name: Calibrate ${{ matrix.shell }} (${{ matrix.group.name }})
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [bash, "bash --posix", zsh, dash, "busybox sh"]
+        group:
+          - name: short messages
+            scenarios: plain filtered console format ansi long-line utf8
+          - name: large messages
+            scenarios: huge-line lines-4k
+          - name: scaling
+            scenarios: lines-16k lines-64k lines-256k
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install zsh, dash and busybox
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
+
+      - name: Run calibration
+        shell: bash
+        env:
+          SHELL_UNDER_TEST: ${{ matrix.shell }}
+          SCENARIOS: ${{ matrix.group.scenarios }}
+          CALIBRATION_RUNS: ${{ inputs.calibration_runs }}
+        run: |
+          scenario_arguments=()
+          for scenario in $SCENARIOS; do
+              scenario_arguments+=(--scenario "$scenario")
+          done
+          scripts/bench-logging.sh --calibrate "$CALIBRATION_RUNS" \
+              --calibration-file "calibration-${{ strategy.job-index }}.tsv" \
+              "${scenario_arguments[@]}" "$SHELL_UNDER_TEST" | tee calibration.txt
+
+      - name: Upload calibration rows
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: calibration-${{ strategy.job-index }}
+          path: |
+            calibration-${{ strategy.job-index }}.tsv
+            calibration.txt
+          retention-days: 30
+
+  # One table of every calibration row, in the job summary and as an artifact
+  benchmark-calibration-summary:
+    if: ${{ always() && inputs.calibrate }}
+    needs: benchmark-calibration
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    name: Calibration results
+
+    steps:
+      - name: Download calibration rows
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: calibration-*
+          path: calibration-rows
+          merge-multiple: true
+
+      - name: Build the table
+        shell: bash
+        run: |
+          {
+              echo "## Benchmark calibration: logging.sh against a copy of itself"
+              echo
+              echo "Runner: ubuntu-latest. Limits: ratio 1.15 with a difference of at least 100 us (2 us for filtered), scaling 32."
+              echo "A ratio above 1 here is noise. The limits need a clear margin above the maximum, and the"
+              echo "floors a clear margin above the largest slowdown."
+              echo
+              echo "| Shell | Scenario | Runs | Min | Median | Max | Largest slowdown (us) | Over the limit | Still over after measuring again |"
+              echo "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+              cat calibration-rows/*.tsv | sort -t "$(printf '\t')" -k1,1 -k2,2 \
+                  | awk -F '\t' '{ printf "| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7, $8, $9 }'
+          } | tee calibration-table.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the table
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: calibration-table
+          path: calibration-table.md
           retention-days: 30
