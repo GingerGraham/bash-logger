@@ -134,19 +134,34 @@ trailing punctuation in headings (MD026), first-line heading (MD041).
 
 ## Runtime Configuration Functions
 
-Every `set_*` function in `logging.sh` reports its change as a `CONFIG` notice. Build the entry
-with `_format_log_message "CONFIG" "$message"`, then send it through the shared helpers instead
-of writing `printf` blocks in the function:
+Every `set_*` function in `logging.sh` validates its argument first. For a value that is not
+valid it prints an error, changes nothing, writes no notice and returns 1. To show the rejected
+value in that error, pass it through `_sanitize_config_notice_into "$1"` and print
+`$_LOGGER_TEXT`, so a newline or escape sequence in it cannot reach the terminal.
 
-* `_log_set_config_to_console "$log_entry" [color]` — console copy, routed like a NOTICE message
-  so it follows `LOG_STDERR_LEVEL`. The color defaults to purple; pass `$COLOR_RED` to warn when
-  enabling an unsafe mode.
-* `_log_set_config_to_file "$log_entry"` — log file copy, without colors. Does nothing when
-  `LOG_FILE` is empty.
-* `_write_to_journal "notice" ...` — journal copy, when journal logging is enabled.
+Then it reports its change as a `CONFIG` notice with one call, built from the new setting:
+
+```sh
+_config_notice "$message" [color] [journal_tag] [journal_message] [journal_force]
+```
+
+`_config_notice` removes newlines, carriage returns, tabs, escape sequences and other control
+characters from the text with `_sanitize_log_message_into`, then formats the entry and sends it to
+the three destinations. It always cleans the text in full, whatever `LOG_UNSAFE_ALLOW_NEWLINES` and
+`LOG_UNSAFE_ALLOW_ANSI_CODES` say, because the text comes from setter arguments and library values,
+not from a log message. A new setter gets this by calling `_config_notice`. Do not format the entry
+or write to the destinations by hand, because that skips the sanitizing.
+
+* Console copy: routed like a NOTICE message, so it follows `LOG_STDERR_LEVEL`. The color
+  (argument 2) defaults to purple; pass `$COLOR_RED` to warn when enabling an unsafe mode.
+* Log file copy: without colors, and skipped when `LOG_FILE` is empty.
+* Journal copy: written when journal logging is enabled, with the tag in argument 3 (default
+  `JOURNAL_TAG`, or `SCRIPT_NAME`) and the text in argument 4 (default: the notice text). Pass
+  `true` as argument 5 to write it even when journal logging is off.
 
 When adding a `set_*` function, add it to the `CONFIG` notice tests in
-`tests/test_runtime_config.sh`, which check every function's console stream and log file line.
+`tests/test_runtime_config.sh`, which check every function's console stream and log file line, and
+test that an invalid value is rejected.
 
 ## Pre-PR Checklist
 
