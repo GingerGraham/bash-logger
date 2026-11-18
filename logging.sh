@@ -553,7 +553,7 @@ _text_length() {
     if _shell_counts_characters; then
         return 0
     fi
-    if [ $((_LOGGER_TEXT_LENGTH * 4)) -le "$limit" ]; then
+    if [ "$((_LOGGER_TEXT_LENGTH * 4))" -le "$limit" ]; then
         return 0
     fi
     # A shell that counts this two-byte character as 2 already counts bytes (dash, and
@@ -1849,7 +1849,7 @@ _cap_message_length_into() {
             largest_limit="$_LOGGER_INTEGER"
         fi
     fi
-    if [ $((largest_limit * 4)) -gt "$cap" ]; then
+    if [ "$((largest_limit * 4))" -gt "$cap" ]; then
         cap=$((largest_limit * 4))
     fi
     if [ "${#message}" -le "$cap" ]; then

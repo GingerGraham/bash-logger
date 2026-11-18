@@ -655,10 +655,50 @@ test_safe_script_name_is_kept_when_sourced() {
     pass_test
 }
 
+# Digits in IFS must not change the length checks (#183). Two tests used an unquoted
+# arithmetic expansion, so with IFS=0123456789 the result was split away: dash and busybox
+# printed an error for every message, and bash cut a long message to 8192 characters even
+# when --max-line-length allowed more.
+test_digits_in_ifs_do_not_change_length_checks() {
+    local shell_command="$1"
+    start_test "[$shell_command] digits in IFS do not break the length checks (#183)"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local log_file="$TEST_DIR/ifs_digits.log"
+    local script_file="$TEST_DIR/ifs_digits.sh"
+    printf '%s\n' \
+        "IFS=0123456789" \
+        ". '$PROJECT_ROOT/logging.sh'" \
+        "init_logger --no-color --quiet --max-line-length 100000 --log '$log_file'" \
+        "log_info 'a short message'" \
+        "message=\$(awk 'BEGIN { for (i = 0; i < 70000; i++) printf \"a\" }')" \
+        "log_info \"\$message\"" > "$script_file"
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(env -i PATH="$PATH" LC_ALL=C $shell_command "$script_file" 2>&1 < /dev/null)
+
+    # The only output is the notice init_logger prints about the log file
+    local unexpected
+    unexpected=$(printf '%s\n' "$output" | grep -v '^Logger: Successfully initialized' || true)
+    assert_equals "" "$unexpected" "output other than the init notice" || return
+
+    # Two log lines of messages, and the long one in full (70000 characters plus the prefix)
+    assert_equals "3" "$(wc -l < "$log_file" | tr -d ' ')" "lines in the log file" || return
+    local longest
+    longest=$(awk '{ if (length($0) > longest) longest = length($0) } END { print longest }' "$log_file")
+    assert_equals "1" "$([ "$longest" -ge 70000 ] && echo 1 || echo 0)" \
+        "longest log line is $longest characters" || return
+
+    pass_test
+}
+
 # Run all tests
 test_safe_script_name_is_kept_when_sourced
 while IFS= read -r env_security_shell; do
     test_inherited_script_name_is_sanitized "$env_security_shell"
+    test_digits_in_ifs_do_not_change_length_checks "$env_security_shell"
 done <<< "$(test_shell_list)"
 test_preset_log_file_handling
 test_malicious_path_variable
