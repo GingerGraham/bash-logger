@@ -37,6 +37,14 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 * [Debugging Failed Tests](#debugging-failed-tests)
 * [Continuous Integration](#continuous-integration)
   * [Comparing with the Previous Major Release](#comparing-with-the-previous-major-release)
+* [Performance Benchmarks](#performance-benchmarks)
+  * [What It Measures](#what-it-measures)
+  * [Running It Locally](#running-it-locally)
+  * [How a Result Is Judged](#how-a-result-is-judged)
+  * [When the Job Fails](#when-the-job-fails)
+  * [Reading the Result in CI](#reading-the-result-in-ci)
+  * [Calibrating the Limits](#calibrating-the-limits)
+  * [Tests for the Script](#tests-for-the-script)
 * [Related Documentation](#related-documentation)
 
 ## Overview
@@ -974,6 +982,8 @@ Other jobs in the same workflow:
   BusyBox and musl of a default Alpine system. It sets `TEST_MAX_SKIPPED=10`, so a change that
   silently skips the UTF-8 tests again fails the job instead of shrinking coverage.
 * `compare-with-release` runs `scripts/compare-with-release.py`, described below.
+* `benchmark` runs `scripts/bench-logging.sh` against the base branch, described under
+  [Performance Benchmarks](#performance-benchmarks).
 
 ### Comparing with the Previous Major Release
 
@@ -1020,6 +1030,140 @@ locale is missing. Full coverage needs the `en_GB.UTF-8`, `tr_TR.UTF-8` and
 * Temporary files in system temp directory
 * Skips tests when dependencies unavailable
 * No pager usage or interactive prompts
+
+## Performance Benchmarks
+
+`scripts/bench-logging.sh` measures how long `logging.sh` takes per message. It exists to catch a
+change that adds a process, a loop or a quadratic step to the logging path. The `Per-message
+Benchmark` job in `.github/workflows/tests.yml` runs it on every pull request and compares the
+branch with `main`.
+
+### What It Measures
+
+Each run starts a shell, sources `logging.sh`, calls `init_logger` and logs one message in a loop.
+The script times a run with no messages and a run with the scenario's messages, and divides the
+difference by the message count. Shell start-up, sourcing and `init_logger` are therefore not part
+of the per-message cost. That start-up cost is printed once per shell as an information row.
+
+| Scenario     | Messages per run | What it logs                                                   |
+| ------------ | ---------------- | -------------------------------------------------------------- |
+| `plain`      | 300              | 60 ASCII characters with `log_info`                            |
+| `filtered`   | 2000             | `log_debug` below the log level, so every call is filtered out |
+| `console`    | 300              | 60 ASCII characters to the console with colour                 |
+| `format`     | 300              | 60 ASCII characters with a custom `--format`                   |
+| `ansi`       | 200              | 60 characters containing escape sequences that are sanitized   |
+| `long-line`  | 200              | 4 KB, no control characters                                    |
+| `utf8`       | 100              | 4,000 two-byte characters                                      |
+| `huge-line`  | 100              | 100 KB, no control characters                                  |
+| `lines-4k`   | 100              | 4 KB with a newline every 64 bytes                             |
+| `lines-16k`  | 50               | 16 KB with a newline every 64 bytes                            |
+| `lines-64k`  | 100              | 64 KB with a newline every 64 bytes                            |
+| `lines-256k` | 50               | 256 KB with a newline every 64 bytes                           |
+
+The counts of the large scenarios are chosen so that one run takes about a second. A shorter run
+is dominated by timer resolution and scheduling noise on a shared runner.
+
+The script runs every scenario in `bash`, `bash --posix`, `zsh`, `dash` and `busybox sh` in CI.
+On Fedora, install the extra shells with `sudo dnf install zsh dash busybox`.
+
+### Running It Locally
+
+```bash
+git fetch origin main
+make bench
+```
+
+`make bench` compares the working tree's `logging.sh` with `origin/main:logging.sh`. Two
+variables change what it runs:
+
+```bash
+# Other shells, one scenario
+make bench BENCH_ARGS='--scenario plain bash dash "busybox sh"'
+
+# Compare with a different file instead of origin/main
+make bench BENCH_BASELINE=/path/to/other/logging.sh
+```
+
+The script can be called directly. Run `scripts/bench-logging.sh --help` for every option. Without
+`--baseline` it only prints the per-message cost of the current file.
+
+A laptop under load gives noisy numbers. Close other work first, and run it twice before
+believing a result close to a limit.
+
+### How a Result Is Judged
+
+A comparison with the baseline fails when both of these hold:
+
+* The ratio of the branch to the baseline is above `--max-ratio` (default 1.15).
+* The branch is at least 100 microseconds per message slower. A smaller difference is timing
+  noise whatever the ratio, because a fast scenario can double on a 20 microsecond change.
+
+The scaling check compares `lines-256k` with `lines-16k`. A message 16 times longer should cost
+about 16 times more. The check fails when the growth is above `--max-scaling` (default 32), which
+points to a step that is quadratic in the message length.
+
+To keep noise from failing a pull request, a result over a limit is not final:
+
+1. Each round times the branch and the baseline one after the other, and swaps which goes first
+   every round, so a change in machine load during the run affects both.
+1. The median of 5 rounds is compared with the limit.
+1. If it is over, the script says `SLOWER` or `TOO STEEP` and measures again with 10 rounds.
+   The job fails only if the second measurement is over the limit as well. Both values are
+   printed in the failure message.
+
+A baseline that cannot run in a shell (for example a release that only supports bash) is
+reported as `baseline unavailable` once per row and does not fail the job. A run that exits with
+an error, or whose log file has the wrong number of lines, always fails.
+
+### When the Job Fails
+
+Read the failure message first. `FAIL <shell> <scenario>: ratio A, then B with 10 rounds` means
+the scenario was slower than `main` in both measurements, so it is a real slowdown. Run
+`make bench BENCH_ARGS='--scenario <scenario> <shell>'` locally to reproduce it, and look for an
+added subshell, command substitution or external command on that path. A message that names an
+exit status or a line count is a broken run, not a slow one, and the message says which shell
+and scenario.
+
+A failure that appears once and does not repeat on a re-run of the job is a sign that a limit is
+too tight. Run the calibration below before raising it.
+
+### Reading the Result in CI
+
+The job writes a markdown table to the run's summary page: every result, the limits, the shell
+versions and the number of CPUs. The full text output is the `benchmark-results` artifact. The
+summary is written when the job fails too.
+
+### Calibrating the Limits
+
+The limits have to sit above the spread that two identical files show on a CI runner, or the job
+fails on noise. The calibration mode measures that spread. It compares `logging.sh` with a copy of
+itself many times, so any ratio above 1 is noise.
+
+```bash
+gh workflow run tests.yml --ref <branch> -f calibrate=true -f calibration_runs=20
+```
+
+`calibrate` replaces the benchmark job with one job per shell and scenario group, followed by a
+job that merges their results into one table on the run's summary page. For every shell and
+scenario the table shows the number of comparisons, the minimum, median and maximum ratio, the
+number of comparisons over the limit, and the number still over it after measuring again. The
+last number is what would fail a pull request. The maximum ratio should be well under the
+limit, and the last number should be zero.
+
+The same mode runs locally: `scripts/bench-logging.sh --calibrate 20 --scenario plain bash`.
+Add `--calibration-file FILE` to keep the rows as tab-separated values.
+
+Change `--max-ratio`, `--max-scaling` or the 100 microsecond floor only with calibration data
+that shows the current value is too tight. The pull request that changes a limit should include
+the table.
+
+### Tests for the Script
+
+`tests/test_bench_script.sh` tests the script itself and takes a few seconds. It covers the
+verdict functions at their boundaries, the failure paths, the decision to measure again, the
+summary and the calibration output. A canary test runs the real script against a copy of
+`logging.sh` that starts an extra process per message, and checks that the script reports it as
+`SLOWER` and fails. If that test fails, the benchmark has stopped detecting a slowdown.
 
 ## Related Documentation
 

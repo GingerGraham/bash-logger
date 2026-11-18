@@ -14,7 +14,7 @@
 #
 # Every run of the script uses --count and --rounds to stay small, and the copies of logging.sh
 # live in $TEST_DIR: the repository's logging.sh is never changed. The whole suite takes
-# about 10 seconds. It runs the script under bash only, so it also works on macOS with bash
+# under 10 seconds. It runs the script under bash only, so it also works on macOS with bash
 # 3.2 and the BSD tools.
 
 BENCH_SCRIPT="$PROJECT_ROOT/scripts/bench-logging.sh"
