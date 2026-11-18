@@ -1100,6 +1100,58 @@ printf 'tag=%s status=%s\n' \"\$JOURNAL_TAG\" \"\$?\"
     pass_test
 }
 
+test_posix_journal_tag_rejects_controls() {
+    local shell_command="$1"
+    start_test "[$shell_command] journal tags reject the controls that messages lose, in every locale"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # U+202E, U+2067, U+009B and U+2028 are bidirectional, C1 and line separator characters
+    # that message sanitizing removes. café is ordinary text that must stay valid.
+    local snippet
+    snippet="
+config_file='$TEST_DIR/tag.conf'
+check_tag() {
+    set_journal_tag \"\$2\" >/dev/null 2>&1
+    set_status=\$?
+    JOURNAL_TAG=''
+    init_logger --quiet --no-init-message --tag \"\$2\" >/dev/null 2>&1
+    cli_tag=\$JOURNAL_TAG
+    printf '[logging]\\ntag = %s\\n' \"\$2\" > \"\$config_file\"
+    JOURNAL_TAG=''
+    init_logger --quiet --no-init-message -c \"\$config_file\" >/dev/null 2>&1
+    case \"\$JOURNAL_TAG\" in
+        *[!A-Za-z0-9._-]*) config_state=\"unsafe\" ;;
+        *) config_state=\"safe\" ;;
+    esac
+    printf '%s set=%s cli=[%s] config=%s\\n' \"\$1\" \"\$set_status\" \"\$cli_tag\" \"\$config_state\"
+}
+check_tag rlo \"\$(printf 'a\\342\\200\\256b')\"
+check_tag rli \"\$(printf 'a\\342\\201\\247b')\"
+check_tag c1 \"\$(printf 'a\\302\\233b')\"
+check_tag ls \"\$(printf 'a\\342\\200\\250b')\"
+cafe=\"\$(printf 'caf\\303\\251')\"
+set_journal_tag \"\$cafe\" >/dev/null 2>&1
+printf 'cafe set=%s tag=[%s]\\n' \"\$?\" \"\$JOURNAL_TAG\"
+"
+    local expected
+    expected="rlo set=1 cli=[] config=safe
+rli set=1 cli=[] config=safe
+c1 set=1 cli=[] config=safe
+ls set=1 cli=[] config=safe
+cafe set=0 tag=[caf$(printf '\303\251')]"
+
+    local locale_name
+    local output
+    for locale_name in C POSIX "$(utf8_locale_name)"; do
+        [[ -n "$locale_name" ]] || continue
+        output=$(run_snippet_in_shell "$shell_command" "$locale_name" "$snippet" 2>/dev/null)
+        assert_equals "$expected" "$output" "tag results under LC_ALL=$locale_name" || return
+    done
+
+    pass_test
+}
+
 test_posix_log_file_permissions() {
     local shell_command="$1"
     start_test "[$shell_command] a created log file and directory are private, existing ones are kept"
@@ -1249,6 +1301,7 @@ while IFS= read -r posix_shell; do
     test_posix_utc_from_epoch "$posix_shell"
     test_posix_version_variables_from_environment "$posix_shell"
     test_posix_tag_option_validated "$posix_shell"
+    test_posix_journal_tag_rejects_controls "$posix_shell"
     test_posix_log_file_permissions "$posix_shell"
     test_posix_log_file_replaced_by_symlink "$posix_shell"
     test_posix_control_characters_removed "$posix_shell"

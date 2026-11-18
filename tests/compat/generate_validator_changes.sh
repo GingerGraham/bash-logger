@@ -39,6 +39,10 @@ logging_script="$(cd "$(dirname "$logging_script")" && pwd)/$(basename "$logging
 # Arguments: check name, golden file name
 reason_for_check() {
     case "$1" in
+        string|config_file_path|config_format|config_journal_tag|journal_tag|parse_format|\
+        parse_log_file|parse_tag)
+            printf '%s' "Rejects C1 controls, U+2028, U+2029 and bidirectional controls in every locale (#154)"
+            ;;
         *) return 0 ;;
     esac
 }

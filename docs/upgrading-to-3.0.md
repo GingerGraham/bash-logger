@@ -70,6 +70,12 @@ These also come from the security review of 3.0 and apply in every shell.
   tests, must now also make it readonly. `log_to_journal` also stops when validation fails.
 * **`-t` and `--tag` are validated** as the `tag` config key and `set_journal_tag` are. An
   invalid tag prints an error, and the previous tag is kept.
+* **Tags reject what messages lose, in every locale.** A tag and a config file path cannot
+  contain the C1 controls, U+2028, U+2029 or the bidirectional formatting characters U+202A to
+  U+202E and U+2066 to U+2069. 2.x and 3.0.0 checked for the non-ASCII ones
+  only in a UTF-8 locale, and not for the bidirectional characters at all. The bidirectional marks
+  and zero-width characters listed above are still accepted, as is ordinary non-ASCII text such as
+  `café`.
 
 ## Changes in bash and zsh
 
@@ -148,7 +154,7 @@ variable names start with `_LOGGER_`. If your script defines one of these names,
 `_contains_control_characters`, `_contains_strippable_characters`,
 `_contains_shell_metacharacters`, `_count_characters`, `_current_timestamp_into`,
 `_find_caller_script`, `_format_log_message_into`, `_get_log_level_color_into`,
-`_get_syslog_priority_into`, `_has_word_after_separator`, `_is_digits`, `_is_utf8_locale`,
+`_get_syslog_priority_into`, `_has_word_after_separator`, `_is_digits`,
 `_log_set_config_to_console`, `_log_set_config_to_file`, `_logger_readonly`,
 `_parse_shell_integer`, `_replace_all`, `_replace_line_control_chars`,
 `_replace_unsafe_name_characters`, `_require_option_value`, `_sanitize_log_message_into`,

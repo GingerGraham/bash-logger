@@ -109,9 +109,10 @@ if ! _is_readonly _LOGGER_ESC; then
     _LOGGER_BOM=$(printf '\357\273\277')
     # UTF-8 encodings of the non-ASCII control characters, one per line: C1 controls
     # U+0080 to U+009F (C2 80 to C2 9F), LINE SEPARATOR U+2028 (E2 80 A8) and
-    # PARAGRAPH SEPARATOR U+2029 (E2 80 A9). In a UTF-8 locale bash and zsh count these
-    # as [[:cntrl:]]; dash and busybox ash do not, so _contains_control_characters
-    # checks for them explicitly.
+    # PARAGRAPH SEPARATOR U+2029 (E2 80 A9). In a UTF-8 locale bash and zsh count some of
+    # these as [[:cntrl:]]; dash and busybox ash do not. Message sanitizing removes them in
+    # every shell, and _contains_strippable_characters (so also
+    # _contains_control_characters) matches them by their bytes, whatever the locale.
     _LOGGER_UTF8_CONTROLS=$(printf '%b\n' \
         '\0302\0200' '\0302\0201' '\0302\0202' '\0302\0203' '\0302\0204' '\0302\0205' \
         '\0302\0206' '\0302\0207' '\0302\0210' '\0302\0211' '\0302\0212' '\0302\0213' \
@@ -232,22 +233,6 @@ _shell_counts_characters() {
     [ -n "$_LOGGER_SHELL_FAMILY" ]
 }
 
-# Return 0 if the locale environment selects UTF-8 (internal).
-# Uses the same precedence as the C library: LC_ALL, then LC_CTYPE, then LANG.
-_is_utf8_locale() {
-    local active_locale="${LC_ALL:-}"
-    if [ -z "$active_locale" ]; then
-        active_locale="${LC_CTYPE:-}"
-    fi
-    if [ -z "$active_locale" ]; then
-        active_locale="${LANG:-}"
-    fi
-    case "$active_locale" in
-        *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*) return 0 ;;
-    esac
-    return 1
-}
-
 # Set _LOGGER_CHARACTER_COUNT to the number of characters in a value (internal).
 # bash and zsh count characters directly. In other shells ${#value} may count bytes,
 # so values with non-ASCII bytes are counted with "wc -m", which follows the locale
@@ -271,29 +256,16 @@ _count_characters() {
 }
 
 # Return 0 if a value contains a control character (internal).
-# Matches what the earlier [[ $value =~ [[:cntrl:]] ]] check matched in bash: ASCII
-# control characters, and in a UTF-8 locale the non-ASCII control characters as well.
+# ASCII control characters (including newline, carriage return and tab, which message
+# sanitizing replaces rather than removes) are matched by [[:cntrl:]]. Everything else that
+# message sanitizing removes is matched by _contains_strippable_characters: the C1 controls,
+# U+2028, U+2029 and the bidirectional formatting characters, as whole UTF-8 sequences in
+# any locale. A tag, path or format therefore cannot contain what a message could not.
 _contains_control_characters() {
     case "$1" in
         *[[:cntrl:]]*) return 0 ;;
     esac
-    if ! _is_utf8_locale; then
-        return 1
-    fi
-    # Only values with a non-ASCII byte can contain a non-ASCII control character
-    case "$1" in
-        *[!\ -~]*) ;;
-        *) return 1 ;;
-    esac
-    local utf8_control=""
-    while IFS= read -r utf8_control; do
-        case "$1" in
-            *"$utf8_control"*) return 0 ;;
-        esac
-    done <<UTF8_CONTROLS
-$_LOGGER_UTF8_CONTROLS
-UTF8_CONTROLS
-    return 1
+    _contains_strippable_characters "$1"
 }
 
 # Return 0 if a value contains a shell metacharacter (internal).
