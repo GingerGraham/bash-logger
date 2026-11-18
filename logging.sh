@@ -1594,8 +1594,9 @@ _strip_ansi_codes_into() {
     _LOGGER_TEXT="$1"
 
     # If unsafe mode is enabled, skip stripping and return input as-is. The other control
-    # characters are kept too: BEL ends an OSC sequence such as a hyperlink.
-    if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
+    # characters are kept too: BEL ends an OSC sequence such as a hyperlink. The optional
+    # second argument replaces LOG_UNSAFE_ALLOW_ANSI_CODES for this call.
+    if [ "${2:-$LOG_UNSAFE_ALLOW_ANSI_CODES}" = "true" ]; then
         return 0
     fi
 
@@ -1704,7 +1705,9 @@ _sanitize_log_message_into() {
 
     # Sanitize newlines if not in unsafe mode
     # This is independent from ANSI code stripping to prevent security bypass
-    if [ "$LOG_UNSAFE_ALLOW_NEWLINES" != "true" ]; then
+    # The optional second and third arguments ("true" or "false") replace
+    # LOG_UNSAFE_ALLOW_NEWLINES and LOG_UNSAFE_ALLOW_ANSI_CODES for this call.
+    if [ "${2:-$LOG_UNSAFE_ALLOW_NEWLINES}" != "true" ]; then
         # Replace control characters with spaces to prevent log injection
         # These characters can break log formats and enable log injection attacks
         # newline (LF), carriage return (CR) and tab (HT)
@@ -1714,7 +1717,7 @@ _sanitize_log_message_into() {
 
     # Strip ANSI codes from user input to prevent terminal manipulation
     # This is independent from newline sanitization
-    _strip_ansi_codes_into "$message"
+    _strip_ansi_codes_into "$message" "${3:-}"
     _strip_trailing_newlines
 }
 
@@ -2289,6 +2292,46 @@ _log_set_config_to_file() {
     return 0
 }
 
+# Sanitize the text of a CONFIG notice (internal). Sets _LOGGER_TEXT.
+# The text of a notice is made of setter arguments and library values, not of a log message,
+# and it is written to the console, the log file and the journal. It is therefore always
+# cleaned in full, whatever LOG_UNSAFE_ALLOW_NEWLINES and LOG_UNSAFE_ALLOW_ANSI_CODES say:
+# those opt-ins are about the messages a script logs, so they are overridden for this call.
+_sanitize_config_notice_into() {
+    _sanitize_log_message_into "$1" "false" "false"
+}
+
+# Report a runtime configuration change as a CONFIG notice (internal).
+# Every set_* function ends with this call, so a notice is sanitized in one place.
+# Arguments:
+#   1  the text of the notice
+#   2  console color (default: purple)
+#   3  journal tag (default: JOURNAL_TAG, or SCRIPT_NAME when there is none)
+#   4  text for the journal copy (default: the text of the notice)
+#   5  "true" to write the journal copy even when journal logging is off (default: false)
+# The notice goes to the console, the log file when there is one, and the journal when it
+# is enabled.
+_config_notice() {
+    local journal_tag="${3:-${JOURNAL_TAG:-$SCRIPT_NAME}}"
+    local journal_force="${5:-false}"
+
+    _sanitize_config_notice_into "$1"
+    local message="$_LOGGER_TEXT"
+    local journal_message="$message"
+    if [ -n "${4:-}" ]; then
+        _sanitize_config_notice_into "$4"
+        journal_message="$_LOGGER_TEXT"
+    fi
+
+    _format_log_message_into "CONFIG" "$message"
+    local log_entry="$_LOGGER_TEXT"
+
+    _log_set_config_to_console "$log_entry" "${2:-}"
+    _log_set_config_to_file "$log_entry"
+
+    _write_to_journal "notice" "$journal_tag" "CONFIG: $journal_message" "$journal_force"
+}
+
 # Function to change log level after initialization
 set_log_level() {
     local level="$1"
@@ -2300,20 +2343,14 @@ set_log_level() {
 
     # Create a special log entry that bypasses level checks
     local message="Log level changed from $old_level to $new_level"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 set_timezone_utc() {
     local new_value=""
     new_value=$(_parse_bool_value "$1") || {
-        printf '%s\n' "Error: set_timezone_utc: invalid value '$1'" >&2
+        _sanitize_config_notice_into "$1"
+        printf '%s\n' "Error: set_timezone_utc: invalid value '$_LOGGER_TEXT'" >&2
         printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
         return 1
     }
@@ -2321,14 +2358,7 @@ set_timezone_utc() {
     USE_UTC="$new_value"
 
     local message="Timezone setting changed from $old_setting to $USE_UTC"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to change log format
@@ -2337,21 +2367,15 @@ set_log_format() {
     LOG_FORMAT="$1"
 
     local message="Log format changed from \"$old_format\" to \"$LOG_FORMAT\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to toggle journal logging
 set_journal_logging() {
     local new_value=""
     new_value=$(_parse_bool_value "$1") || {
-        printf '%s\n' "Error: set_journal_logging: invalid value '$1'" >&2
+        _sanitize_config_notice_into "$1"
+        printf '%s\n' "Error: set_journal_logging: invalid value '$_LOGGER_TEXT'" >&2
         printf '%s\n' "  Valid values: true, false, yes, no, on, off, 1, 0" >&2
         return 1
     }
@@ -2368,17 +2392,14 @@ set_journal_logging() {
     fi
 
     local message="Journal logging changed from $old_setting to $USE_JOURNAL"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
 
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Log to journal if it was previously enabled or just being enabled
-    # Only attempt journal write when logger path is set
+    # The journal copy is written when journal logging was on or has just been turned on,
+    # even though it is off now when it was just turned off
+    local journal_force="false"
     if [ "$old_setting" = "true" ] || [ "$USE_JOURNAL" = "true" ]; then
-        _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message" "true"
+        journal_force="true"
     fi
+    _config_notice "$message" "" "" "" "$journal_force"
 }
 
 # Function to set journal tag
@@ -2391,14 +2412,9 @@ set_journal_tag() {
     JOURNAL_TAG="$1"
 
     local message="Journal tag changed from \"$old_tag\" to \"$JOURNAL_TAG\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
 
     # Log to journal if enabled, using the old tag
-    _write_to_journal "notice" "${old_tag:-$SCRIPT_NAME}" "CONFIG: Journal tag changing to \"$JOURNAL_TAG\""
+    _config_notice "$message" "" "${old_tag:-$SCRIPT_NAME}" "Journal tag changing to \"$JOURNAL_TAG\""
 }
 
 # Function to set syslog facility
@@ -2412,14 +2428,7 @@ set_syslog_facility() {
     SYSLOG_FACILITY="$(_to_lower "$1")"
 
     local message="Syslog facility changed from \"$old_facility\" to \"$SYSLOG_FACILITY\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to set color mode
@@ -2448,14 +2457,7 @@ set_color_mode() {
     USE_COLORS="$new_value"
 
     local message="Color mode changed from \"$old_setting\" to \"$USE_COLORS\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to set script name dynamically
@@ -2465,14 +2467,7 @@ set_script_name() {
     SCRIPT_NAME=$(_sanitize_script_name "$1")
 
     local message="Script name changed from \"$old_name\" to \"$SCRIPT_NAME\""
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
-
-    _log_set_config_to_console "${log_entry}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message"
 }
 
 # Function to enable/disable unsafe mode for newlines in log messages
@@ -2494,19 +2489,13 @@ set_unsafe_allow_newlines() {
     fi
 
     local message="Unsafe newline mode changed from $old_setting to $LOG_UNSAFE_ALLOW_NEWLINES$safety_notice"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Use warning color if enabling unsafe mode
     local log_entry_color=""
     if [ "$LOG_UNSAFE_ALLOW_NEWLINES" = "true" ]; then
         log_entry_color="${COLOR_RED}"
     fi
-    _log_set_config_to_console "${log_entry}" "${log_entry_color}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message" "$log_entry_color"
 }
 
 # Function to enable/disable unsafe mode for ANSI codes in log messages
@@ -2528,19 +2517,13 @@ set_unsafe_allow_ansi_codes() {
     fi
 
     local message="Unsafe ANSI codes mode changed from $old_setting to $LOG_UNSAFE_ALLOW_ANSI_CODES$safety_notice"
-    local log_entry=""
-    log_entry=$(_format_log_message "CONFIG" "$message")
 
     # Use warning color if enabling unsafe mode
     local log_entry_color=""
     if [ "$LOG_UNSAFE_ALLOW_ANSI_CODES" = "true" ]; then
         log_entry_color="${COLOR_RED}"
     fi
-    _log_set_config_to_console "${log_entry}" "${log_entry_color}"
-    _log_set_config_to_file "${log_entry}"
-
-    # Always log to journal if enabled
-    _write_to_journal "notice" "${JOURNAL_TAG:-$SCRIPT_NAME}" "CONFIG: $message"
+    _config_notice "$message" "$log_entry_color"
 }
 
 # Logs to console (internal)

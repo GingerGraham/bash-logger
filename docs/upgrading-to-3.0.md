@@ -131,6 +131,12 @@ The notices that the `set_*` functions print, such as `Log format changed`, chan
 * **A failed log file write is handled like any other message.** It is reported once, and the
   notice goes to stderr. In 2.x the failure was silent, and it exited a script running with
   `set -e`.
+* **The text of a notice is sanitized.** Newlines, escape sequences and other control characters
+  in it are replaced or removed before it is written to the console, the log file and the
+  journal, so a value passed to a `set_*` function cannot forge a line. This applies even while
+  `--unsafe-allow-newlines` or `--unsafe-allow-ansi-codes` is on, because those options are about
+  the messages a script logs. A format you set with `set_log_format` is still your own template
+  and is used as you wrote it; only its text inside the notice is cleaned.
 
 See [Runtime Configuration Notices](output-streams.md#runtime-configuration-notices).
 
