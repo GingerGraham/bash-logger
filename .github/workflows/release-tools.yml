@@ -1,0 +1,48 @@
+name: Release Tooling
+
+# The release job installs its npm tools only when a release is due, so a bad change to them
+# would otherwise first fail while releasing. This job installs and loads them on the pull
+# request instead. It uses no secrets and cannot release anything.
+on:
+  pull_request:
+    paths:
+      - .github/release-tools/**
+      - .releaserc.json
+      - .github/workflows/release.yml
+      - .github/workflows/release-tools.yml
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check Release Tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .github/release-tools/.node-version
+
+      - name: Install dependencies
+        run: npm ci --prefix .github/release-tools
+
+      # Loads semantic-release, every plugin named in .releaserc.json and the changelog
+      # preset from the install, and prints their versions
+      - name: Load the plugins
+        run: |
+          echo "Node version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          node .github/release-tools/check-release-plugins.mjs
+
+      # Starts the real command, which checks the Node and git versions it needs. A dry
+      # run would need push credentials, so this stops at the usage text.
+      - name: Start semantic-release
+        run: .github/release-tools/node_modules/.bin/semantic-release --help > /dev/null

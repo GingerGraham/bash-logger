@@ -39,7 +39,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -116,29 +116,27 @@ jobs:
 
       - name: Setup Node.js
         if: steps.logging_change.outputs.changed == 'true'
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 'lts/*'
+          node-version-file: .github/release-tools/.node-version
 
+      # Installs the exact versions in .github/release-tools/package-lock.json, so a new
+      # release of an npm package cannot change what runs here with the repository token.
       - name: Install dependencies
         if: steps.logging_change.outputs.changed == 'true'
-        run: |
-          npm install -g \
-            semantic-release@24 \
-            @semantic-release/changelog@6 \
-            @semantic-release/git@10 \
-            @semantic-release/exec@6 \
-            conventional-changelog-conventionalcommits@8
+        run: npm ci --prefix .github/release-tools
 
       - name: Verify dependencies
         if: steps.logging_change.outputs.changed == 'true'
         run: |
           echo "Node version: $(node --version)"
           echo "npm version: $(npm --version)"
-          semantic-release --version
+          node .github/release-tools/check-release-plugins.mjs
 
+      # semantic-release reads .releaserc.json from the working directory, which is the
+      # repository root, and loads its plugins from the release-tools install next to it.
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         if: steps.logging_change.outputs.changed == 'true'
-        run: npx semantic-release
+        run: .github/release-tools/node_modules/.bin/semantic-release

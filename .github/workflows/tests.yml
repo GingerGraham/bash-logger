@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install zsh, dash and busybox
         run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
@@ -33,7 +33,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results
           path: tests/
@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Runner images can put a newer Homebrew bash first on PATH, and the tests start
       # nested bash processes. A PATH shim makes every bash call use Apple's bash 3.2.
@@ -83,14 +83,23 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
+      # Each image is a tag plus the digest of its multi-platform index, so a republished tag
+      # cannot change what runs here. To update one, read the new digest from
+      # `docker buildx imagetools inspect bash:<tag>` and change the tag and digest together.
       matrix:
-        bash: ["4.2", "4.4", "5.1"]
+        include:
+          - bash: "4.2"
+            image: bash:4.2@sha256:b4624ba1360dbf58914efe2369e91effb24e8024853e606a4bec34c85111f070
+          - bash: "4.4"
+            image: bash:4.4@sha256:2ae8e461b944ae9b7cb036aabc93bb5d1e6c9fc324c943efded4403db252cfe9
+          - bash: "5.1"
+            image: bash:5.1@sha256:13d6dacba3442056074ae27b71227835a5cc81566873800fe740373a55c8fb7a
     container:
-      image: bash:${{ matrix.bash }}
+      image: ${{ matrix.image }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Confirm bash version
         env:
@@ -115,15 +124,17 @@ jobs:
     runs-on: ubuntu-latest
     name: Run Test Suite (Alpine, musl and BusyBox)
     timeout-minutes: 45
+    # alpine:latest was 3.24 when this was pinned. Update the tag and digest together, as for
+    # the bash images above.
     container:
-      image: alpine:latest
+      image: alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
     steps:
       - name: Install bash, zsh, dash and shellcheck
         run: apk add --no-cache bash zsh dash shellcheck
 
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Show shell versions
         run: |
@@ -153,7 +164,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -170,7 +181,7 @@ jobs:
 
       - name: Upload differences
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: compare-with-release
           path: compare-results.json
@@ -185,7 +196,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -210,7 +221,7 @@ jobs:
 
       - name: Upload benchmark results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: benchmark-results
           path: bench-results.txt
