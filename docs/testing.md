@@ -988,6 +988,22 @@ The release to compare with, and the differences that are allowed, are in
 `scripts/compare-with-release.json`. Each allowed difference names its section of the upgrade
 guide. When a change alters behaviour on purpose, document it in the upgrade guide, then add a
 narrow scenario for it and allow only that scenario. Do not allow a whole shell mode.
+The script enforces this: it exits with status 2 before running anything when an entry in
+`allowed_differences` names a mode instead of an `x:` scenario, unless that mode is in
+`baseline_unusable`. It also checks that each `baseline_unusable` entry names a real case and a
+test that exists in `tests/test_posix_compat.sh`.
+
+When one output line differs in a whole mode, rewrite that line instead of allowing the mode.
+`baseline_rewrites` change the 2.x output and `candidate_rewrites` the 3.x output before the
+comparison. Give each rewrite the narrowest scope that works: `cases` lists the only cases it
+applies to, and `outputs` the only outputs, and the pattern should match the exact line. A
+`candidate_rewrites` entry hides a difference in the current code, so use it only for a known
+bug, say so in its reason, and remove it when the bug is fixed.
+
+A mode in which the previous release cannot run at all, such as zsh under `set -u`, is listed in
+`baseline_unusable` with a reason and the `test_posix_compat.sh` test that covers it. The script
+does not run these cases and reports them as `NOT COMPARED`. They do not count as skipped, so
+`--strict` ignores them.
 
 Options: `--filter TEXT` runs only cases whose `shell/case` name contains `TEXT`,
 `--json-out FILE` writes both outputs of every difference, and `--strict` fails when zsh or a

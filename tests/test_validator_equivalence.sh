@@ -21,7 +21,7 @@ EQUIVALENCE_DRIVER="$EQUIVALENCE_DIR/validator_driver.sh"
 
 # Print the name of an installed UTF-8 locale, or nothing.
 # The UTF-8 golden file records glibc's character classes, so it is only checked on
-# Linux; the shared utf8_locale_name (test_helpers.sh) adds the musl C.UTF-8 fallback.
+# Linux; the shared utf8_locale_name (test_helpers.sh) reports C.UTF-8 on musl.
 equivalence_utf8_locale() {
     [[ "$(uname -s)" == "Linux" ]] || return 0
     utf8_locale_name

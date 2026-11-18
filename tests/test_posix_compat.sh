@@ -828,12 +828,15 @@ test_posix_levels_in_turkish_locale() {
 
     require_shell "${shell_command%% *}" || return 0
 
+    # Check musl first: a `locale` utility on musl (Alpine's musl-locales) could list
+    # tr_TR.UTF-8, but musl still has no locale-specific case mapping to test against.
+    if is_musl; then
+        skip_test "musl has no locale-specific case mapping: the LC_ALL=C guard cannot be tested"
+        return 0
+    fi
+
     if ! locale -a 2>/dev/null | grep -qiE '^tr_TR\.utf-?8$'; then
-        if musl_c_utf8; then
-            skip_test "musl has no locale-specific case mapping: the LC_ALL=C guard cannot be tested"
-        else
-            skip_test "tr_TR.UTF-8 locale not installed"
-        fi
+        skip_test "tr_TR.UTF-8 locale not installed"
         return 0
     fi
 
@@ -1201,11 +1204,32 @@ test_run_with_timeout_stops_process_tree() {
     pass_test
 }
 
+test_run_with_timeout_stops_late_descendants() {
+    start_test "run_with_timeout stops a descendant started after the timeout fired"
+
+    # The command starts its long sleep from a TERM handler, so that child always starts
+    # after the first list of descendants was made, whatever the load on the machine. The
+    # handler runs once the short sleep that is running when TERM arrives has finished.
+    local started_at=$SECONDS
+    local output
+    output=$(run_with_timeout 1 bash -c \
+        'trap "sleep 30" TERM; while :; do sleep 0.1; done' 2>/dev/null)
+    local elapsed=$((SECONDS - started_at))
+    assert_equals "" "$output" || return
+    if [[ "$elapsed" -ge 15 ]]; then
+        fail_test "Took ${elapsed}s to stop"
+        return
+    fi
+
+    pass_test
+}
+
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
 test_posix_busybox_utf8_byte_length
 test_run_with_timeout_stops_process_tree
+test_run_with_timeout_stops_late_descendants
 while IFS= read -r posix_shell; do
     test_posix_caller_detection "$posix_shell"
     test_posix_truncation_bytes "$posix_shell"

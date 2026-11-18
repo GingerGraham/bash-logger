@@ -203,24 +203,25 @@ skip_test() {
     teardown_test 0
 }
 
-# Return 0 when the system runs musl, where C.UTF-8 works without any installed locale
-# files (musl's default since 1.1.11, 2015). musl ships no `locale` utility, so
-# `locale -a` lists nothing even though C.UTF-8 (and every other locale name) is
-# available. Everything else, including glibc, returns 1 and keeps the `locale -a`
-# based detection.
-musl_c_utf8() {
+# Return 0 when the C library is musl, detected from the `ldd --version` banner. musl's
+# ldd prints the banner on stderr and exits nonzero; glibc's prints on stdout. Both are
+# captured, so the exit status does not matter. Where ldd is missing the answer is no.
+is_musl() {
     command -v ldd >/dev/null 2>&1 || return 1
-    local ldd_banner
-    # musl's ldd prints the version banner (and exits nonzero) on stderr; glibc's prints on
-    # stdout. musl's ldd also exits 1, and run_tests.sh runs with pipefail, so the banner is
-    # captured first and the probe's status comes from grep alone.
+    local ldd_banner=""
     ldd_banner="$(ldd --version 2>&1 || true)"
-    printf '%s\n' "$ldd_banner" | grep -qi musl
+    [[ "$ldd_banner" == *musl* ]]
 }
 
-# Print an installed UTF-8 locale name, or nothing. On musl there is no `locale`
-# utility and no locale files, but C.UTF-8 still works (musl_c_utf8 above).
+# Print an installed UTF-8 locale name, or nothing.
+# musl always has C.UTF-8 (its default since 1.1.11, 2015), whether or not a `locale`
+# utility is installed and whatever it lists, so musl is checked first. Elsewhere the name
+# must appear in `locale -a`.
 utf8_locale_name() {
+    if is_musl; then
+        printf '%s\n' "C.UTF-8"
+        return 0
+    fi
     local candidate
     for candidate in C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
         if locale -a 2>/dev/null | grep -qx "$candidate"; then
@@ -228,9 +229,6 @@ utf8_locale_name() {
             return 0
         fi
     done
-    if musl_c_utf8; then
-        printf '%s\n' "C.UTF-8"
-    fi
 }
 
 # Assertion functions
@@ -544,13 +542,17 @@ run_with_timeout() {
     # A shell function runs in a background subshell, so the command's descendants have to be
     # stopped too: one left running keeps the caller's command substitution open. The list is
     # made first, because a process has no parent to look it up by once its parent has exited.
-    # KILL follows for anything that ignores TERM.
+    # KILL follows for anything that ignores TERM. A process that ignores TERM is still alive
+    # then and may have started more children since the first list (for example when it had
+    # not reached its long-running child yet on a loaded machine), so the list is made again
+    # before KILL.
     (
         sleep "$seconds" || exit 0
         command_tree="$command_pid $(list_descendant_pids "$command_pid")"
         # shellcheck disable=SC2086  # word splitting of the PID list is intended
         kill -TERM $command_tree
         sleep 2
+        command_tree="$command_tree $(list_descendant_pids "$command_pid")"
         # shellcheck disable=SC2086  # word splitting of the PID list is intended
         kill -KILL $command_tree
     ) >/dev/null 2>&1 &
