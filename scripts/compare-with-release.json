@@ -65,20 +65,6 @@
       "replacement": "",
       "reason": "The library keeps intermediate results in _LOGGER_ variables, and setopt warn_nested_var makes zsh warn each time a function sets one. Only these warnings are removed, so a warning about any other variable still fails the comparison.",
       "guide": "#changes-in-zsh-only"
-    },
-    {
-      "shells": [
-        "bash"
-      ],
-      "cases": [
-        "ifs-digit"
-      ],
-      "outputs": [
-        "stderr"
-      ],
-      "pattern": "^<LIB>: line N: \\[: too many arguments\\n",
-      "replacement": "",
-      "reason": "TEMPORARY. A known bug in 3.0.0: with digits in IFS, an unquoted $((...)) in a [ test is split and prints this error. Remove this entry when the bug is fixed."
     }
   ],
   "baseline_unusable": [
