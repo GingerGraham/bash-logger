@@ -138,6 +138,23 @@ c_inputs+=(
     'level = DEBUG' 'format = "%m"' "format = '%m'"
 )
 
+# Non-ASCII characters seen as bytes in the C locale, alone and between two letters. Message
+# sanitizing in 3.0 removes C1 controls (U+0080, U+0085, U+009B, U+009F), LINE SEPARATOR and
+# PARAGRAPH SEPARATOR (U+2028, U+2029) and the bidirectional formatting characters (U+202A to
+# U+202E, U+2066 to U+2069). The last group is kept on purpose or is ordinary text: U+200E,
+# U+200F, U+061C, U+200B, U+FEFF and "é" (audit finding INF-01). Added after the first
+# version of this file, so the existing corpus ids did not change.
+for value in \
+    $'\302\200' $'\302\205' $'\302\233' $'\302\237' \
+    $'\342\200\250' $'\342\200\251' \
+    $'\342\200\252' $'\342\200\253' $'\342\200\254' $'\342\200\255' $'\342\200\256' \
+    $'\342\201\246' $'\342\201\247' $'\342\201\250' $'\342\201\251' \
+    $'\342\200\216' $'\342\200\217' $'\330\234' $'\342\200\213' $'\357\273\277' \
+    $'\303\251'; do
+    c_inputs+=("$value" "a${value}b")
+done
+c_inputs+=("caf$(printf '\303\251')" "caf$(printf '\303\251')-ok")
+
 # Valid UTF-8 inputs, checked with a UTF-8 locale. These cover what the C locale
 # cannot: multi-byte characters around the length limits, and C1 control
 # characters, which bash treats as [[:cntrl:]] in a UTF-8 locale.
