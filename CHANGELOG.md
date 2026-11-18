@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1](https://github.com/GingerGraham/bash-logger/compare/3.0.0...3.0.1) (2026-11-18)
+
+### Bug Fixes
+
+* **config:** reject format strings that contain control characters
+* **config:** sanitize overlong journal tags after truncating them
+* **logging:** detect bash and zsh from builtins, not PATH commands
+* **logging:** reject busybox logger links that pass through another link
+* **logging:** reject the controls message sanitizing removes in journal tags
+* **logging:** sanitize an inherited SCRIPT_NAME when the library is sourced
+* **logging:** sanitize the values in runtime CONFIG notices
+* **logging:** security and validation fixes from the 3.0.0 audit ([#181](https://github.com/GingerGraham/bash-logger/issues/181))
+* **logging:** validate CLI length limits as the config file does
+* **logging:** validate set_timezone_utc and set_journal_logging values
+
+### Documentation
+
+* bring documentation in line with 3.0 ([#174](https://github.com/GingerGraham/bash-logger/issues/174))
+* **docs:** describe _config_notice in the agent instructions
+* **docs:** list the internal functions added in 3.0.1
+* **security:** add v3.0.0 security audit report ([#168](https://github.com/GingerGraham/bash-logger/issues/168))
+
+### Performance Improvements
+
+* **logging:** check readonly variables with shell builtins where available
+* **logging:** use the bash attribute check from bash 5.1
+
 ## [3.0.0](https://github.com/GingerGraham/bash-logger/compare/2.7.0...3.0.0) (2026-11-06)
 
 ### BREAKING CHANGES
