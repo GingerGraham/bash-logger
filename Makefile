@@ -18,7 +18,7 @@ DOCS = README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURIT
 # Shell for execution
 SHELL := /bin/bash
 
-.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit test-fail-fast coverage coverage-junit coverage-debug sonar sonar-analysis lint lint-shell lint-markdown check bench demo demos clean pre-commit
+.PHONY: all help install install-user uninstall uninstall-user test test-quiet test-junit test-fail-fast coverage coverage-junit coverage-debug sonar sonar-analysis lint lint-shell lint-markdown check bench stress-zsh demo demos clean pre-commit
 
 all: help
 
@@ -42,6 +42,7 @@ help:
 	@echo "  make sonar-analysis  Run coverage, JUnit tests, and SonarQube scan"
 	@echo "  make demo            Run all demo scripts"
 	@echo "  make bench           Compare per-message cost with origin/main (see BENCH_ARGS)"
+	@echo "  make stress-zsh      Check a logging trap handler does not crash zsh (8 s per mode)"
 	@echo "  make lint            Run all linters (shellcheck + markdownlint)"
 	@echo "  make lint-shell      Run shellcheck only"
 	@echo "  make lint-markdown   Run markdownlint only"
@@ -55,6 +56,7 @@ help:
 	@echo "  BENCH_BASELINE=file  logging.sh to compare with (default: origin/main)"
 	@echo "  BENCH_ARGS='...'     Extra arguments for scripts/bench-logging.sh, e.g."
 	@echo "                       BENCH_ARGS='--scenario plain bash dash \"busybox sh\"'"
+	@echo "  STRESS_ARGS='...'    Extra arguments for scripts/stress-zsh-signals.sh, e.g. '--runs 5'"
 	@echo ""
 	@echo "Installation options:"
 	@echo "  PREFIX=/path         Change installation prefix (default: /usr/local)"
@@ -273,6 +275,11 @@ bench:
 		fi; \
 	fi; \
 	./scripts/bench-logging.sh --baseline "$$baseline" $(BENCH_ARGS)
+
+# Opt-in check that a trap handler that logs does not crash zsh (Issue #153). It is not part
+# of "make test" because each run lasts the full duration, 8 seconds in each of two zsh modes.
+stress-zsh:
+	./scripts/stress-zsh-signals.sh $(STRESS_ARGS)
 
 lint: lint-shell lint-markdown
 	@echo ""

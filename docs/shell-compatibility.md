@@ -199,7 +199,10 @@ running in the same shell is written in a subshell. The call that was interrupte
 its state intact, and the message is written immediately, so a handler or an `EXIT` trap that
 logs does not lose it. In a stress test with a `log_warn` handler, a `log_info` loop and about 50
 `USR1` signals per second, 30 of 30 runs crashed before this protection and 0 of 30 crashed with
-it. It covers `log_*`, `log_init`, `log_sensitive` and `log_to_journal`. The cost is one extra
+it. It covers `log_*`, `log_init`, `log_sensitive` and `log_to_journal`, in zsh and in `zsh --emulate
+sh` (or zsh run under the name `sh`), where the library loads the `zsh/parameter` module that it
+needs to install the guard. If that module cannot be loaded, the guard is not installed and zsh
+behaves as it did before. The cost is one extra
 process for each nested call only, and normal calls are unchanged. bash, dash and busybox ash run
 traps between commands, so they do not need it and do not use it.
 
@@ -216,17 +219,27 @@ outside a log call, such as in `log_to_journal` before it reaches the log call, 
 `set_*` functions. If a handler is signalled many times a second and the main code does this kind
 of work, 30 of 30 stress runs still crashed, with or without the library.
 
-For that case, keep the handler to a plain assignment and log from the main code:
+The `set_*` functions are not protected, which matters because a `USR1` handler is a common way to
+change the log level while a script runs, for example `trap 'set_log_level DEBUG' USR1`. In zsh,
+do not call a `set_*` function or a `log_*` function from a handler that is signalled many times a
+second while the main code does its own pattern matching or `[` tests. Keep the handler to a plain
+assignment and make the call from the main code:
 
 ```sh
 signal_count=0
+toggle_debug=0
 trap 'signal_count=$((signal_count + 1))' USR1
+trap 'toggle_debug=1' USR2
 
 while :; do
     work
     if [ "$signal_count" -gt 0 ]; then
         log_warn "Received $signal_count USR1 signal(s)"
         signal_count=0
+    fi
+    if [ "$toggle_debug" -eq 1 ]; then
+        set_log_level DEBUG
+        toggle_debug=0
     fi
 done
 ```
