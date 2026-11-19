@@ -257,6 +257,11 @@ _LOGGER_TEXT_LENGTH=""
 _LOGGER_COLOR=""
 _LOGGER_PRIORITY=""
 
+# 1 while _log_message is running, 0 otherwise (internal). Only zsh reads it, to keep a trap
+# handler that logs out of a log call that it interrupted. Set on every source, so a value
+# from the environment is not used.
+_LOGGER_BUSY="0"
+
 # Result variable of _find_caller_script. Set here so that zsh with warn_create_global does
 # not warn when init_logger first sets it.
 _LOGGER_CALLER_PATH=""
@@ -2677,12 +2682,84 @@ _append_to_log_file() {
     return 0
 }
 
+# Exit a subshell with the status of a logging call plus its one-shot state (internal)
+# The one-shot flags of a logging call (an error reported once, journal logging switched off
+# after a failure) are set in the subshell, which the caller never sees. They are added to
+# the exit status as bits, which _run_log_call_isolated copies back:
+#   1 the call failed, 2 LOGGER_FILE_ERROR_REPORTED, 4 LOGGER_JOURNAL_ERROR_REPORTED,
+#   8 USE_JOURNAL is no longer true
+_exit_with_log_state() {
+    local code="$1"
+    case "${LOGGER_FILE_ERROR_REPORTED:-}" in
+        '') ;;
+        *) code=$((code + 2)) ;;
+    esac
+    case "${LOGGER_JOURNAL_ERROR_REPORTED:-}" in
+        '') ;;
+        *) code=$((code + 4)) ;;
+    esac
+    case "$USE_JOURNAL" in
+        true) ;;
+        *) code=$((code + 8)) ;;
+    esac
+    exit "$code"
+}
+
+# Run a logging function in a subshell, for a call made by a zsh trap handler (internal)
+# Usage: _run_log_call_isolated FUNCTION [ARGUMENT...]
+# The subshell has its own copy of the shell's memory, so the pattern matching of the call
+# cannot disturb the code that the signal interrupted, which resumes with its state intact.
+# The subshell starts with _LOGGER_BUSY at 0, so the function takes its normal path there.
+# The status is the function's status. The one-shot state is copied back here (see
+# _exit_with_log_state), with case lists instead of arithmetic. A status above 15 means the
+# subshell did not finish, and counts as a failed call.
+_run_log_call_isolated() {
+    local nested_status=0
+    ( _LOGGER_BUSY="0"; "$@"; _exit_with_log_state "$?" )
+    nested_status=$?
+    case "$nested_status" in
+        [0-9]|1[0-5]) ;;
+        *) return 1 ;;
+    esac
+    case "$nested_status" in
+        2|3|6|7|10|11|14|15) LOGGER_FILE_ERROR_REPORTED="yes" ;;
+    esac
+    case "$nested_status" in
+        4|5|6|7|12|13|14|15) LOGGER_JOURNAL_ERROR_REPORTED="yes" ;;
+    esac
+    case "$nested_status" in
+        8|9|10|11|12|13|14|15) USE_JOURNAL="false" ;;
+    esac
+    case "$nested_status" in
+        1|3|5|7|9|11|13|15) return 1 ;;
+    esac
+    return 0
+}
+
 # Function to log messages with different severity levels (internal)
+#
+# zsh 5.9 can crash when a trap handler runs while the interrupted code is inside zsh
+# internals that are not re-entrant, which include "[" and pattern matching. A handler that
+# logs while the main code is logging does both. So in zsh, a call that arrives while this
+# function is running is written in a subshell, with its own copy of the shell's memory.
+# The first statement must stay a "case", because "[" is one of the triggers, and the flag
+# must be set before the level filter below, which runs "[" (see "Known limitation: zsh
+# signal handlers" in docs/shell-compatibility.md). bash, dash and busybox ash run traps
+# between commands and need none of this.
 _log_message() {
+    case "${_LOGGER_SHELL_FAMILY}:${_LOGGER_BUSY:-0}" in
+        zsh:1)
+            _run_log_call_isolated _log_message "$@"
+            return
+            ;;
+    esac
+    _LOGGER_BUSY="1"
+
     # Skip logging if message level is more verbose than current log level
     # With syslog-style levels, HIGHER values are LESS severe (more verbose)
     # force_show=true ($7) bypasses this filter (used by log_init to always show)
     if [ "${7:-false}" != "true" ] && [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
+        _LOGGER_BUSY="0"
         return 0
     fi
 
@@ -2709,6 +2786,7 @@ _log_message() {
     _LOGGER_TEXT_LENGTH="$saved_text_length"
     _LOGGER_COLOR="$saved_color"
     _LOGGER_PRIORITY="$saved_priority"
+    _LOGGER_BUSY="0"
     return "$write_status"
 }
 
@@ -2847,6 +2925,15 @@ log_sensitive() {
 #   0 - Success
 #   1 - Invalid level or logger not available
 log_to_journal() {
+    # As in _log_message, a call made while a log call is running is isolated, and the check
+    # comes before the "[" tests and the tr below
+    case "${_LOGGER_SHELL_FAMILY}:${_LOGGER_BUSY:-0}" in
+        zsh:1)
+            _run_log_call_isolated log_to_journal "$@"
+            return
+            ;;
+    esac
+
     if [ $# -lt 2 ]; then
         printf '%s\n' "Usage: log_to_journal LEVEL MESSAGE" >&2
         return 1

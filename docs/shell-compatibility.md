@@ -181,13 +181,62 @@ Tests that replace `date` to fix the time in log lines only affect the shells th
 
 ### Known limitation: zsh signal handlers
 
-zsh 5.9 can crash when a signal handler runs `[` while the script is also in a `[` command. A
-script that uses only `[` and a trap, without this library, crashes the same way. 2.x used `[[`
-in bash and zsh, which zsh does not run the same way, so it did not expose this.
+zsh 5.9 can crash (a segmentation fault) when a signal handler runs while the interrupted code
+is inside part of zsh that is not safe to enter twice. That includes the `[` builtin and
+pattern-matching parameter expansions such as `${var//pattern/replacement}`, `${var#pattern}`
+and `${var%pattern}`. A script that does not use this library crashes the same way, for example
+with a `[` test in a trap handler while the main code is in a `[` test, and a handler that is
+signalled many times a second makes it likely.
 
-The chance is small for a handler that runs once, such as logging on `SIGTERM` before exiting. In
-a stress test that logged in a loop with a handler that also logged, 5 of 12 runs crashed at about
-50 signals per second. If a zsh script receives frequent signals, avoid logging from its handlers.
+2.x did not show this, and the reason is not that it was slower. It did its string handling in
+command substitutions, so the pattern matching ran in a subshell. The signal goes to the main
+shell process, which was never in the middle of a pattern match, and the handler's own log call
+ran its pattern matching in a subshell too. 3.0 removed those subshells to make logging faster,
+which put the pattern matching in the process that receives the signal.
+
+**What the library protects against.** In zsh, a log call that arrives while another log call is
+running in the same shell is written in a subshell. The call that was interrupted resumes with
+its state intact, and the message is written immediately, so a handler or an `EXIT` trap that
+logs does not lose it. In a stress test with a `log_warn` handler, a `log_info` loop and about 50
+`USR1` signals per second, 30 of 30 runs crashed before this protection and 0 of 30 crashed with
+it. It covers `log_*`, `log_init`, `log_sensitive` and `log_to_journal`. The cost is one extra
+process for each nested call only, and normal calls are unchanged. bash, dash and busybox ash run
+traps between commands, so they do not need it and do not use it.
+
+The subshell cannot change the shell it was started from, so the library copies back the state
+that a log call sets once: the file error and journal error messages are not repeated, and
+journal logging that was switched off after a failure stays off. One thing is not copied back:
+if `logger` has not been found yet, a nested `log_to_journal` call looks for it again in its
+own subshell, until a call outside a handler has found it.
+
+**What it does not protect against.** A handler that logs while the script's own code is in `[`,
+`${var//pattern/replacement}` or another pattern-matching expansion, because the library cannot
+guard code it does not run. The same applies to a handler that logs while the library itself is
+outside a log call, such as in `log_to_journal` before it reaches the log call, or in the
+`set_*` functions. If a handler is signalled many times a second and the main code does this kind
+of work, 30 of 30 stress runs still crashed, with or without the library.
+
+For that case, keep the handler to a plain assignment and log from the main code:
+
+```sh
+signal_count=0
+trap 'signal_count=$((signal_count + 1))' USR1
+
+while :; do
+    work
+    if [ "$signal_count" -gt 0 ]; then
+        log_warn "Received $signal_count USR1 signal(s)"
+        signal_count=0
+    fi
+done
+```
+
+A handler that runs once, such as logging on `SIGTERM` before exiting, is very unlikely to hit it.
+
+If a handler leaves a log call without returning (for example `return` from a trap function in
+zsh), the busy flag can stay set. Later log calls then each run in a subshell, which still writes
+every message but costs one process each. Starting a new shell, or sourcing the library again,
+clears it.
 
 ### Long messages
 
