@@ -2779,31 +2779,31 @@ _log_message() {
 # is running is written in a subshell, with its own copy of the shell's memory (see "Known
 # limitation: zsh signal handlers" in docs/shell-compatibility.md).
 #
-# The guard is a wrapper that replaces _log_message when this file is sourced, so no other
-# shell pays for it. The original function is kept as _log_message_unguarded. The wrapper's
-# first command must stay a "case", because "[" is one of the triggers, and the flag must be
-# set before the unguarded function runs its level filter, which uses "[". bash, dash and
-# busybox ash run traps between commands and need none of this.
+# The guard is added to the function when this file is sourced, so no other shell pays for
+# it, and zsh pays for no extra function call. It is put round the original body:
+#   * the first command is a "case", because "[" is one of the triggers
+#   * the flag is set before the body runs its level filter, which uses "["
+#   * "always" clears the flag on every way out of the body, including each "return"
+# bash, dash and busybox ash run traps between commands and need none of this.
 if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
-    # "functions" is a zsh parameter that holds the source of every function. There is no
-    # POSIX way to keep a function under a second name without writing it twice. It is only
-    # reached in zsh.
+    _LOGGER_GUARD_BEFORE='case "${_LOGGER_BUSY:-0}" in
+    1)
+        _run_log_call_isolated _log_message "$@"
+        return
+        ;;
+esac
+_LOGGER_BUSY="1"
+{
+'
+    _LOGGER_GUARD_AFTER='
+} always {
+    _LOGGER_BUSY="0"
+}'
+    # "functions" is a zsh parameter that holds the source of every function, and the shell
+    # reads a new value as the function's body. It is only reached in zsh.
     # shellcheck disable=SC2154,SC3054
-    functions[_log_message_unguarded]="${functions[_log_message]}"
-
-    _log_message() {
-        case "${_LOGGER_BUSY:-0}" in
-            1)
-                _run_log_call_isolated _log_message "$@"
-                return
-                ;;
-        esac
-        local guarded_status=0
-        _LOGGER_BUSY="1"
-        _log_message_unguarded "$@" || guarded_status=$?
-        _LOGGER_BUSY="0"
-        return "$guarded_status"
-    }
+    functions[_log_message]="${_LOGGER_GUARD_BEFORE}${functions[_log_message]}${_LOGGER_GUARD_AFTER}"
+    unset _LOGGER_GUARD_BEFORE _LOGGER_GUARD_AFTER
 fi
 
 # Write one message to the console, log file and journal (internal)
