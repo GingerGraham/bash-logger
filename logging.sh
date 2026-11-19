@@ -2737,29 +2737,11 @@ _run_log_call_isolated() {
 }
 
 # Function to log messages with different severity levels (internal)
-#
-# zsh 5.9 can crash when a trap handler runs while the interrupted code is inside zsh
-# internals that are not re-entrant, which include "[" and pattern matching. A handler that
-# logs while the main code is logging does both. So in zsh, a call that arrives while this
-# function is running is written in a subshell, with its own copy of the shell's memory.
-# The first statement must stay a "case", because "[" is one of the triggers, and the flag
-# must be set before the level filter below, which runs "[" (see "Known limitation: zsh
-# signal handlers" in docs/shell-compatibility.md). bash, dash and busybox ash run traps
-# between commands and need none of this.
 _log_message() {
-    case "${_LOGGER_SHELL_FAMILY}:${_LOGGER_BUSY:-0}" in
-        zsh:1)
-            _run_log_call_isolated _log_message "$@"
-            return
-            ;;
-    esac
-    _LOGGER_BUSY="1"
-
     # Skip logging if message level is more verbose than current log level
     # With syslog-style levels, HIGHER values are LESS severe (more verbose)
     # force_show=true ($7) bypasses this filter (used by log_init to always show)
     if [ "${7:-false}" != "true" ] && [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
-        _LOGGER_BUSY="0"
         return 0
     fi
 
@@ -2786,9 +2768,43 @@ _log_message() {
     _LOGGER_TEXT_LENGTH="$saved_text_length"
     _LOGGER_COLOR="$saved_color"
     _LOGGER_PRIORITY="$saved_priority"
-    _LOGGER_BUSY="0"
     return "$write_status"
 }
+
+# zsh only: guard _log_message against a trap handler that logs while a log call is running
+#
+# zsh 5.9 can crash when a trap handler runs while the interrupted code is inside zsh
+# internals that are not re-entrant, which include "[" and pattern matching. A handler that
+# logs while the main code is logging does both. So in zsh, a call that arrives while another
+# is running is written in a subshell, with its own copy of the shell's memory (see "Known
+# limitation: zsh signal handlers" in docs/shell-compatibility.md).
+#
+# The guard is a wrapper that replaces _log_message when this file is sourced, so no other
+# shell pays for it. The original function is kept as _log_message_unguarded. The wrapper's
+# first command must stay a "case", because "[" is one of the triggers, and the flag must be
+# set before the unguarded function runs its level filter, which uses "[". bash, dash and
+# busybox ash run traps between commands and need none of this.
+if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
+    # "functions" is a zsh parameter that holds the source of every function. There is no
+    # POSIX way to keep a function under a second name without writing it twice. It is only
+    # reached in zsh.
+    # shellcheck disable=SC2154,SC3054
+    functions[_log_message_unguarded]="${functions[_log_message]}"
+
+    _log_message() {
+        case "${_LOGGER_BUSY:-0}" in
+            1)
+                _run_log_call_isolated _log_message "$@"
+                return
+                ;;
+        esac
+        local guarded_status=0
+        _LOGGER_BUSY="1"
+        _log_message_unguarded "$@" || guarded_status=$?
+        _LOGGER_BUSY="0"
+        return "$guarded_status"
+    }
+fi
 
 # Write one message to the console, log file and journal (internal)
 _write_log_message() {

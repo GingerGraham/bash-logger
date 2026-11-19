@@ -527,16 +527,6 @@ test_no_deadlock() {
     done
 }
 
-# Print the _LOGGER_BUSY value that a nested call leaves behind in a shell (internal to tests)
-# zsh writes a nested call in a subshell, so the interrupted call's flag stays 1. Other shells
-# ignore the flag and run the normal path, which clears it.
-_busy_after_nested_call() {
-    case "${1%% *}" in
-        zsh) printf '%s' "1" ;;
-        *) printf '%s' "0" ;;
-    esac
-}
-
 # Test: a call made while _log_message is busy is still written (zsh runs it in a subshell)
 test_log_call_while_busy_in_shell() {
     local shell_command="$1"
@@ -553,8 +543,9 @@ echo \"status=\$? busy=\$_LOGGER_BUSY\"" 2>&1)
     assert_contains "$output" "[INFO] [" "log line is written" || return
     assert_contains "$output" "nested-message" "nested message is written" || return
     assert_contains "$output" "status=0" "nested call returns 0" || return
-    assert_contains "$output" "busy=$(_busy_after_nested_call "$shell_command")" \
-        "busy flag after the nested call" || return
+    # zsh writes the nested call in a subshell, so the interrupted call's flag stays set. The
+    # other shells never read or change it.
+    assert_contains "$output" "busy=1" "busy flag after the nested call" || return
 
     pass_test
 }
