@@ -2785,7 +2785,13 @@ _log_message() {
 #   * the flag is set before the body runs its level filter, which uses "["
 #   * "always" clears the flag on every way out of the body, including each "return"
 # bash, dash and busybox ash run traps between commands and need none of this.
-if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ]; then
+#
+# "functions" is only the table of functions once the zsh/parameter module is loaded. zsh
+# loads it by itself, except when it starts in sh or ksh emulation (zsh --emulate sh, or run
+# under the name sh). There "functions" is an ordinary array, the assignment below would not
+# change _log_message, and the guard would be missing without any message. So the module is
+# loaded first, and the guard is skipped only if that fails.
+if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ] && zmodload zsh/parameter 2>/dev/null; then
     _LOGGER_GUARD_BEFORE='case "${_LOGGER_BUSY:-0}" in
     1)
         _run_log_call_isolated _log_message "$@"
