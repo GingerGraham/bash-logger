@@ -13,6 +13,7 @@
 # - set_syslog_facility does not exit the calling script
 # - set_unsafe_* flags set exact values
 # - zsh options used by the config parser do not leak to the caller
+# - The trap-handler re-entrancy guard is applied, in zsh and in zsh --emulate sh (Issue #153)
 
 # Print the logger settings affected by config parsing, one per line
 _settings_report() {
@@ -214,6 +215,53 @@ echo done" 2>&1)
     pass_test
 }
 
+# Test: _log_message has the re-entrancy guard, and a nested call runs in another process
+# Run in zsh and in sh emulation, where the zsh/parameter module is not loaded unless the
+# library loads it. The tests of the nested call's output pass with or without the guard, so
+# this checks the guard itself: the busy flag is set inside a normal call, and a call made
+# while it is set runs in a different process (the real process ID, because $$ does not change
+# in a subshell).
+test_zsh_busy_guard_applied() {
+    local shell_command="$1"
+
+    start_test "the trap-handler guard is applied [$shell_command]"
+
+    require_shell zsh || return 0
+
+    local script
+    script='init_logger --no-color --quiet
+zmodload zsh/system
+_write_log_message() { echo "busy=$_LOGGER_BUSY pid=${sysparams[pid]}"; }
+echo "main pid=${sysparams[pid]}"
+log_info normal-call
+_LOGGER_BUSY=1
+log_info nested-call
+echo "flag after nested call=$_LOGGER_BUSY"
+_LOGGER_BUSY=0
+log_info after-reset
+echo "flag after reset call=$_LOGGER_BUSY"'
+
+    local output
+    output=$(run_with_logger_in_shell "$shell_command" "$script" 2>&1)
+
+    local main_pid normal_call nested_call
+    main_pid=$(printf '%s\n' "$output" | sed -n 's/^main pid=//p')
+    normal_call=$(printf '%s\n' "$output" | sed -n '2p')
+    nested_call=$(printf '%s\n' "$output" | sed -n '3p')
+
+    assert_not_equals "" "$main_pid" "the test reads the process ID" || return
+    assert_equals "busy=1 pid=$main_pid" "$normal_call" \
+        "a normal call sets the flag and runs in this process" || return
+    assert_contains "$nested_call" "busy=1 pid=" "the nested call was written" || return
+    assert_not_contains "$nested_call" "pid=$main_pid" \
+        "a call made while the flag is set runs in another process" || return
+    assert_contains "$output" "flag after nested call=1" \
+        "the interrupted call's flag is left set" || return
+    assert_contains "$output" "flag after reset call=0" "a normal call clears the flag" || return
+
+    pass_test
+}
+
 # Run all tests
 test_zsh_config_parity
 test_zsh_config_sections_and_quotes
@@ -221,3 +269,5 @@ test_zsh_config_option_positions
 test_zsh_set_syslog_facility_does_not_exit
 test_zsh_set_unsafe_flags
 test_zsh_options_not_leaked
+test_zsh_busy_guard_applied "zsh"
+test_zsh_busy_guard_applied "zsh --emulate sh"

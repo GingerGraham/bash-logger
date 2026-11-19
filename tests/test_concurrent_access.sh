@@ -527,6 +527,95 @@ test_no_deadlock() {
     done
 }
 
+# Test: a call made while _log_message is busy is still written (zsh runs it in a subshell)
+test_log_call_while_busy_in_shell() {
+    local shell_command="$1"
+
+    start_test "a log call made while another is running is written [$shell_command]"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    output=$(run_with_logger_in_shell "$shell_command" \
+        "init_logger --no-color; _LOGGER_BUSY=1; log_info nested-message; \
+echo \"status=\$? busy=\$_LOGGER_BUSY\"" 2>&1)
+
+    assert_contains "$output" "[INFO] [" "log line is written" || return
+    assert_contains "$output" "nested-message" "nested message is written" || return
+    assert_contains "$output" "status=0" "nested call returns 0" || return
+    # zsh writes the nested call in a subshell, so the interrupted call's flag stays set. The
+    # other shells never read or change it.
+    assert_contains "$output" "busy=1" "busy flag after the nested call" || return
+
+    pass_test
+}
+
+# Test: the busy flag is 0 after a filtered-out call, a normal call and a failed file write
+test_busy_flag_cleared_in_shell() {
+    local shell_command="$1"
+
+    start_test "the busy flag is cleared after every kind of call [$shell_command]"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    output=$(run_with_logger_in_shell "$shell_command" \
+        "init_logger --no-color --quiet --level ERROR; \
+echo \"after_source=\$_LOGGER_BUSY\"; \
+log_info filtered-out; echo \"after_filtered=\$_LOGGER_BUSY\"; \
+log_error normal; echo \"after_normal=\$_LOGGER_BUSY\"; \
+LOG_FILE='$TEST_DIR/missing/directory/test.log'; \
+log_error file-write-fails; echo \"after_failed_write=\$_LOGGER_BUSY\"" 2>&1)
+
+    assert_contains "$output" "after_source=0" "flag after sourcing" || return
+    assert_contains "$output" "after_filtered=0" "flag after a filtered-out call" || return
+    assert_contains "$output" "after_normal=0" "flag after a normal call" || return
+    assert_contains "$output" "Failed to write to log file" "the write failed" || return
+    assert_contains "$output" "after_failed_write=0" "flag after a failed file write" || return
+
+    pass_test
+}
+
+# Test: a value of _LOGGER_BUSY from the environment is not used
+test_busy_flag_from_environment_ignored_in_shell() {
+    local shell_command="$1"
+
+    start_test "_LOGGER_BUSY from the environment is ignored [$shell_command]"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    # shellcheck disable=SC2086  # word splitting of shell_command is intended
+    output=$(_LOGGER_BUSY=1 $shell_command -c ". '$PROJECT_ROOT/logging.sh'; \
+echo \"busy=\$_LOGGER_BUSY\"" 2>&1)
+
+    assert_equals "busy=0" "$output" "flag is reset when the library is sourced" || return
+
+    pass_test
+}
+
+# Test: one-shot state set by a nested call reaches the interrupted call's shell (zsh)
+test_nested_call_one_shot_state_in_shell() {
+    local shell_command="$1"
+
+    start_test "a nested call reports a file error once and returns its status [$shell_command]"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    local output
+    output=$(run_with_logger_in_shell "$shell_command" \
+        "init_logger --no-color --quiet; LOG_FILE='$TEST_DIR/missing/directory/test.log'; \
+_LOGGER_BUSY=1; log_info first-nested; log_info second-nested; \
+log_to_journal BOGUS text; echo \"journal_status=\$?\"" 2>&1)
+
+    local error_count
+    error_count=$(printf '%s\n' "$output" | grep -c 'Failed to write to log file')
+    assert_equals "1" "$error_count" "the file error is reported once" || return
+    assert_contains "$output" "journal_status=1" "log_to_journal status is returned" || return
+
+    pass_test
+}
+
 # Run all tests
 test_multiprocess_same_file
 test_concurrent_initialization
@@ -542,3 +631,10 @@ test_concurrent_different_files
 test_mixed_output_concurrent
 test_high_concurrency_stress
 test_no_deadlock
+
+while IFS= read -r busy_shell; do
+    test_log_call_while_busy_in_shell "$busy_shell"
+    test_busy_flag_cleared_in_shell "$busy_shell"
+    test_busy_flag_from_environment_ignored_in_shell "$busy_shell"
+    test_nested_call_one_shot_state_in_shell "$busy_shell"
+done <<< "$(test_shell_list)"

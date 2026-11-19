@@ -45,6 +45,7 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
   * [Reading the Result in CI](#reading-the-result-in-ci)
   * [Calibrating the Limits](#calibrating-the-limits)
   * [Tests for the Script](#tests-for-the-script)
+* [zsh Signal Handler Stress Check](#zsh-signal-handler-stress-check)
 * [Related Documentation](#related-documentation)
 
 ## Overview
@@ -1167,6 +1168,32 @@ verdict functions at their boundaries, the failure paths, the decision to measur
 summary and the calibration output. A canary test runs the real script against a copy of
 `logging.sh` that starts an extra process per message, and checks that the script reports it as
 `SLOWER` and fails. If that test fails, the benchmark has stopped detecting a slowdown.
+
+## zsh Signal Handler Stress Check
+
+zsh 5.9 can crash when a trap handler logs while the main code is logging (see
+[Known limitation: zsh signal handlers](shell-compatibility.md#known-limitation-zsh-signal-handlers)).
+`tests/test_zsh_compat.sh` checks that the guard in `_log_message` is installed, and that a call made
+while the busy flag is set runs in another process, in zsh and in `zsh --emulate sh`. Those tests
+are fast and deterministic, and run with the suite.
+
+Whether the guard prevents the crash is checked by a stress run, which is not part of the suite:
+
+```bash
+make stress-zsh
+make stress-zsh STRESS_ARGS='--runs 5 --duration 8'
+```
+
+`scripts/stress-zsh-signals.sh` logs from a `USR1` handler about 50 times a second while the main
+loop logs, in plain zsh and in `zsh --emulate sh`. Each run lasts the full duration (8 seconds by
+default), and the script exits 1 if a run ends with a signal such as the crash status 139.
+
+It is separate from the suite for two reasons. Each run costs 16 seconds, and a test that skips
+unless it is enabled would add skipped tests to a job that has no room: the Alpine job fails above
+`TEST_MAX_SKIPPED=10` and skips 10 today. A pass is not proof: on the main branch without the
+guard, about half of the runs crash within 1 second and all within 5 seconds, so a run of 8 seconds
+is long enough to show the crash, but a pass of 0 in 30 runs is consistent with a true rate of up
+to about 10 percent.
 
 ## Related Documentation
 
