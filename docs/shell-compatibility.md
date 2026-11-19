@@ -233,11 +233,6 @@ done
 
 A handler that runs once, such as logging on `SIGTERM` before exiting, is very unlikely to hit it.
 
-If a handler leaves a log call without returning (for example `return` from a trap function in
-zsh), the busy flag can stay set. Later log calls then each run in a subshell, which still writes
-every message but costs one process each. Starting a new shell, or sourcing the library again,
-clears it.
-
 ### Long messages
 
 Newlines, carriage returns and tabs are replaced before truncation, so a large message (for
