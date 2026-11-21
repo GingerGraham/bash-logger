@@ -87,6 +87,15 @@ shell's name, so any shell with 32-bit arithmetic is covered. Two places depend 
   2147483648 (2038-01-19) or more is not wrapped. Only bash and zsh call it, to make UTC timestamps
   without starting `date`. Other shells use `date -u`.
 
+### mksh has no printf builtin
+
+mksh runs the `printf` command for every message it writes. The library therefore writes message
+text with `printf -- '%s\n'`, and not `printf '%s\n'`. uutils coreutils, the default `printf` in
+Ubuntu 26.04, prints nothing for an operand that is exactly `--` when no `--` comes before the
+format, so a message of `--` became an empty line. GNU coreutils and the printf builtins of bash,
+zsh, dash and busybox ash are not affected, and all accept the leading `--`. A message of 128 KiB or
+more cannot be passed to the command at all, because Linux limits one argument to that size.
+
 ### Script name detection
 
 When `init_logger` is called without `--name`, the script name in log messages comes from:

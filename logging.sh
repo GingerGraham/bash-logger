@@ -665,7 +665,7 @@ _strip_trailing_newlines() {
         *) return 0 ;;
     esac
     case "$_LOGGER_TEXT" in
-        *"$_LOGGER_NEWLINE") _LOGGER_TEXT=$(printf '%s' "$_LOGGER_TEXT") ;;
+        *"$_LOGGER_NEWLINE") _LOGGER_TEXT=$(printf -- '%s' "$_LOGGER_TEXT") ;;
     esac
 }
 
@@ -1798,7 +1798,7 @@ _contains_strippable_characters() {
 # Removes control characters that could break log formats or inject fake entries
 _strip_ansi_codes() {
     _strip_ansi_codes_into "$1"
-    printf '%s\n' "$_LOGGER_TEXT"
+    printf -- '%s\n' "$_LOGGER_TEXT"
 }
 
 # Set _LOGGER_TEXT to text with terminal escape sequences and control characters removed
@@ -1852,7 +1852,7 @@ _strip_ansi_codes_into() {
     # 6. tr removes the remaining C0 controls except LF, CR and TAB, and DEL
     local esc="$_LOGGER_ESC"
     local bel="$_LOGGER_BEL"
-    _LOGGER_TEXT=$(printf '%s' "$_LOGGER_TEXT" | LC_ALL=C sed -E \
+    _LOGGER_TEXT=$(printf -- '%s' "$_LOGGER_TEXT" | LC_ALL=C sed -E \
         -e "s,${esc}\[[0-?]*[ -/]*[@-~],,g" \
         -e "s,${esc}][^${bel}${esc}]*(${bel}|${esc}\\\\)?,,g" \
         -e "s,${esc}[PX^_][^${esc}]*(${esc}\\\\)?,,g" \
@@ -1910,7 +1910,7 @@ _replace_line_control_chars() {
 # Removes control characters that could break log formats or inject fake entries
 _sanitize_log_message() {
     _sanitize_log_message_into "$1"
-    printf '%s\n' "$_LOGGER_TEXT"
+    printf -- '%s\n' "$_LOGGER_TEXT"
 }
 
 # Set _LOGGER_TEXT to the sanitized message (internal).
@@ -1982,7 +1982,7 @@ _cap_message_length_into() {
 # Truncate log messages to a maximum length (internal)
 _truncate_log_message() {
     _truncate_log_message_into "$1" "$2"
-    printf '%s\n' "$_LOGGER_TEXT"
+    printf -- '%s\n' "$_LOGGER_TEXT"
 }
 
 # Set _LOGGER_TEXT to the message truncated to a limit (internal).
@@ -2040,7 +2040,7 @@ _sanitize_script_name() {
 # Function to format log message (internal)
 _format_log_message() {
     _format_log_message_into "$1" "$2"
-    printf '%s\n' "$_LOGGER_TEXT"
+    printf -- '%s\n' "$_LOGGER_TEXT"
 }
 
 # Set _LOGGER_TIMESTAMP to the current time, in UTC when USE_UTC is true (internal).
@@ -2487,7 +2487,7 @@ init_logger() {
         # Can be suppressed with --no-init-message (or init_message=false in config)
         if [ "$LOG_INIT_MESSAGE" = "true" ]; then
             _format_log_message_into "INIT" "Logger initialized by $SCRIPT_NAME"
-            { printf '%s\n' "$_LOGGER_TEXT" >> "$LOG_FILE"; } 2>/dev/null || {
+            { printf -- '%s\n' "$_LOGGER_TEXT" >> "$LOG_FILE"; } 2>/dev/null || {
                 printf '%s\n' "Error: Failed to write initialization message to log file" >&2
                 printf '%s\n' "  Hint: Verify the file is writable and disk space is available" >&2
                 return 1
@@ -2519,9 +2519,9 @@ _log_set_config_to_console() {
     fi
 
     if _should_use_stderr "$LOG_LEVEL_NOTICE"; then
-        printf '%s\n' "${output}" >&2
+        printf -- '%s\n' "${output}" >&2
     else
-        printf '%s\n' "${output}"
+        printf -- '%s\n' "${output}"
     fi
     return 0
 }
@@ -2795,9 +2795,9 @@ _log_to_console() {
     fi
 
     if [ "$use_stderr" = "true" ]; then
-        printf '%s\n' "${output}" >&2 # Log to stderr
+        printf -- '%s\n' "${output}" >&2 # Log to stderr
     else
-        printf '%s\n' "${output}"
+        printf -- '%s\n' "${output}"
     fi
     return 0
 }
@@ -2807,6 +2807,10 @@ _log_to_console() {
 # init_logger rejects a symbolic link, but the path is opened again for every entry, so it
 # is checked again here: a link put in its place later is not written through. A link
 # created between this check and the write is not caught (see SECURITY.md).
+# Every printf that writes or returns message text is written printf -- '%s', and not
+# printf '%s': a shell with no printf builtin (mksh) runs the printf command, and uutils
+# coreutils (the default in Ubuntu 26.04) drops an operand that is exactly "--" when no
+# option terminator comes first, so a message of "--" became an empty line.
 _append_to_log_file() {
     if [ -L "$LOG_FILE" ]; then
         if [ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]; then
@@ -2814,10 +2818,10 @@ _append_to_log_file() {
             printf '%s\n' "  Hint: Something replaced the log file after init_logger checked it" >&2
             LOGGER_FILE_ERROR_REPORTED="yes"
         fi
-        printf '%s\n' "$1" >&2
+        printf -- '%s\n' "$1" >&2
         return 0
     fi
-    { printf '%s\n' "$1" >> "$LOG_FILE"; } 2>/dev/null || {
+    { printf -- '%s\n' "$1" >> "$LOG_FILE"; } 2>/dev/null || {
         # Only print the error once to avoid spam
         if [ -z "${LOGGER_FILE_ERROR_REPORTED:-}" ]; then
             printf '%s\n' "ERROR: Failed to write to log file" >&2
@@ -2826,7 +2830,7 @@ _append_to_log_file() {
         fi
 
         # Print the original message to stderr to not lose it
-        printf '%s\n' "$1" >&2
+        printf -- '%s\n' "$1" >&2
     }
     return 0
 }

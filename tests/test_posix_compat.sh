@@ -1717,6 +1717,56 @@ $snippet" 2>/dev/null)
     pass_test
 }
 
+test_posix_lone_double_hyphen_message() {
+    local shell_command="$1"
+    start_test "[$shell_command] a message of -- is logged when printf drops a lone -- operand"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # uutils coreutils printf (the default in Ubuntu 26.04) prints an empty line for
+    # printf '%s\n' --, and prints -- only when an option terminator comes first. mksh has no
+    # printf builtin, so it runs that command. A stub printf with the same behaviour shows it
+    # in every shell, and shells with a builtin printf are not affected by it.
+    local stub_dir="$TEST_DIR/uutils_stub"
+    mkdir -p "$stub_dir"
+    cat > "$stub_dir/printf" <<'STUB'
+#!/bin/sh
+# Drops an operand of exactly -- unless -- came first, as uutils coreutils printf does
+if [ "$1" = "--" ]; then
+    shift
+    exec /usr/bin/printf "$@"
+fi
+format="$1"
+shift
+for operand in "$@"; do
+    if [ "$operand" != "--" ]; then
+        set -- "$@" "$operand"
+    fi
+    shift
+done
+exec /usr/bin/printf "$format" "$@"
+STUB
+    chmod +x "$stub_dir/printf"
+
+    local log_file="$TEST_DIR/double_hyphen.log"
+    local output
+    output=$(PATH="$stub_dir:$PATH" run_snippet_in_shell "$shell_command" C "
+init_logger --no-color --no-init-message --format '%m' --log '$log_file' 2>/dev/null
+log_info --
+log_info -- x
+log_info --verbose
+" 2>/dev/null)
+
+    assert_equals "--
+-- x
+--verbose" "$output" "console output" || return
+    assert_equals "--
+-- x
+--verbose" "$(cat "$log_file")" "log file" || return
+
+    pass_test
+}
+
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
@@ -1764,6 +1814,7 @@ while IFS= read -r posix_shell; do
     test_posix_timestamp_ignores_environment "$posix_shell"
     test_posix_max_length_options "$posix_shell"
     test_posix_huge_length_limit "$posix_shell"
+    test_posix_lone_double_hyphen_message "$posix_shell"
     test_posix_length_limits_match_config "$posix_shell"
     test_posix_config_bom "$posix_shell"
     test_posix_truncation_four_byte_character "$posix_shell"
