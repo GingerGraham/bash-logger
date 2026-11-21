@@ -167,7 +167,7 @@ matters.
 | `test_log_levels`      |             13 |                       13 | Level constants, name/number mapping, filtering, every log_* function, syslog priority map | `_get_log_level_name`, `_get_log_level_value`, `_get_syslog_priority` |
 | `test_initialization`  |             34 |                       34 | init_logger defaults and every option, repeated initialisation                             | —                                                                     |
 | `test_output`          |             24 |                       24 | Console vs file output, stdout/stderr split, colours, `--quiet`                            | —                                                                     |
-| `test_source_guard` ¹  |              9 |            9 (6 skipped) | Sourcing twice: readonly guards and `_is_readonly` in each shell (Issue #139)              | `_is_readonly`                                                        |
+| `test_source_guard` ¹  |              7 |              7 per shell | Sourcing twice: readonly guards and `_is_readonly` in each shell (Issue #139)              | `_is_readonly`                                                        |
 | `test_journal_logging` |             17 |                       17 | `log_to_journal`, journal dispatch, `--` before the message, missing logger                | `_find_and_validate_logger`, `_log_message`, `_write_to_journal`      |
 | `test_format` ¹        |             33 |           33 (2 skipped) | Format tokens, UTC/local, custom formats, journal format                                   | `_find_and_validate_logger`                                           |
 
@@ -257,7 +257,7 @@ Issue #143 converted `logging.sh` from bash to POSIX sh. Three mechanisms guard 
 
 * `test_posix_compat` has 7 tests that run once and 41 that run once per shell in `TEST_SHELLS`, through `run_snippet_in_shell SHELL LOCALE SNIPPET`.
 * `test_zsh_compat` runs only in zsh. It compares config parsing with bash, checks that setters do not exit the caller, and checks the re-entrancy guard in zsh and `zsh --emulate sh` (Issue #153).
-* `test_source_guard` uses a fixed list (bash, `bash --posix`, zsh), not `TEST_SHELLS`.
+* `test_source_guard` runs its 7 tests once per shell in `TEST_SHELLS` (Issue #195). The pipefail test is skipped in shells with no `pipefail` option.
 
 ## 8. Coverage map
 
@@ -339,4 +339,5 @@ They exist for these tests.
 2. **Test functions and results differ.** `test_concurrent_access` has 18 functions and produced 26 results; `test_validator_equivalence` has 3 and produced 8. Shell loops inside a
    function explain this. Reported totals are results, not functions.
 3. **kcov sees bash only.** Coverage numbers understate how much of the zsh, dash and busybox code paths the matrix suites exercise.
-4. **`test_source_guard` ignores `TEST_SHELLS`.** It always uses bash, `bash --posix` and zsh, so dash and busybox ash re-sourcing is covered by `test_posix_compat` and the scenarios, not here.
+4. **`test_source_guard` follows `TEST_SHELLS` (fixed).** It used a fixed list of bash, `bash --posix` and zsh. It now runs in every shell in `TEST_SHELLS`, so dash and busybox ash
+   re-sourcing is tested here.
