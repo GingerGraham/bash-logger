@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0](https://github.com/GingerGraham/bash-logger/compare/3.0.3...3.1.0) (2026-11-21)
+
+### Bug Fixes
+
+* **logging:** keep the caller's LOG_DIR in init_logger
+* **logging:** refuse to load in shells that cannot sanitize safely
+* **logging:** reject empty init_logger option values
+* **logging:** reject log formats that have no %m token
+* **logging:** write message text with printf -- so a lone -- is kept
+
+### Code Refactoring
+
+* **logging:** merge the journal tag validators and tidy the journal docs
+
+### Documentation
+
+* add architecture references and explain non-root test runs ([#198](https://github.com/GingerGraham/bash-logger/issues/198))
+
+### Features
+
+* **logging:** fix bugs [#187](https://github.com/GingerGraham/bash-logger/issues/187)-[#189](https://github.com/GingerGraham/bash-logger/issues/189) and [#196](https://github.com/GingerGraham/bash-logger/issues/196), add features [#192](https://github.com/GingerGraham/bash-logger/issues/192)-[#195](https://github.com/GingerGraham/bash-logger/issues/195) and [#197](https://github.com/GingerGraham/bash-logger/issues/197) ([#199](https://github.com/GingerGraham/bash-logger/issues/199))
+* **logging:** log all arguments passed to the level functions
+* **logging:** support mksh and run it in the CI shell matrix
+* **logging:** warn when an invalid log level falls back to INFO
+
 ## [3.0.3](https://github.com/GingerGraham/bash-logger/compare/3.0.2...3.0.3) (2026-11-19)
 
 ### Bug Fixes
