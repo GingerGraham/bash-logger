@@ -256,6 +256,7 @@ _LOGGER_INTEGER=""
 _LOGGER_TEXT_LENGTH=""
 _LOGGER_COLOR=""
 _LOGGER_PRIORITY=""
+_LOGGER_FORMAT_PROBLEM=""
 
 # 1 while _log_message is running, 0 otherwise (internal). Only zsh reads it, to keep a trap
 # handler that logs out of a log call that it interrupted. Set on every source, so a value
@@ -1021,12 +1022,50 @@ _validate_config_file_path() {
     return 0
 }
 
+# Check that a log format can show a message (internal). Sets _LOGGER_FORMAT_PROBLEM.
+# A format needs a %m token. An empty format writes a blank line for every message, and a
+# format with no %m (such as "%d [%l]") loses the text of every message in the same way.
+# All three routes (the --format option, set_log_format and the config file key) use this
+# one check, so they accept the same formats. The scan follows _format_log_message_into: a
+# token is the character after a %, so "%%m" is a literal "%" followed by "m", not a %m.
+# Returns 0 for a usable format. Otherwise returns 1 with _LOGGER_FORMAT_PROBLEM set to
+# a phrase that completes "the format ...". The format itself is never part of it.
+_validate_log_format() {
+    local remaining="$1"
+    local token=""
+    _LOGGER_FORMAT_PROBLEM=""
+    if [ -z "$remaining" ]; then
+        _LOGGER_FORMAT_PROBLEM="is empty"
+        return 1
+    fi
+    while :; do
+        case "$remaining" in
+            *%*) ;;
+            *) break ;;
+        esac
+        remaining="${remaining#*\%}"
+        token="${remaining%"${remaining#?}"}"
+        if [ "$token" = "m" ]; then
+            return 0
+        fi
+        remaining="${remaining#?}"
+    done
+    _LOGGER_FORMAT_PROBLEM="has no %m placeholder, so the text of every message would be lost"
+    return 1
+}
+
 # Validate format string from configuration (internal)
 # Checks for excessively long format strings and dangerous patterns
 # Returns 0 if valid, 1 otherwise
 _validate_config_format() {
     local format="$1"
     local line_num="$2"
+
+    # An empty format, or one with no %m, would write lines with no message text
+    if ! _validate_log_format "$format"; then
+        printf '%s\n' "Warning: Configuration format at line $line_num $_LOGGER_FORMAT_PROBLEM and is rejected" >&2
+        return 1
+    fi
 
     # Check for control characters (except standard format specifiers)
     # Allow normal format variables like %d, %l, %s, %m, %z
@@ -2190,7 +2229,13 @@ init_logger() {
                 ;;
             -f|--format)
                 _require_nonempty_option_value "$@" || return 1
-                LOG_FORMAT="$2"
+                # A format with no %m is rejected, and the current format is kept
+                if _validate_log_format "$2"; then
+                    LOG_FORMAT="$2"
+                else
+                    printf '%s\n' "Warning: Log format rejected: the format $_LOGGER_FORMAT_PROBLEM" >&2
+                    printf '%s\n' "  Hint: Keeping the current log format" >&2
+                fi
                 shift 2
                 ;;
             -j|--journal)
@@ -2482,6 +2527,11 @@ set_timezone_utc() {
 
 # Function to change log format
 set_log_format() {
+    if ! _validate_log_format "$1"; then
+        printf '%s\n' "Error: set_log_format: the format $_LOGGER_FORMAT_PROBLEM" >&2
+        printf '%s\n' "  Hint: Keeping the current log format. A format needs a %m placeholder" >&2
+        return 1
+    fi
     local old_format="$LOG_FORMAT"
     LOG_FORMAT="$1"
 

@@ -711,7 +711,7 @@ set_log_format "format_string"
   * `%z` - Timezone
   * `%l` - Log level
   * `%s` - Script name
-  * `%m` - Message
+  * `%m` - Message (required: an empty format, or one with no `%m`, prints an error, keeps the current format and returns 1)
 
 **Examples:**
 

@@ -122,7 +122,7 @@ set_log_format FORMAT
 
 **Parameters:**
 
-* `FORMAT` - Format string with placeholders
+* `FORMAT` - Format string with placeholders. It must contain `%m`. An empty format, or one with no `%m`, prints an error, keeps the current format and returns 1.
 
 **Examples:**
 

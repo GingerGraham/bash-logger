@@ -69,6 +69,17 @@ Which produces output like:
 | `%m`        | Log message   | `Application started`    |
 | `%z`        | Timezone      | `UTC` or `LOCAL`         |
 
+**A format must contain `%m`.** Without it every log line has no message text. An empty format or a format with no `%m` token is rejected in all three places a format can be set:
+
+| Where                              | What happens                                                                                                |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `init_logger --format ""`          | `Error: --format requires a non-empty value`, returns 1                                                     |
+| `init_logger --format "%d [%l]"`   | `Warning: Log format rejected: the format has no %m placeholder ...`, the current format is kept, returns 0 |
+| `set_log_format "%d [%l]"` or `""` | `Error: set_log_format: the format ...`, the current format is kept, returns 1, no CONFIG notice is written |
+| `format = %d [%l]` (config file)   | `Warning: Configuration format at line N ... and is rejected`, the parser keeps the current format          |
+
+`%%m` is a literal `%%m` and not the message token, so a format whose only `%m` is written as `%%m` is rejected as well.
+
 ## Setting Format at Initialization
 
 Use the `--format` option when initializing the logger:

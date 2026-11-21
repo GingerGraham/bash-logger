@@ -52,6 +52,7 @@ level = INFO
 
 # Log message format
 # Variables: %d=datetime, %z=timezone, %l=level, %s=script, %m=message
+# A format must contain %m. An empty format, or one without it, is skipped.
 format = %d [%l] [%s] %m
 
 # Log file path (leave empty to disable file logging)

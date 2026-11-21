@@ -179,20 +179,111 @@ test_format_literal_text() {
     pass_test
 }
 
-# Test: Format without placeholders
+# Test: Format without any %m is rejected (Issue #188)
 test_format_no_placeholders() {
-    start_test "Format without any placeholders"
+    start_test "Format without %m is rejected by init_logger and the current format is kept"
 
-    init_logger --quiet --format "static text"
-    local log_file="$TEST_DIR/static.log"
+    init_logger --quiet --format "%l: %m"
+    init_logger --quiet --format "static text" 2>"$TEST_STDERR"
+    local exit_code=$?
+
+    assert_equals 0 "$exit_code" "Invalid non-empty format warns and returns 0" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Log format rejected: the format has no %m placeholder" || return
+    assert_file_contains "$TEST_STDERR" "Hint: Keeping the current log format" || return
+    assert_equals "%l: %m" "$LOG_FORMAT" "The current format should be kept" || return
+
+    pass_test
+}
+
+# Test: a format with %d, %l, %s and %z but no %m loses every message (Issue #188)
+test_format_without_message_token_rejected() {
+    start_test "Format with every token except %m is rejected"
+
+    init_logger --quiet
+    local default_format="$LOG_FORMAT"
+
+    init_logger --quiet --format "%d [%l] [%s] %z" 2>"$TEST_STDERR"
+
+    assert_equals "$default_format" "$LOG_FORMAT" || return
+    assert_file_contains "$TEST_STDERR" "no %m placeholder" || return
+
+    pass_test
+}
+
+# Test: %%m is a literal "%m" and not the message token (Issue #188)
+test_format_escaped_message_token_rejected() {
+    start_test "Format with only %%m is rejected, as %%m is not the message token"
+
+    init_logger --quiet
+    local default_format="$LOG_FORMAT"
+
+    init_logger --quiet --format "%l %%m" 2>"$TEST_STDERR"
+    assert_equals "$default_format" "$LOG_FORMAT" "%l %%m" || return
+
+    init_logger --quiet --format "%l %%%m" 2>"$TEST_STDERR"
+    assert_equals "%l %%%m" "$LOG_FORMAT" "%%%m ends in the message token" || return
+    assert_file_not_contains "$TEST_STDERR" "no %m placeholder" || return
+
+    pass_test
+}
+
+# Test: formats that hold a message token are accepted (Issue #188)
+test_format_with_message_token_accepted() {
+    start_test "Formats with a %m token are accepted"
+
+    local format=""
+    for format in "%m" "%l %m" "%m %m" "[%d] %m %" "%q%m" "%z%m"; do
+        init_logger --quiet --format "$format" 2>"$TEST_STDERR"
+        assert_equals "$format" "$LOG_FORMAT" "format: $format" || return
+        assert_file_not_contains "$TEST_STDERR" "Warning" "format: $format" || return
+    done
+
+    pass_test
+}
+
+# Test: set_log_format rejects an empty format and one with no %m (Issue #188)
+test_set_log_format_rejects_unusable_format() {
+    start_test "set_log_format rejects an empty format and a format with no %m"
+
+    init_logger --quiet --format "%l: %m"
+    local log_file="$TEST_DIR/set_format_rejected.log"
+    # shellcheck disable=SC2034  # LOG_FILE is read by logging.sh
     LOG_FILE="$log_file"
 
-    log_info "Ignored"
+    set_log_format "" 2>"$TEST_STDERR"
+    assert_equals 1 "$?" "Empty format should return 1" || return
+    assert_file_contains "$TEST_STDERR" "Error: set_log_format: the format is empty" || return
+    assert_equals "%l: %m" "$LOG_FORMAT" "Format after an empty value" || return
 
-    # Should just have the static text
-    local content
-    content=$(cat "$log_file")
-    assert_equals "static text" "$content" || return
+    set_log_format "%d [%l]" 2>"$TEST_STDERR"
+    assert_equals 1 "$?" "A format with no %m should return 1" || return
+    assert_file_contains "$TEST_STDERR" "Error: set_log_format: the format has no %m placeholder" || return
+    assert_equals "%l: %m" "$LOG_FORMAT" "Format after a format with no %m" || return
+
+    assert_file_not_exists "$log_file" "No CONFIG notice for a rejected format" || return
+
+    log_info "still readable"
+    assert_equals "INFO: still readable" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: a rejected format leaves the log file with real messages (Issue #188)
+test_empty_format_never_writes_blank_lines() {
+    start_test "An empty format from any route never produces blank log lines"
+
+    local log_file="$TEST_DIR/never_blank.log"
+    local config_file="$TEST_DIR/empty_format.conf"
+    printf 'format =\n' > "$config_file"
+
+    init_logger --quiet --log "$log_file" --config "$config_file" --format "" 2>/dev/null
+    set_log_format "" 2>/dev/null
+    log_info "hello"
+
+    assert_file_contains "$log_file" "hello" || return
+    local blank_lines
+    blank_lines=$(grep -c '^$' "$log_file")
+    assert_equals 0 "$blank_lines" "Blank lines in the log file" || return
 
     pass_test
 }
@@ -546,13 +637,13 @@ test_format_message_token_as_whole_message() {
 test_format_unknown_token_kept() {
     start_test "Unknown format tokens and trailing % are kept literally"
 
-    init_logger --quiet --format "<%l|%q|end%"
+    init_logger --quiet --format "%m <%l|%q|end%"
     local log_file="$TEST_DIR/unknown_token.log"
     LOG_FILE="$log_file"
 
     log_info "ignored"
 
-    assert_equals "<INFO|%q|end%" "$(cat "$log_file")" || return
+    assert_equals "ignored <INFO|%q|end%" "$(cat "$log_file")" || return
 
     pass_test
 }
@@ -576,13 +667,13 @@ test_format_double_percent_kept() {
 test_format_double_percent_before_token() {
     start_test "Double percent before a token letter is kept literally (Issue #138)"
 
-    init_logger --quiet --format "A%%mB"
+    init_logger --quiet --format "A%%mB %m"
     local log_file="$TEST_DIR/double_percent_token.log"
     LOG_FILE="$log_file"
 
     log_info "message"
 
-    assert_equals "A%%mB" "$(cat "$log_file")" || return
+    assert_equals "A%%mB message" "$(cat "$log_file")" || return
 
     pass_test
 }
@@ -634,6 +725,11 @@ test_format_persists
 test_format_literal_text
 test_format_no_placeholders
 test_set_log_format_function
+test_format_without_message_token_rejected
+test_format_escaped_message_token_rejected
+test_format_with_message_token_accepted
+test_set_log_format_rejects_unusable_format
+test_empty_format_never_writes_blank_lines
 test_date_format
 test_format_variable_order
 test_format_duplicate_variables

@@ -122,7 +122,7 @@ test_set_log_format_persists() {
 test_set_timezone_utc() {
     start_test "set_timezone_utc changes timezone"
 
-    init_logger --quiet --format "%z"
+    init_logger --quiet --format "%z %m"
     local log_file="$TEST_DIR/tz_change.log"
     LOG_FILE="$log_file"
 
@@ -184,7 +184,7 @@ test_set_timezone_utc_accepts_boolean_variants() {
 test_set_timezone_local() {
     start_test "set_timezone_utc can switch back to local"
 
-    init_logger --quiet --utc --format "%z"
+    init_logger --quiet --utc --format "%z %m"
     local log_file="$TEST_DIR/tz_local.log"
     LOG_FILE="$log_file"
 
@@ -530,25 +530,45 @@ test_set_log_level_verbose_interaction() {
     pass_test
 }
 
-# Test: set_log_format with empty format
+# Test: set_log_format rejects an empty format (Issue #188)
 test_set_log_format_empty() {
-    start_test "set_log_format accepts empty format"
+    start_test "set_log_format rejects an empty format and leaves the format unchanged"
 
     init_logger --quiet
     local log_file="$TEST_DIR/empty_format.log"
     LOG_FILE="$log_file"
+    local old_format="$LOG_FORMAT"
 
     log_info "Normal"
 
-    set_log_format ""
+    set_log_format "" 2>"$TEST_DIR/empty_format.stderr"
+    assert_equals 1 "$?" "return status for an empty format" || return
+    assert_file_contains "$TEST_DIR/empty_format.stderr" "Error: set_log_format: the format is empty" || return
+    assert_equals "$old_format" "$LOG_FORMAT" "LOG_FORMAT after an empty format" || return
 
-    log_info "Empty format"
+    log_info "After rejection"
 
-    # First log should have content
     assert_file_contains "$log_file" "Normal" || return
+    assert_file_contains "$log_file" "After rejection" || return
+    assert_file_not_contains "$log_file" "CONFIG" "no CONFIG notice for a rejected format" || return
 
-    # File should exist and have content from first log
-    assert_file_exists "$log_file" || return
+    pass_test
+}
+
+# Test: set_log_format rejects a format with no %m (Issue #188)
+test_set_log_format_rejects_missing_message_token() {
+    start_test "set_log_format rejects a format with no %m and writes no CONFIG notice"
+
+    init_logger --quiet
+    local log_file="$TEST_DIR/no_message_token.log"
+    LOG_FILE="$log_file"
+    local old_format="$LOG_FORMAT"
+
+    set_log_format "%d [%l]" 2>"$TEST_DIR/no_message_token.stderr"
+    assert_equals 1 "$?" "return status for a format with no %m" || return
+    assert_file_contains "$TEST_DIR/no_message_token.stderr" "no %m placeholder" || return
+    assert_equals "$old_format" "$LOG_FORMAT" "LOG_FORMAT after a rejected format" || return
+    assert_file_not_exists "$log_file" "no CONFIG notice for a rejected format" || return
 
     pass_test
 }
@@ -1391,6 +1411,7 @@ test_multiple_runtime_changes
 test_runtime_changes_dont_affect_history
 test_set_log_level_verbose_interaction
 test_set_log_format_empty
+test_set_log_format_rejects_missing_message_token
 test_runtime_config_isolation
 test_set_log_level_invalid
 test_set_script_name

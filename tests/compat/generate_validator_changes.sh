@@ -47,7 +47,7 @@ reason_for_check() {
             printf '%s' "$control_reason"
             ;;
         config_format|parse_format)
-            printf '%s' "A config format with control characters is rejected, and the controls from #154 count as well (#164, #154)"
+            printf '%s' "A config format is rejected when it has control characters (the controls from #154 count as well), no %m token, or no text at all (#164, #154, #188)"
             ;;
         parse_tag)
             if [[ "$2" == "validators.tsv" && "$3" -le 749 ]]; then

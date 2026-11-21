@@ -47,6 +47,42 @@ EOF
     pass_test
 }
 
+# Test: An empty or message-less format in the config file is rejected (Issue #188)
+test_config_unusable_format_rejected() {
+    start_test "Config file format that is empty or has no %m is rejected"
+
+    local config_file="$TEST_DIR/unusable_format.conf"
+    local value=""
+    for value in "" "%d [%l]" "static text" "%l %%m"; do
+        printf '[logging]\nformat = %s\n' "$value" > "$config_file"
+
+        init_logger --quiet --config "$config_file" 2>"$TEST_STDERR"
+        local exit_code=$?
+
+        assert_equals 0 "$exit_code" "The parser keeps going: format '$value'" || return
+        assert_equals "%d [%l] [%s] %m" "$LOG_FORMAT" "The default format is kept: '$value'" || return
+        assert_file_contains "$TEST_STDERR" "Warning: Configuration format at line 2" "format '$value'" || return
+        assert_file_contains "$TEST_STDERR" "Skipping invalid format string" "format '$value'" || return
+    done
+
+    pass_test
+}
+
+# Test: A config file format that holds %m is still accepted (Issue #188)
+test_config_usable_format_accepted() {
+    start_test "Config file format with a %m token is accepted"
+
+    local config_file="$TEST_DIR/usable_format.conf"
+    printf '[logging]\nformat = %%l|%%m\n' > "$config_file"
+
+    init_logger --quiet --config "$config_file" 2>"$TEST_STDERR"
+
+    assert_equals "%l|%m" "$LOG_FORMAT" || return
+    assert_file_not_contains "$TEST_STDERR" "Warning" || return
+
+    pass_test
+}
+
 # Test: Log file path in config
 test_config_log_file() {
     start_test "Log file path in config"
@@ -691,6 +727,8 @@ test_config_empty_path() {
 # Run all tests
 test_basic_config_load
 test_multiple_config_options
+test_config_unusable_format_rejected
+test_config_usable_format_accepted
 test_config_log_file
 test_config_journal
 test_config_syslog_facility

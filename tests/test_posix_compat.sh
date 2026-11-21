@@ -171,7 +171,11 @@ test_posix_init_logger_args() {
     local snippet="init_logger --quiet --color --utc --verbose --no-init-message; $report
 init_logger -q --no-colour -d warn -e 1 -f '%l %m' -n 'a name' -t tag1 -F local2 -U -A \
 --max-line-length 50 --max-journal-length 60; $report
-init_logger --level 3 --stderr-level CRIT --format '' --name '' --tag '' --facility USER; $report"
+init_logger --level 3 --stderr-level CRIT --facility USER; $report
+init_logger --quiet --format ''; $report
+init_logger --quiet --name ''; $report
+init_logger --quiet --tag ''; $report
+init_logger --quiet --format '%l'; $report"
 
     local option
     for option in -d --level -f --format -l --log --logfile --log-file --file \
@@ -657,12 +661,12 @@ test_posix_config_notice_stream() {
     local output
     output=$(run_snippet_in_shell "$shell_command" C '
 init_logger --no-color --format "%l %m"
-set_log_format "%l" 2>/dev/null
+set_log_format "%l %m" 2>/dev/null
 init_logger --no-color --format "%l %m" --stderr-level DEBUG
-set_log_format "%l" >/dev/null 2>&1
+set_log_format "%l %m" >/dev/null 2>&1
 printf "end\n"
 ' 2>/dev/null)
-    assert_equals "CONFIG
+    assert_equals "CONFIG Log format changed from \"%l %m\" to \"%l %m\"
 end" "$output" || return
 
     pass_test
@@ -684,7 +688,7 @@ check() {
     label="$1"; shift
     for attempt in 1 2 3; do
         before=$("$@" "$stamp")
-        logged=$(log_info x)
+        logged=$(log_info "")
         after=$("$@" "$stamp")
         if [ "$logged" = "$before" ] || [ "$logged" = "$after" ]; then
             printf "%s ok\n" "$label"
@@ -693,7 +697,7 @@ check() {
     done
     printf "%s MISMATCH [%s] [%s] [%s]\n" "$label" "$before" "$logged" "$after"
 }
-init_logger --no-color --format "%d"
+init_logger --no-color --format "%d%m"
 check local date
 set_timezone_utc true >/dev/null
 check utc date -u
@@ -731,10 +735,10 @@ test_posix_timestamp_readonly_tz() {
         "export TZ=ZZZ-5" \
         "readonly TZ" \
         ". '$PROJECT_ROOT/logging.sh'" \
-        "init_logger --no-color --utc --format '%d'" \
+        "init_logger --no-color --utc --format '%d%m'" \
         'for attempt in 1 2 3; do' \
         '    before=$(date -u "+%Y-%m-%d %H:%M:%S")' \
-        '    logged=$(log_info x)' \
+        '    logged=$(log_info "")' \
         '    after=$(date -u "+%Y-%m-%d %H:%M:%S")' \
         '    if [ "$logged" = "$before" ] || [ "$logged" = "$after" ]; then echo ok; exit 0; fi' \
         'done' \
@@ -758,10 +762,10 @@ test_posix_timestamp_builtin_and_fallback() {
     local output
     output=$(run_snippet_in_shell "$shell_command" C '
 date() { printf "from-date\n"; }
-init_logger --no-color --format "%d"
-log_info x
+init_logger --no-color --format "%d%m"
+log_info ""
 _LOGGER_TIME_BUILTIN=""
-log_info x
+log_info ""
 printf "%s\n" "builtin=$_LOGGER_TIME_BUILTIN"
 ' 2>&1)
 
@@ -799,7 +803,7 @@ test_posix_timestamp_ignores_environment() {
 
     local snippet_file="$TEST_DIR/env_time.sh"
     printf '%s\n' ". '$PROJECT_ROOT/logging.sh'" \
-        "init_logger --no-color --format '%d'" "log_info x" > "$snippet_file"
+        "init_logger --no-color --format '%d%m'" 'log_info ""' > "$snippet_file"
     local output
     # shellcheck disable=SC2086  # word splitting of shell_command is intended
     output=$(env -i PATH="$PATH" LC_ALL=C _LOGGER_TIME_BUILTIN=nonsense _LOGGER_TIMESTAMP=forged \
