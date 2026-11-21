@@ -126,6 +126,11 @@ These also come from the security review of 3.0 and apply in every shell.
   `log_to_journal info` returned an error.
 * **No shell errors when `IFS` contains digits.** 2.x printed `return: : numeric argument
   required` for messages in bash when `IFS` contained digits.
+* **`init_logger` no longer sets `LOG_DIR`.** With `--log`, 2.x and 3.0.0 to 3.0.3 stored the
+  directory of the log file in a global `LOG_DIR`, which replaced a `LOG_DIR` of your own. The
+  library now keeps it in a local variable. A script that read `LOG_DIR` after `init_logger` to
+  find the log directory must compute it with `dirname`. Under zsh, `setopt warn_create_global`
+  no longer reports it.
 * **Timestamps do not start `date` in bash 4.2+ and zsh.** The output is the same. If your tests
   replace `date` to fix the time in log lines, that no longer has an effect in these shells.
 

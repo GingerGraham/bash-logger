@@ -38,6 +38,21 @@
         "zsh"
       ],
       "cases": [
+        "warn_create_global"
+      ],
+      "outputs": [
+        "stderr"
+      ],
+      "pattern": "^[A-Za-z_<>][A-Za-z0-9_<>]*:N: scalar parameter LOG_DIR created globally in function init_logger\\n",
+      "replacement": "",
+      "reason": "init_logger no longer sets LOG_DIR, so setopt warn_create_global no longer reports it in 3.0. Only this warning is removed from the 2.x output, so a warning about any other variable still fails the comparison.",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "cases": [
         "glob_subst"
       ],
       "outputs": [
