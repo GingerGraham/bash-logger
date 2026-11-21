@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1816" height="1218" viewBox="0 -40 1816 1218" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="1816" height="1218" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">1. logging.sh architecture overview (layers and subsystems)</text>
+<rect x="8.0" y="157.0" width="305.0" height="353.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="16.0" y="173.0" font-size="12" font-weight="bold">Public interface</text>
+<rect x="336.0" y="8.0" width="740.5" height="215.0" rx="6" fill="#fff8f0" stroke="#d79b00"/>
+<text x="344.0" y="24.0" font-size="12" font-weight="bold">Internal orchestration</text>
+<rect x="375.0" y="231.0" width="1031.5" height="557.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="383.0" y="247.0" font-size="12" font-weight="bold">Internal subsystems</text>
+<rect x="1145.0" y="977.0" width="323.0" height="183.0" rx="6" fill="#fafafa" stroke="#999999"/>
+<text x="1153.0" y="993.0" font-size="12" font-weight="bold">Shell portability primitives (POSIX sh + local)</text>
+<rect x="1199.5" y="796.0" width="213.0" height="173.0" rx="6" fill="#f8f4fa" stroke="#9673a6"/>
+<text x="1207.5" y="812.0" font-size="12" font-weight="bold">Destinations</text>
+<polyline points="237.1,464.2 384.0,464.2 384.0,215.8 384.0,208.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="237.2,480.5 850.0,480.5 850.0,694.9 850.0,701.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="237.3,489.5 476.0,489.5 476.0,557.9 476.0,564.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="237.2,485.0 725.0,485.0 725.0,583.7 725.0,590.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="299.1,260.0 362.0,260.0 362.0,93.6 362.0,86.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="256.2,200.5 356.0,200.5 356.0,93.8 356.0,86.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="253.6,395.8 368.0,395.8 368.0,93.7 368.0,86.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="246.0,434.8 246.0,594.0 381.7,594.0 388.7,594.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="235.2,362.8 852.0,362.8 852.0,694.7 852.0,701.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="235.1,341.2 373.0,341.2 373.0,126.0 384.8,126.0 391.8,126.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="573.0,187.0 854.0,187.0 854.0,694.9 854.0,701.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="568.0,208.7 568.0,320.0 1212.2,320.0 1219.2,320.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="599.0,86.8 599.0,122.6 886.4,122.6 893.4,122.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="582.0,86.6 582.0,518.7 886.5,518.7 893.5,518.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="576.0,86.8 576.0,666.5 885.8,666.5 892.8,666.5" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="590.0,86.6 590.0,352.0 848.2,352.0 855.2,352.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="587.0,86.6 587.0,423.5 901.1,423.5 908.1,423.5" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="596.0,86.9 596.0,280.8 914.2,280.8 921.2,280.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="559.0,143.4 579.0,143.4 579.0,541.8 886.9,541.8 893.9,541.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="559.1,130.9 836.0,130.9 836.0,623.5 885.9,623.5 892.9,623.5" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="559.2,126.8 875.0,126.8 875.0,321.0 875.0,328.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="559.1,139.2 584.0,139.2 584.0,429.0 901.5,429.0 908.5,429.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="559.0,135.1 593.0,135.1 593.0,295.2 914.2,295.2 921.2,295.2" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1100.6,333.0 1212.3,333.0 1219.3,333.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1034.8,280.8 1212.4,280.8 1219.4,280.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="1062.3,537.0 1206.0,537.0 1206.0,1004.7 1206.0,1011.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="823.2,594.5 1198.0,594.5 1198.0,1004.7 1198.0,1011.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1108.0,738.0 1190.0,738.0 1190.0,1005.0 1190.0,1012.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1063.2,641.0 1123.0,641.0 1123.0,1107.3 1178.5,1107.3 1185.5,1107.3" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="476.0,623.0 476.0,1126.7 1178.3,1126.7 1185.3,1126.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1101.0,369.0 1153.0,369.0 1153.0,893.0 1240.3,893.0 1247.3,893.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1047.7,447.0 1138.0,447.0 1138.0,940.0 1256.6,940.0 1263.6,940.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1034.7,295.2 1168.0,295.2 1168.0,846.0 1206.2,846.0 1213.2,846.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="688.5" y="102.5" width="72.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="724.5" y="114.0" text-anchor="middle" font-size="10" fill="#333333">zsh re-entry</text>
+<rect x="84.0" y="452.5" width="153.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="160.5" y="470.6" text-anchor="middle" font-size="11" font-weight="bold">init_logger [options]</text><text x="160.5" y="484.1" text-anchor="middle" font-size="10">check_logger_available</text>
+<rect x="22.0" y="254.0" width="277.0" height="58.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="160.5" y="272.9" text-anchor="middle" font-size="11" font-weight="bold">log_debug  log_info  log_notice  log_warn</text><text x="160.5" y="286.4" text-anchor="middle" font-size="10">log_error  log_critical  log_alert</text><text x="160.5" y="299.9" text-anchor="middle" font-size="10">log_emergency  log_fatal</text>
+<rect x="65.0" y="192.5" width="191.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="160.5" y="210.6" text-anchor="middle" font-size="11" font-weight="bold">log_init  /  log_sensitive</text><text x="160.5" y="224.1" text-anchor="middle" font-size="10">INIT always shown / console only</text>
+<rect x="67.5" y="391.5" width="186.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="160.5" y="409.6" text-anchor="middle" font-size="11" font-weight="bold">log_to_journal LEVEL MSG</text><text x="160.5" y="423.1" text-anchor="middle" font-size="10">one message to the journal</text>
+<rect x="86.0" y="330.5" width="149.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="160.5" y="348.6" text-anchor="middle" font-size="11" font-weight="bold">set_* (10 functions)</text><text x="160.5" y="362.1" text-anchor="middle" font-size="10">runtime configuration</text>
+<rect x="378.5" y="165.5" width="194.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="475.5" y="183.6" text-anchor="middle" font-size="11" font-weight="bold">_parse_config_file</text><text x="475.5" y="197.1" text-anchor="middle" font-size="10">INI parser; applies keys to globals</text>
+<rect x="350.0" y="43.5" width="251.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="475.5" y="61.6" text-anchor="middle" font-size="11" font-weight="bold">_log_message → _write_log_message</text><text x="475.5" y="75.1" text-anchor="middle" font-size="10">level filter, state save/restore, fan-out</text>
+<rect x="392.0" y="104.5" width="167.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="475.5" y="122.6" text-anchor="middle" font-size="11" font-weight="bold">_config_notice</text><text x="475.5" y="136.1" text-anchor="middle" font-size="10">CONFIG notice to every sink</text>
+<rect x="893.5" y="118.5" width="169.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="978.0" y="136.6" text-anchor="middle" font-size="11" font-weight="bold">_run_log_call_isolated</text><text x="978.0" y="150.1" text-anchor="middle" font-size="10">zsh: nested call in a subshell</text>
+<rect x="848.0" y="702.0" width="260.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="978.0" y="721.1" text-anchor="middle" font-size="11" font-weight="bold">Validation</text><text x="978.0" y="734.6" text-anchor="middle" font-size="10">_validate_string, _validate_config_*</text><text x="978.0" y="748.1" text-anchor="middle" font-size="10">_validate_journal_tag, _validate_syslog_facility</text><text x="978.0" y="761.6" text-anchor="middle" font-size="10">_validate_length_limit, _parse_bool_value</text>
+<rect x="1219.5" y="266.0" width="173.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1306.0" y="285.1" text-anchor="middle" font-size="11" font-weight="bold">Level maps</text><text x="1306.0" y="298.6" text-anchor="middle" font-size="10">_get_log_level_value / _name</text><text x="1306.0" y="312.1" text-anchor="middle" font-size="10">_get_log_level_color_into</text><text x="1306.0" y="325.6" text-anchor="middle" font-size="10">_get_syslog_priority_into</text>
+<rect x="894.0" y="494.0" width="168.0" height="86.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="978.0" y="513.4" text-anchor="middle" font-size="11" font-weight="bold">Sanitise and truncate</text><text x="978.0" y="526.9" text-anchor="middle" font-size="10">_cap_message_length_into</text><text x="978.0" y="540.4" text-anchor="middle" font-size="10">_sanitize_log_message_into</text><text x="978.0" y="553.9" text-anchor="middle" font-size="10">_strip_ansi_codes_into</text><text x="978.0" y="567.4" text-anchor="middle" font-size="10">_truncate_log_message_into</text>
+<rect x="626.0" y="591.0" width="197.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="724.5" y="609.9" text-anchor="middle" font-size="11" font-weight="bold">Name sanitising</text><text x="724.5" y="623.4" text-anchor="middle" font-size="10">_sanitize_script_name</text><text x="724.5" y="636.9" text-anchor="middle" font-size="10">_replace_unsafe_name_characters</text>
+<rect x="893.0" y="598.0" width="170.0" height="86.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="978.0" y="617.4" text-anchor="middle" font-size="11" font-weight="bold">Format and time</text><text x="978.0" y="630.9" text-anchor="middle" font-size="10">_format_log_message_into</text><text x="978.0" y="644.4" text-anchor="middle" font-size="10">_current_timestamp_into</text><text x="978.0" y="657.9" text-anchor="middle" font-size="10">_bash / _zsh_timestamp_into</text><text x="978.0" y="671.4" text-anchor="middle" font-size="10">_utc_timestamp_from_epoch</text>
+<rect x="855.5" y="328.0" width="245.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="978.0" y="347.1" text-anchor="middle" font-size="11" font-weight="bold">Console sink</text><text x="978.0" y="360.6" text-anchor="middle" font-size="10">_log_to_console, _log_set_config_to_console</text><text x="978.0" y="374.1" text-anchor="middle" font-size="10">_should_use_stderr, _should_use_colors</text><text x="978.0" y="387.6" text-anchor="middle" font-size="10">_detect_color_support</text>
+<rect x="908.5" y="418.0" width="139.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="978.0" y="436.9" text-anchor="middle" font-size="11" font-weight="bold">File sink</text><text x="978.0" y="450.4" text-anchor="middle" font-size="10">_append_to_log_file</text><text x="978.0" y="463.9" text-anchor="middle" font-size="10">_log_set_config_to_file</text>
+<rect x="921.5" y="266.5" width="113.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="978.0" y="284.6" text-anchor="middle" font-size="11" font-weight="bold">Journal sink</text><text x="978.0" y="298.1" text-anchor="middle" font-size="10">_write_to_journal</text>
+<rect x="389.0" y="565.0" width="173.0" height="58.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="475.5" y="583.9" text-anchor="middle" font-size="11" font-weight="bold">Logger discovery</text><text x="475.5" y="597.4" text-anchor="middle" font-size="10">_find_and_validate_logger</text><text x="475.5" y="610.9" text-anchor="middle" font-size="10">locks LOGGER_PATH readonly</text>
+<rect x="1185.5" y="1088.0" width="241.0" height="58.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1306.0" y="1106.9" text-anchor="middle" font-size="11" font-weight="bold">Shell detection and constants</text><text x="1306.0" y="1120.4" text-anchor="middle" font-size="10">_LOGGER_SHELL_FAMILY, _is_readonly</text><text x="1306.0" y="1133.9" text-anchor="middle" font-size="10">_logger_readonly, _shell_counts_characters</text>
+<rect x="1182.0" y="1012.0" width="248.0" height="58.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1306.0" y="1030.9" text-anchor="middle" font-size="11" font-weight="bold">String helpers</text><text x="1306.0" y="1044.4" text-anchor="middle" font-size="10">_text_prefix, _text_length, _count_characters</text><text x="1306.0" y="1057.9" text-anchor="middle" font-size="10">_replace_all, _parse_shell_integer, _to_lower</text>
+<rect x="1247.5" y="878.5" width="117.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1306.0" y="896.4" text-anchor="middle" font-size="11" font-weight="bold">stdout / stderr</text>
+<rect x="1264.0" y="925.5" width="84.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1306.0" y="943.4" text-anchor="middle" font-size="11" font-weight="bold">LOG_FILE</text>
+<rect x="1213.5" y="831.5" width="185.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1306.0" y="849.4" text-anchor="middle" font-size="11" font-weight="bold">logger → syslog / journald</text>
+<rect x="1498.0" y="10" width="288" height="174" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="1506.0" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="1508.0" y="36" width="28" height="16" rx="3" fill="#d5e8d4" stroke="#82b366"/>
+<text x="1544.0" y="48" font-size="10">Public API (call from scripts)</text>
+<rect x="1508.0" y="60" width="28" height="16" rx="3" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="1544.0" y="72" font-size="10">Internal orchestrator</text>
+<rect x="1508.0" y="84" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1544.0" y="96" font-size="10">Internal helper (_ prefix)</text>
+<rect x="1508.0" y="108" width="28" height="16" rx="3" fill="#f8cecc" stroke="#b85450"/>
+<text x="1544.0" y="120" font-size="10">Security gate / check</text>
+<rect x="1508.0" y="132" width="28" height="16" rx="3" fill="#f5f5f5" stroke="#666666"/>
+<text x="1544.0" y="144" font-size="10">Internal primitive / shell portability</text>
+<rect x="1508.0" y="156" width="28" height="16" rx="3" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1544.0" y="168" font-size="10">Output sink / external process</text>
+</svg>

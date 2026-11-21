@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1228" height="1235" viewBox="0 -40 1228 1235" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="1228" height="1235" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">6. Journal path: logger discovery, LOGGER_PATH lock and _write_to_journal</text>
+<rect x="8.0" y="8.0" width="912.0" height="92.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="16.0" y="24.0" font-size="12" font-weight="bold">Callers of discovery</text>
+<rect x="35.0" y="117.0" width="679.0" height="672.9" rx="6" fill="#fdf3f3" stroke="#b85450"/>
+<text x="43.0" y="133.0" font-size="12" font-weight="bold">_find_and_validate_logger</text>
+<rect x="14.0" y="816.9" width="498.0" height="359.8" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="22.0" y="832.9" font-size="12" font-weight="bold">_write_to_journal PRIORITY TAG MSG [force_when_disabled]</text>
+<polyline points="100.3,79.2 139.0,100.0 353.4,150.3 360.2,151.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="268.2,86.2 386.2,148.7 392.5,152.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="418.0,79.4 418.0,144.7 418.0,151.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="578.9,86.2 451.7,148.9 445.4,152.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="763.8,86.1 725.0,100.0 488.6,150.5 481.6,151.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="418.0,181.0 418.0,198.6 418.0,205.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="440.2,241.7 516.0,285.0 535.0,305.5 535.0,676.0 528.7,724.7 527.7,731.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="413.5,248.3 406.5,278.0 404.9,284.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="394.6,328.2 390.0,345.8 388.1,353.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="374.2,425.2 371.7,443.9 370.7,451.1" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="403.7,513.1 473.0,559.0 517.5,725.0 519.3,731.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="366.0,524.2 366.0,551.9 366.0,559.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="329.1,607.0 237.9,650.3 231.4,653.4" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="188.0,696.6 188.0,724.8 188.0,732.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="372.0,616.3 379.0,647.2 380.5,654.2" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.9,688.6 245.1,730.7 238.2,733.4" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="410.7,690.1 481.2,728.9 487.6,732.4" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="188.0,775.9 188.0,844.8 188.0,851.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="176.5,908.2 170.0,922.9 154.5,958.0 151.5,964.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="219.0,903.2 293.1,953.0 299.0,957.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="367.3,1010.3 420.0,1054.9 420.0,1083.9 326.8,1117.1 320.1,1119.4" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="304.0,1010.1 255.2,1050.2 249.7,1054.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="238.9,1084.1 251.1,1112.2 253.9,1118.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="533.0" y="479.0" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="541.5" y="490.5" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="407.8" y="259.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="419.0" y="271.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="492.0" y="627.5" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="500.5" y="639.0" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="363.8" y="533.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="375.0" y="545.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="275.0" y="627.5" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="283.5" y="639.0" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="374.8" y="627.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="386.0" y="639.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="295.8" y="706.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="307.0" y="718.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="461.0" y="706.5" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="469.5" y="718.0" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="181.5" y="795.4" width="105.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="234.0" y="806.9" text-anchor="middle" font-size="10" fill="#333333">later, per message</text>
+<rect x="168.0" y="920.4" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="176.5" y="931.9" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="259.8" y="920.4" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="271.0" y="931.9" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="418.0" y="1061.4" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="426.5" y="1072.9" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="272.8" y="1029.4" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="284.0" y="1040.9" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="239.5" y="1093.4" width="72.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="275.5" y="1104.9" text-anchor="middle" font-size="10" fill="#333333">logger fails</text>
+<rect x="22.5" y="50.0" width="105.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="75.0" y="67.9" text-anchor="middle" font-size="11" font-weight="bold">init_logger -j</text>
+<rect x="149.5" y="43.0" width="159.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="229.0" y="61.1" text-anchor="middle" font-size="11" font-weight="bold">config: journal = true</text><text x="229.0" y="74.6" text-anchor="middle" font-size="10">(_parse_config_file)</text>
+<rect x="330.0" y="50.0" width="176.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="418.0" y="67.9" text-anchor="middle" font-size="11" font-weight="bold">set_journal_logging true</text>
+<rect x="528.0" y="43.0" width="186.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="621.0" y="61.1" text-anchor="middle" font-size="11" font-weight="bold">log_to_journal</text><text x="621.0" y="74.6" text-anchor="middle" font-size="10">(only if LOGGER_PATH is empty)</text>
+<rect x="736.0" y="43.0" width="170.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="821.0" y="61.1" text-anchor="middle" font-size="11" font-weight="bold">check_logger_available</text><text x="821.0" y="74.6" text-anchor="middle" font-size="10">(legacy wrapper)</text>
+<rect x="345.0" y="152.0" width="146.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="418.0" y="169.9" text-anchor="middle" font-size="11" font-weight="bold">command -v logger</text>
+<polygon points="418.0,206.0 475.2,228.0 418.0,250.0 360.8,228.0" fill="#fff2cc" stroke="#d6b656"/>
+<text x="418.0" y="231.4" text-anchor="middle" font-size="11" font-weight="bold">found?</text>
+<rect x="295.0" y="285.0" width="210.0" height="43.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="400.0" y="303.1" text-anchor="middle" font-size="11" font-weight="bold">readlink -f (resolve symlinks)</text><text x="400.0" y="316.6" text-anchor="middle" font-size="10">unresolvable symlink → refuse</text>
+<rect x="252.5" y="353.0" width="253.0" height="72.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="379.0" y="372.1" text-anchor="middle" font-size="11" font-weight="bold">Target is busybox?</text><text x="379.0" y="385.6" text-anchor="middle" font-size="10">keep the symlink path only if it is in a safe dir</text><text x="379.0" y="399.1" text-anchor="middle" font-size="10">and points straight at a plain-file busybox</text><text x="379.0" y="412.6" text-anchor="middle" font-size="10">(_is_symlink, _is_plain_file)</text>
+<polygon points="366.0,450.0 490.9,487.0 366.0,524.0 241.1,487.0" fill="#fff2cc" stroke="#d6b656"/>
+<text x="366.0" y="476.9" text-anchor="middle" font-size="11" font-weight="bold">path in /bin /usr/bin</text><text x="366.0" y="490.4" text-anchor="middle" font-size="10">/usr/local/bin /sbin</text><text x="366.0" y="503.9" text-anchor="middle" font-size="10">/usr/sbin?</text>
+<polygon points="366.0,559.0 462.4,588.5 366.0,618.0 269.6,588.5" fill="#fff2cc" stroke="#d6b656"/>
+<text x="366.0" y="585.1" text-anchor="middle" font-size="11" font-weight="bold">LOGGER_PATH</text><text x="366.0" y="598.6" text-anchor="middle" font-size="10">already readonly?</text>
+<polygon points="385.0,653.0 466.6,675.0 385.0,697.0 303.4,675.0" fill="#fff2cc" stroke="#d6b656"/>
+<text x="385.0" y="678.4" text-anchor="middle" font-size="11" font-weight="bold">same path?</text>
+<rect x="95.0" y="653.5" width="186.0" height="43.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="188.0" y="671.6" text-anchor="middle" font-size="11" font-weight="bold">LOGGER_PATH = path</text><text x="188.0" y="685.1" text-anchor="middle" font-size="10">_logger_readonly LOGGER_PATH</text>
+<ellipse cx="188.0" cy="753.9" rx="139.3" ry="21.9" fill="#ffffff" stroke="#333333"/>
+<text x="188.0" y="750.6" text-anchor="middle" font-size="11" font-weight="bold">return 0</text><text x="188.0" y="764.1" text-anchor="middle" font-size="10">_LOGGER_DISCOVERY_DONE=true</text>
+<ellipse cx="525.0" cy="753.9" rx="175.4" ry="21.9" fill="#ffffff" stroke="#333333"/>
+<text x="525.0" y="750.6" text-anchor="middle" font-size="11" font-weight="bold">warn; USE_JOURNAL=false; return 1</text><text x="525.0" y="764.1" text-anchor="middle" font-size="10">_LOGGER_DISCOVERY_DONE=true</text>
+<polygon points="188.0,851.9 306.0,881.4 188.0,910.9 70.0,881.4" fill="#fff2cc" stroke="#d6b656"/>
+<text x="188.0" y="878.0" text-anchor="middle" font-size="11" font-weight="bold">USE_JOURNAL true</text><text x="188.0" y="891.5" text-anchor="middle" font-size="10">or forced?</text>
+<ellipse cx="144.0" cy="982.9" rx="49.3" ry="18.0" fill="#ffffff" stroke="#333333"/>
+<text x="144.0" y="986.2" text-anchor="middle" font-size="11" font-weight="bold">return 0</text>
+<polygon points="336.0,945.9 456.6,982.9 336.0,1019.9 215.4,982.9" fill="#fff2cc" stroke="#d6b656"/>
+<text x="336.0" y="972.7" text-anchor="middle" font-size="11" font-weight="bold">LOGGER_PATH set,</text><text x="336.0" y="986.2" text-anchor="middle" font-size="10">executable and</text><text x="336.0" y="999.7" text-anchor="middle" font-size="10">readonly?</text>
+<rect x="57.5" y="1054.9" width="351.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="233.0" y="1072.7" text-anchor="middle" font-size="11" font-weight="bold">"$LOGGER_PATH" -p FACILITY.PRIORITY -t TAG -- MSG</text>
+<ellipse cx="263.0" cy="1140.8" rx="234.8" ry="21.9" fill="#ffffff" stroke="#333333"/>
+<text x="263.0" y="1137.4" text-anchor="middle" font-size="11" font-weight="bold">warn once (LOGGER_JOURNAL_ERROR_REPORTED)</text><text x="263.0" y="1150.9" text-anchor="middle" font-size="10">USE_JOURNAL=false; return 1</text>
+<rect x="958.0" y="10" width="240" height="174" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="966.0" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="968.0" y="36" width="28" height="16" rx="3" fill="#d5e8d4" stroke="#82b366"/>
+<text x="1004.0" y="48" font-size="10">Public API (call from scripts)</text>
+<rect x="968.0" y="60" width="28" height="16" rx="3" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="1004.0" y="72" font-size="10">Internal orchestrator</text>
+<rect x="968.0" y="84" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1004.0" y="96" font-size="10">Internal helper (_ prefix)</text>
+<polygon points="982.0,108 996.0,116 982.0,124 968.0,116" fill="#fff2cc" stroke="#d6b656"/>
+<text x="1004.0" y="120" font-size="10">Decision</text>
+<rect x="968.0" y="132" width="28" height="16" rx="3" fill="#f8cecc" stroke="#b85450"/>
+<text x="1004.0" y="144" font-size="10">Security gate / check</text>
+<rect x="968.0" y="156" width="28" height="16" rx="3" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1004.0" y="168" font-size="10">Output sink / external process</text>
+</svg>

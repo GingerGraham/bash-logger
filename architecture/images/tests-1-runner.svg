@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="1407" viewBox="0 -40 1020 1407" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="1020" height="1407" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">T1. tests/run_tests.sh: discovery, dispatch, isolation and reporting</text>
+<rect x="226.0" y="463.0" width="449.0" height="364.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="234.0" y="479.0" font-size="12" font-weight="bold">Worker: run_test_suite FILE RESULT ( … ) — a subshell per suite</text>
+<polyline points="481.0,36.3 481.0,53.7 481.0,60.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="481.0,119.3 481.0,136.6 481.0,143.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="481.0,202.2 481.0,219.6 481.0,226.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="481.0,256.0 481.0,273.5 481.0,280.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="456.7,320.9 406.4,355.8 400.5,359.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="505.7,320.9 566.9,362.8 573.0,366.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="378.6,432.1 427.5,492.1 432.2,497.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="575.7,425.2 482.9,493.5 477.0,497.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="449.0,541.2 449.0,615.6 449.0,622.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="449.0,652.2 449.0,669.9 449.0,677.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="449.0,720.1 449.0,747.7 449.0,754.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="449.0,813.1 449.0,840.8 449.0,848.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="281.4,432.1 221.0,463.0 138.4,547.7 133.6,552.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="122.4,611.3 153.0,664.0 153.0,892.0 363.3,966.6 370.1,969.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="642.4,425.4 680.0,463.0 701.0,518.5 701.0,892.0 522.9,966.2 516.2,969.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="449.0,934.1 449.0,961.5 449.0,968.7" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="449.0,1027.2 449.0,1044.2 449.0,1051.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="449.0,1095.1 449.0,1112.6 449.0,1120.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="449.0,1149.0 449.0,1166.5 449.0,1173.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="431.1,1211.4 385.2,1248.4 379.7,1252.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="354.0,1296.3 354.0,1316.9 354.0,1324.4" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="465.9,1212.0 512.0,1253.0 522.0,1313.7 523.2,1320.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="410.8,1296.1 477.9,1320.5 484.5,1322.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="428.8" y="334.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="440.0" y="346.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="541.0" y="334.5" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="549.5" y="346.0" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="389.8" y="441.5" width="55.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="417.5" y="453.0" text-anchor="middle" font-size="10" fill="#333333">per suite</text>
+<rect x="539.8" y="441.5" width="55.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="567.5" y="453.0" text-anchor="middle" font-size="10" fill="#333333">per suite</text>
+<rect x="436.0" y="729.5" width="160.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="516.0" y="741.0" text-anchor="middle" font-size="10" fill="#333333">suite ends, exits or crashes</text>
+<rect x="446.0" y="943.5" width="28.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="460.0" y="955.0" text-anchor="middle" font-size="10" fill="#333333">read</text>
+<rect x="404.8" y="1227.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="416.0" y="1239.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="517.0" y="1266.5" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="525.5" y="1278.0" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<ellipse cx="481.0" cy="18.0" rx="238.8" ry="18.0" fill="#333333" stroke="#333333"/>
+<text fill="#ffffff" x="481.0" y="21.4" text-anchor="middle" font-size="11" font-weight="bold">./run_tests.sh [--junit] [--output-dir D] [-j N] [-x] [suite…]</text>
+<rect x="309.5" y="61.0" width="343.0" height="58.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="481.0" y="79.9" text-anchor="middle" font-size="11" font-weight="bold">main: parse options</text><text x="481.0" y="93.4" text-anchor="middle" font-size="10">PARALLEL_JOBS = -j | TEST_PARALLEL_JOBS | nproc (capped at 8)</text><text x="481.0" y="106.9" text-anchor="middle" font-size="10">--fail-fast forces PARALLEL_JOBS=1</text>
+<rect x="275.5" y="144.0" width="411.0" height="58.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="481.0" y="162.9" text-anchor="middle" font-size="11" font-weight="bold">Select suites</text><text x="481.0" y="176.4" text-anchor="middle" font-size="10">none named → find tests/test_*.sh (sorted), minus test_example / test_helpers</text><text x="481.0" y="189.9" text-anchor="middle" font-size="10">named → tests/&lt;name&gt;.sh</text>
+<rect x="298.5" y="227.0" width="365.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="481.0" y="244.9" text-anchor="middle" font-size="11" font-weight="bold">RESULTS_DIR = mktemp -d   (removed by an EXIT trap)</text>
+<polygon points="481.0,281.0 605.9,303.0 481.0,325.0 356.1,303.0" fill="#fff2cc" stroke="#d6b656"/>
+<text x="481.0" y="306.4" text-anchor="middle" font-size="11" font-weight="bold">PARALLEL_JOBS &gt; 1?</text>
+<rect x="224.0" y="360.0" width="252.0" height="72.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="350.0" y="379.1" text-anchor="middle" font-size="11" font-weight="bold">Parallel: for each suite</text><text x="350.0" y="392.6" text-anchor="middle" font-size="10">wait_for_job_slot N</text><text x="350.0" y="406.1" text-anchor="middle" font-size="10">run_test_suite_with_progress … &amp;</text><text x="350.0" y="419.6" text-anchor="middle" font-size="10">(output → result_i.txt.output, status → .status)</text>
+<rect x="0.0" y="553.0" width="212.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="106.0" y="571.9" text-anchor="middle" font-size="11" font-weight="bold">wait each PID in order</text><text x="106.0" y="585.4" text-anchor="middle" font-size="10">(status 127 → read result_i.txt.status)</text><text x="106.0" y="598.9" text-anchor="middle" font-size="10">then aggregate every suite</text>
+<rect x="498.5" y="367.0" width="231.0" height="58.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="614.0" y="385.9" text-anchor="middle" font-size="11" font-weight="bold">Sequential: for each suite</text><text x="614.0" y="399.4" text-anchor="middle" font-size="10">run_test_suite … &amp; ; wait</text><text x="614.0" y="412.9" text-anchor="middle" font-size="10">aggregate at once; -x stops after a failure</text>
+<rect x="317.0" y="498.0" width="264.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="449.0" y="516.1" text-anchor="middle" font-size="11" font-weight="bold">source test_helpers.sh</text><text x="449.0" y="529.6" text-anchor="middle" font-size="10">counters = 0, setup_test_suite → TEST_TMP_DIR</text>
+<rect x="334.5" y="623.0" width="229.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="449.0" y="640.9" text-anchor="middle" font-size="11" font-weight="bold">trap 'write_suite_results $?' EXIT</text>
+<rect x="321.0" y="677.0" width="256.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="449.0" y="695.1" text-anchor="middle" font-size="11" font-weight="bold">source tests/test_&lt;suite&gt;.sh</text><text x="449.0" y="708.6" text-anchor="middle" font-size="10">the calls at the bottom of the file run each test</text>
+<rect x="320.0" y="755.0" width="258.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="449.0" y="773.9" text-anchor="middle" font-size="11" font-weight="bold">write_suite_results (runs on any exit)</text><text x="449.0" y="787.4" text-anchor="middle" font-size="10">cleanup_test_suite; print ✓/✗ line</text><text x="449.0" y="800.9" text-anchor="middle" font-size="10">write the result file</text>
+<path d="M333.5,848.0 H554.5 L564.5,858.0 V934.0 H333.5 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="449.0" y="867.4" text-anchor="middle" font-size="11" font-weight="bold">result_i.txt</text><text x="449.0" y="880.9" text-anchor="middle" font-size="10">SUITE_TESTS / PASSED / FAILED / SKIPPED</text><text x="449.0" y="894.4" text-anchor="middle" font-size="10">SUITE_DURATION, SUITE_COMPLETED</text><text x="449.0" y="907.9" text-anchor="middle" font-size="10">testcase XML lines, failed details</text><text x="449.0" y="921.4" text-anchor="middle" font-size="10">RESULTS_COMPLETE</text>
+<rect x="279.0" y="969.0" width="340.0" height="58.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="449.0" y="987.9" text-anchor="middle" font-size="11" font-weight="bold">aggregate_suite_result FILE RESULT STATUS</text><text x="449.0" y="1001.4" text-anchor="middle" font-size="10">no RESULTS_COMPLETE, not completed, non-zero exit or 0 tests</text><text x="449.0" y="1014.9" text-anchor="middle" font-size="10">→ one synthetic failure + last 20 output lines</text>
+<rect x="322.0" y="1052.0" width="254.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="449.0" y="1070.1" text-anchor="middle" font-size="11" font-weight="bold">print_summary</text><text x="449.0" y="1083.6" text-anchor="middle" font-size="10">Total / Passed / Failed / Skipped, failure details</text>
+<rect x="267.5" y="1120.0" width="363.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="449.0" y="1137.9" text-anchor="middle" font-size="11" font-weight="bold">TEST_MAX_SKIPPED set and exceeded? → exit status 1</text>
+<polygon points="449.0,1174.0 507.8,1196.0 449.0,1218.0 390.2,1196.0" fill="#fff2cc" stroke="#d6b656"/>
+<text x="449.0" y="1199.4" text-anchor="middle" font-size="11" font-weight="bold">--junit?</text>
+<rect x="207.5" y="1253.0" width="293.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="354.0" y="1271.1" text-anchor="middle" font-size="11" font-weight="bold">generate_junit_xml → test-reports/junit.xml</text><text x="354.0" y="1284.6" text-anchor="middle" font-size="10">(SonarQube Generic Test Execution format)</text>
+<path d="M312.5,1324.5 H385.5 L395.5,1334.5 V1353.5 H312.5 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="354.0" y="1342.4" text-anchor="middle" font-size="11" font-weight="bold">junit.xml</text>
+<ellipse cx="526.0" cy="1339.0" rx="89.7" ry="18.0" fill="#ffffff" stroke="#333333"/>
+<text x="526.0" y="1342.4" text-anchor="middle" font-size="11" font-weight="bold">exit 0 = all passed</text>
+<rect x="759.5" y="10" width="230" height="150" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="767.5" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="769.5" y="36" width="28" height="16" rx="3" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="805.5" y="48" font-size="10">Runner orchestration</text>
+<rect x="769.5" y="60" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="805.5" y="72" font-size="10">Runner / helper step</text>
+<rect x="769.5" y="84" width="28" height="16" rx="3" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="805.5" y="96" font-size="10">Suite code</text>
+<polygon points="783.5,108 797.5,116 783.5,124 769.5,116" fill="#fff2cc" stroke="#d6b656"/>
+<text x="805.5" y="120" font-size="10">Decision</text>
+<rect x="769.5" y="132" width="28" height="16" rx="3" fill="#ffffff" stroke="#9673a6"/>
+<text x="805.5" y="144" font-size="10">File / data artefact</text>
+</svg>

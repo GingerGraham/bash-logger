@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1437" height="523" viewBox="0 -40 1437 523" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="1437" height="523" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">T3. Execution contexts: how a test reaches the code under test</text>
+<rect x="8.0" y="8.0" width="500.0" height="93.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="16.0" y="24.0" font-size="12" font-weight="bold">Worker subshell (bash, from run_tests.sh)</text>
+<polyline points="183.1,65.0 268.6,65.0 275.9,65.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="494.1,65.0 771.6,65.0 778.9,65.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="183.2,47.1 250.0,32.0 520.0,32.0 746.0,48.0 771.8,51.5 779.0,52.5" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="127.4,86.7 250.0,198.0 545.5,215.1 552.8,215.5" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="117.5,86.6 216.0,238.0 271.1,253.1 278.1,255.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="112.9,86.7 250.0,404.0 298.5,418.5 305.3,420.5" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="115.7,86.6 250.0,324.0 298.2,338.4 304.9,340.4" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="173.9,86.6 259.3,112.8 266.3,114.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="917.6,94.1 966.0,126.0 1055.1,201.6 1060.5,206.2" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="746.2,221.0 1025.4,221.0 1032.7,221.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="514.2,297.7 776.5,325.8 783.7,326.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="464.5,426.5 776.6,357.1 783.6,355.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="465.1,359.4 776.8,341.5 783.8,341.1" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="912.0,314.4 1045.5,239.3 1052.0,235.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="464.5,444.0 774.1,444.0 781.1,444.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="520.3,151.0 794.2,151.0 801.7,151.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="627.2" y="430.5" width="44.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="649.5" y="442.0" text-anchor="middle" font-size="10" fill="#333333">compare</text>
+<rect x="22.0" y="43.5" width="161.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="102.5" y="61.6" text-anchor="middle" font-size="11" font-weight="bold">Suite code</text><text x="102.5" y="75.1" text-anchor="middle" font-size="10">test_*.sh + test_helpers.sh</text>
+<rect x="276.0" y="43.5" width="218.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="385.0" y="61.6" text-anchor="middle" font-size="11" font-weight="bold">In-process logging.sh</text><text x="385.0" y="75.1" text-anchor="middle" font-size="10">sourced by setup_test before each test</text>
+<rect x="779.0" y="36.0" width="187.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="872.5" y="54.9" text-anchor="middle" font-size="11" font-weight="bold">1. Direct calls</text><text x="872.5" y="68.4" text-anchor="middle" font-size="10">public API and internal functions</text><text x="872.5" y="81.9" text-anchor="middle" font-size="10">function stubs override internals</text>
+<rect x="553.0" y="185.0" width="193.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="649.5" y="204.1" text-anchor="middle" font-size="11" font-weight="bold">2. Child bash</text><text x="649.5" y="217.6" text-anchor="middle" font-size="10">bash -c "source logging.sh; …"</text><text x="649.5" y="231.1" text-anchor="middle" font-size="10">run_with_logger</text><text x="649.5" y="244.6" text-anchor="middle" font-size="10">streams, exit codes, environment</text>
+<rect x="256.0" y="255.0" width="258.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="385.0" y="273.9" text-anchor="middle" font-size="11" font-weight="bold">3. Shell matrix</text><text x="385.0" y="287.4" text-anchor="middle" font-size="10">run_with_logger_in_shell / run_snippet_in_shell</text><text x="385.0" y="300.9" text-anchor="middle" font-size="10">for each entry of test_shell_list (TEST_SHELLS)</text>
+<rect x="305.5" y="415.0" width="159.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="385.0" y="433.9" text-anchor="middle" font-size="11" font-weight="bold">4. Drivers (POSIX sh)</text><text x="385.0" y="447.4" text-anchor="middle" font-size="10">compat/validator_driver.sh</text><text x="385.0" y="460.9" text-anchor="middle" font-size="10">compat/sanitize_driver.sh</text>
+<rect x="305.0" y="335.0" width="160.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="385.0" y="353.9" text-anchor="middle" font-size="11" font-weight="bold">5. Scenario scripts</text><text x="385.0" y="367.4" text-anchor="middle" font-size="10">compat/scenarios/*.sh (18)</text><text x="385.0" y="380.9" text-anchor="middle" font-size="10">run under each shell</text>
+<rect x="250.0" y="115.0" width="270.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="385.0" y="134.1" text-anchor="middle" font-size="11" font-weight="bold">6. Repository tooling</text><text x="385.0" y="147.6" text-anchor="middle" font-size="10">install.sh, run_tests.sh, scripts/bench-logging.sh</text><text x="385.0" y="161.1" text-anchor="middle" font-size="10">check-bash32-compat.sh, check-posix-compat.sh</text><text x="385.0" y="174.6" text-anchor="middle" font-size="10">update-license-year.sh</text>
+<rect x="1033.0" y="206.5" width="92.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1079.0" y="224.4" text-anchor="middle" font-size="11" font-weight="bold">logging.sh</text>
+<rect x="784.0" y="314.5" width="177.0" height="43.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="872.5" y="332.6" text-anchor="middle" font-size="11" font-weight="bold">bash · bash --posix · zsh</text><text x="872.5" y="346.1" text-anchor="middle" font-size="10">dash · busybox sh</text>
+<path d="M781.5,415.0 H953.5 L963.5,425.0 V473.0 H781.5 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="872.5" y="433.9" text-anchor="middle" font-size="11" font-weight="bold">compat/golden/*.tsv</text><text x="872.5" y="447.4" text-anchor="middle" font-size="10">checksums recorded from 2.7.0</text><text x="872.5" y="460.9" text-anchor="middle" font-size="10">+ *_3.0.tsv overlays</text>
+<rect x="802.0" y="136.5" width="141.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="872.5" y="154.4" text-anchor="middle" font-size="11" font-weight="bold">Repository scripts</text>
+<rect x="1155.0" y="10" width="252" height="150" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="1163.0" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="1165.0" y="36" width="28" height="16" rx="3" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="1201.0" y="48" font-size="10">Suite code</text>
+<rect x="1165.0" y="60" width="28" height="16" rx="3" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="1201.0" y="72" font-size="10">logging.sh sourced in the worker</text>
+<rect x="1165.0" y="84" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1201.0" y="96" font-size="10">Execution context</text>
+<rect x="1165.0" y="108" width="28" height="16" rx="3" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1201.0" y="120" font-size="10">Code under test / shells</text>
+<rect x="1165.0" y="132" width="28" height="16" rx="3" fill="#ffffff" stroke="#9673a6"/>
+<text x="1201.0" y="144" font-size="10">File / data artefact</text>
+</svg>

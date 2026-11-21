@@ -33,6 +33,8 @@ Great! Here's the process:
 2. **Fork the repository** and create a branch from `main`
 
 3. **Make your changes**
+   * New to the code? Start with the [logging.sh Architecture Reference](architecture/logging-sh-reference.md) and the
+     [Test Suite Reference](architecture/tests-reference.md). They map every function and every test suite. Both describe version 3.0.3
    * Keep changes focused on a single issue/feature
    * Follow existing code style (see below)
    * Add comments for complex logic
@@ -46,7 +48,10 @@ Great! Here's the process:
      rejects syntax that dash does not support
    * Verify existing functionality still works
    * Run tests locally: `./tests/run_tests.sh` or `make test`
-   * Optionally run coverage: `make coverage` (requires [kcov](https://github.com/SimonKagstrom/kcov))
+   * Run the suite as a non-root user. The permission tests fail as root, including in containers where root is the default user
+     (see [Running as root](docs/testing.md#running-as-root))
+   * Optionally run coverage: `make coverage` (requires [kcov](https://github.com/SimonKagstrom/kcov)). kcov follows bash only, so code that runs only in zsh, dash or busybox ash
+     is reported as not covered (see [Coverage with kcov](docs/testing.md#coverage-with-kcov))
    * New features should include tests that verify the feature works. Bug fixes should include a
      regression test that would have caught the bug, where practical. See
      [docs/writing-tests.md](docs/writing-tests.md) for a contributor guide on how to write and

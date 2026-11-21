@@ -1143,23 +1143,14 @@ fi
 
 ## Internal Functions
 
-The following functions are prefixed with underscore (`_`) and are **internal implementation details**. They should not
-be called directly by consuming scripts:
+Every function whose name starts with an underscore (`_`) is **internal**. Internal functions are implementation details.
+Do not call them from consuming scripts. They can be renamed, changed or removed in any release, including a patch release.
 
-* `_detect_color_support` - Detect terminal color capabilities
-* `_should_use_colors` - Determine if colors should be used
-* `_should_use_stderr` - Determine if message should go to stderr
-* `_parse_config_file` - Parse INI configuration files
-* `_get_log_level_value` - Convert level name to numeric value
-* `_get_log_level_name` - Convert numeric value to level name
-* `_get_log_level_color` - Get ANSI color code for level
-* `_get_syslog_priority` - Map level to syslog priority
-* `_format_log_message` - Format log message using template
-* `_log_to_console` - Output formatted message to console
-* `_log_message` - Core logging implementation
+Only the functions documented on this page are public. If a script needs behavior that only an internal function provides,
+[open an issue](https://github.com/GingerGraham/bash-logger/issues/new/choose) so the behavior can be added to the public API.
 
-**Note:** Internal functions may change between versions without notice. Always use the public API functions
-documented above.
+For maintainers and contributors, the [logging.sh Architecture Reference](../architecture/logging-sh-reference.md) lists every internal
+function by subsystem and shows how they call each other. It describes version 3.0.3.
 
 ---
 
