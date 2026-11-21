@@ -40,6 +40,10 @@ Deep dives into specific features:
 ## Contributing
 
 * **[PRE-COMMIT](PRE-COMMIT.md)** - Setting up pre-commit hooks for development
+* **[logging.sh Architecture Reference](../architecture/logging-sh-reference.md)** - How `logging.sh` is structured: every internal function, the call graph and the
+  design patterns (describes version 3.0.3)
+* **[Test Suite Reference](../architecture/tests-reference.md)** - How the test suite is structured: the runner, the helper library, every suite and the cross-shell
+  machinery (describes version 3.0.3)
 
 ## Quick Links
 

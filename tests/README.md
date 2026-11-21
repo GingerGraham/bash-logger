@@ -112,6 +112,8 @@ For comprehensive information about the test suite, see:
   * Best practices
   * Debugging failed tests
   * CI integration
+* **[Test Suite Reference](../architecture/tests-reference.md)** - How the suite is put together: the runner and its result-file protocol, the `test_helpers.sh` API,
+  the life of one test, a catalogue of every suite, and the cross-shell machinery (describes version 3.0.3)
 
 ## Files in This Directory
 

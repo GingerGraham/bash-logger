@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2445" height="559" viewBox="0 -40 2445 559" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="2445" height="559" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">T4. Cross-shell and equivalence machinery (Issue #143)</text>
+<rect x="8.0" y="58.5" width="374.0" height="442.5" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="16.0" y="74.5" font-size="12" font-weight="bold">test_shell_compat — differential against bash</text>
+<rect x="1248.0" y="51.0" width="859.0" height="369.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="1256.0" y="67.0" font-size="12" font-weight="bold">test_validator_equivalence / test_sanitize_equivalence — against recorded results</text>
+<rect x="390.0" y="152.0" width="850.0" height="107.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="398.0" y="168.0" font-size="12" font-weight="bold">test_posix_compat / test_zsh_compat / test_source_guard</text>
+<polyline points="1046.0,43.3 1046.0,86.0 1046.0,93.3" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="857.9,126.2 385.0,152.0 308.7,184.1 302.1,186.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1159.5,136.5 1245.0,152.0 1317.4,177.6 1324.1,180.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1057.8,136.5 1083.1,180.5 1086.7,186.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="235.0,136.5 235.0,179.3 235.0,186.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="335.1,245.0 385.0,259.0 769.7,295.5 776.9,296.2" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="237.0,245.5 239.1,274.8 239.6,282.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="257.0,325.3 280.9,356.2 285.4,362.1" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="277.7,403.4 228.7,439.6 223.0,443.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="138.2,406.3 170.0,438.8 174.9,443.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1423.0,144.1 1423.0,172.5 1423.0,179.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1274.4,252.1 1245.0,259.0 916.5,294.5 909.4,295.3" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1401.5,252.3 1383.1,282.6 1379.3,288.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1415.2,318.1 1554.4,360.9 1561.3,363.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1854.4,325.1 1714.4,361.2 1707.5,363.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1628.0,325.3 1628.0,355.8 1628.0,362.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1862.0,237.7 1905.8,277.1 1911.2,282.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="1788.2,237.6 1685.5,279.2 1678.7,281.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="1017.5,245.1 891.0,286.7 884.1,289.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="843.0,237.7 843.0,281.6 843.0,288.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="624.4,237.6 790.4,286.9 797.2,288.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M808.0,0.0 H1274.0 L1284.0,10.0 V43.0 H808.0 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="1046.0" y="18.1" text-anchor="middle" font-size="11" font-weight="bold">TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh"   (default: bash)</text><text x="1046.0" y="31.6" text-anchor="middle" font-size="10">TEST_REQUIRE_SHELLS="zsh dash busybox"   (missing → fail, not skip)</text>
+<rect x="858.0" y="93.5" width="376.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1046.0" y="111.6" text-anchor="middle" font-size="11" font-weight="bold">test_shell_list  /  require_shell  /  shell_counts_characters</text><text x="1046.0" y="125.1" text-anchor="middle" font-size="10">(test_helpers.sh)</text>
+<path d="M132.0,93.5 H328.0 L338.0,103.5 V136.5 H132.0 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="235.0" y="111.6" text-anchor="middle" font-size="11" font-weight="bold">compat/scenarios/*.sh</text><text x="235.0" y="125.1" text-anchor="middle" font-size="10">(optional '# compat-locale:' header)</text>
+<rect x="102.0" y="187.0" width="266.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="235.0" y="205.9" text-anchor="middle" font-size="11" font-weight="bold">compat_run_scenario SHELL SCENARIO</text><text x="235.0" y="219.4" text-anchor="middle" font-size="10">bash first (reference), then each shell</text><text x="235.0" y="232.9" text-anchor="middle" font-size="10">run_with_timeout 60 s</text>
+<rect x="121.0" y="282.0" width="240.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="241.0" y="300.1" text-anchor="middle" font-size="11" font-weight="bold">compat_mask timestamps</text><text x="241.0" y="313.6" text-anchor="middle" font-size="10">compare stdout, stderr, test.log, exit status</text>
+<polygon points="302.0,355.0 368.5,384.5 302.0,414.0 235.5,384.5" fill="#fff2cc" stroke="#d6b656"/>
+<text x="302.0" y="381.1" text-anchor="middle" font-size="11" font-weight="bold">same as</text><text x="302.0" y="394.6" text-anchor="middle" font-size="10">bash?</text>
+<path d="M22.0,363.0 H204.0 L214.0,373.0 V406.0 H22.0 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="118.0" y="381.1" text-anchor="middle" font-size="11" font-weight="bold">compat/known_failures.txt</text><text x="118.0" y="394.6" text-anchor="middle" font-size="10">'shell|scenario' pairs</text>
+<rect x="66.5" y="444.0" width="257.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="195.0" y="462.1" text-anchor="middle" font-size="11" font-weight="bold">pass  |  listed and differs → skip</text><text x="195.0" y="475.6" text-anchor="middle" font-size="10">listed but matches → fail (keep the list current)</text>
+<path d="M1266.0,86.0 H1570.0 L1580.0,96.0 V144.0 H1266.0 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="1423.0" y="104.9" text-anchor="middle" font-size="11" font-weight="bold">validator_corpus.txt, validator_corpus_utf8.txt</text><text x="1423.0" y="118.4" text-anchor="middle" font-size="10">sanitize_corpus.txt</text><text x="1423.0" y="131.9" text-anchor="middle" font-size="10">(one input per line, octal-escaped)</text>
+<rect x="1262.5" y="180.0" width="321.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1423.0" y="199.1" text-anchor="middle" font-size="11" font-weight="bold">validator_driver.sh: 19 checks per input</text><text x="1423.0" y="212.6" text-anchor="middle" font-size="10">(_validate_*, _get_log_level_value, _truncate_log_message,</text><text x="1423.0" y="226.1" text-anchor="middle" font-size="10">_sanitize_script_name, _parse_config_file, init_logger)</text><text x="1423.0" y="239.6" text-anchor="middle" font-size="10">sanitize_driver.sh: log each message in 3 modes</text>
+<path d="M1262.0,289.0 H1470.0 L1480.0,299.0 V318.0 H1262.0 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="1371.0" y="306.9" text-anchor="middle" font-size="11" font-weight="bold">rows: check, id, status, cksum</text>
+<path d="M1775.5,282.0 H2082.5 L2092.5,292.0 V325.0 H1775.5 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="1934.0" y="300.1" text-anchor="middle" font-size="11" font-weight="bold">validators.tsv, validators_utf8.tsv, sanitize.tsv</text><text x="1934.0" y="313.6" text-anchor="middle" font-size="10">(2.7.0, e53fcda, bash, LC_ALL=C)</text>
+<path d="M1502.5,282.0 H1743.5 L1753.5,292.0 V325.0 H1502.5 Z" fill="#ffffff" stroke="#9673a6"/>
+<text x="1628.0" y="300.1" text-anchor="middle" font-size="11" font-weight="bold">*_3.0.tsv overlays</text><text x="1628.0" y="313.6" text-anchor="middle" font-size="10">rows changed on purpose in 3.0, with reasons</text>
+<rect x="1511.5" y="363.0" width="233.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1628.0" y="381.1" text-anchor="middle" font-size="11" font-weight="bold">exact match required</text><text x="1628.0" y="394.6" text-anchor="middle" font-size="10">('crash' in golden → only 'must not crash')</text>
+<rect x="1701.0" y="194.5" width="276.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="1839.0" y="212.6" text-anchor="middle" font-size="11" font-weight="bold">generate_*_golden.sh (once, from 2.7.0)</text><text x="1839.0" y="226.1" text-anchor="middle" font-size="10">generate_*_changes.sh (3.0 overlays)</text>
+<rect x="980.5" y="187.0" width="245.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1103.0" y="205.9" text-anchor="middle" font-size="11" font-weight="bold">test_posix_compat: 7 single tests</text><text x="1103.0" y="219.4" text-anchor="middle" font-size="10">+ 41 tests looped over every shell</text><text x="1103.0" y="232.9" text-anchor="middle" font-size="10">run_snippet_in_shell SHELL LOCALE SNIPPET</text>
+<rect x="728.0" y="194.5" width="230.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="843.0" y="212.6" text-anchor="middle" font-size="11" font-weight="bold">test_zsh_compat: zsh only</text><text x="843.0" y="226.1" text-anchor="middle" font-size="10">config parsing vs bash, re-entrancy guard</text>
+<rect x="404.0" y="194.5" width="302.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="555.0" y="212.6" text-anchor="middle" font-size="11" font-weight="bold">test_source_guard: re-sourcing and readonly</text><text x="555.0" y="226.1" text-anchor="middle" font-size="10">detection in bash, bash --posix, zsh (fixed list)</text>
+<rect x="777.0" y="289.0" width="132.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="843.0" y="306.9" text-anchor="middle" font-size="11" font-weight="bold">shells under test</text>
+<rect x="2145.0" y="10" width="270" height="150" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="2153.0" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="2155.0" y="36" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2191.0" y="48" font-size="10">Harness step</text>
+<rect x="2155.0" y="60" width="28" height="16" rx="3" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="2191.0" y="72" font-size="10">Golden-file generator (run by hand)</text>
+<rect x="2155.0" y="84" width="28" height="16" rx="3" fill="#ffffff" stroke="#9673a6"/>
+<text x="2191.0" y="96" font-size="10">File / data artefact</text>
+<polygon points="2169.0,108 2183.0,116 2169.0,124 2155.0,116" fill="#fff2cc" stroke="#d6b656"/>
+<text x="2191.0" y="120" font-size="10">Decision</text>
+<rect x="2155.0" y="132" width="28" height="16" rx="3" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="2191.0" y="144" font-size="10">Shells under test</text>
+</svg>

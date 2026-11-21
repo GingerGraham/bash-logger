@@ -1197,6 +1197,9 @@ to about 10 percent.
 
 ## Related Documentation
 
+* [Test Suite Reference](../architecture/tests-reference.md) - How the suite is put together: the runner, the helper library, every suite and
+  the cross-shell machinery (describes version 3.0.3)
+* [logging.sh Architecture Reference](../architecture/logging-sh-reference.md) - How `logging.sh` is structured (describes version 3.0.3)
 * [Writing Tests](writing-tests.md) - Contributor guide: how to write and structure tests,
   with annotated examples and common pitfalls
 * [Getting Started](getting-started.md) - Basic usage of the logging module

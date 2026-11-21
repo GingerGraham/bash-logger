@@ -1,0 +1,376 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2961" height="1688" viewBox="0 -40 2961 1688" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="2961" height="1688" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">7. Full call graph of logging.sh (every function, every static call)</text>
+<rect x="8.0" y="1469.0" width="650.0" height="79.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="16.0" y="1485.0" font-size="12" font-weight="bold">Public: initialisation</text>
+<rect x="210.0" y="497.0" width="149.0" height="497.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="218.0" y="513.0" font-size="12" font-weight="bold">Public: logging</text>
+<rect x="168.0" y="1002.0" width="233.0" height="421.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="176.0" y="1018.0" font-size="12" font-weight="bold">Public: runtime configuration</text>
+<rect x="190.0" y="334.0" width="1304.5" height="155.0" rx="6" fill="#fff8f0" stroke="#d79b00"/>
+<text x="198.0" y="350.0" font-size="12" font-weight="bold">Orchestration</text>
+<rect x="440.0" y="562.0" width="1318.0" height="345.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="448.0" y="578.0" font-size="12" font-weight="bold">Validation</text>
+<rect x="469.0" y="8.0" width="1509.0" height="117.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="477.0" y="24.0" font-size="12" font-weight="bold">Level maps</text>
+<rect x="464.0" y="975.0" width="1814.0" height="193.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="472.0" y="991.0" font-size="12" font-weight="bold">Sanitise and truncate</text>
+<rect x="797.5" y="1513.0" width="1747.5" height="117.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="805.5" y="1529.0" font-size="12" font-weight="bold">Format and time</text>
+<rect x="795.5" y="133.0" width="1451.0" height="193.0" rx="6" fill="#f8f4fa" stroke="#9673a6"/>
+<text x="803.5" y="149.0" font-size="12" font-weight="bold">Sinks</text>
+<rect x="784.5" y="1388.0" width="686.5" height="117.0" rx="6" fill="#fdf3f3" stroke="#b85450"/>
+<text x="792.5" y="1404.0" font-size="12" font-weight="bold">Logger discovery</text>
+<rect x="834.0" y="1176.0" width="1422.0" height="204.0" rx="6" fill="#fafafa" stroke="#999999"/>
+<text x="842.0" y="1192.0" font-size="12" font-weight="bold">Primitives</text>
+<polyline points="1464.8,1281.6 1777.0,1359.0 1978.0,1359.0 2039.0,1308.0 2107.1,1281.1 2113.7,1278.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1675.4,816.6 2110.9,1007.6 2117.3,1010.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1249.4,1153.5 1272.0,1157.0 1305.0,1206.0 1505.0,1248.0 1777.0,1359.0 1978.0,1359.0 2006.0,1339.0 2039.0,1308.0 2107.1,1281.1 2113.7,1278.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1250.2,1153.5 1758.0,1231.0 1777.0,1245.0 1818.0,1253.1 1825.0,1254.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="639.6,816.5 664.0,821.0 1036.0,937.0 1272.0,965.0 1305.0,1170.0 1758.0,1231.0 1777.0,1283.0 1792.5,1286.0 1799.4,1287.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1924.0,1264.0 2053.5,1264.0 2060.8,1264.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1926.3,1233.0 2053.7,1250.6 2060.8,1251.6" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1946.7,191.0 2063.0,191.0 2070.4,191.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="983.5,1456.9 1346.0,1440.6 1353.0,1440.3" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="983.9,1449.7 1815.3,1347.2 1822.4,1346.3" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="983.5,1463.7 1348.5,1474.4 1355.7,1474.6" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="912.6,1446.3 1003.0,1382.0 1036.0,1343.0 1331.4,1325.3 1338.6,1324.9" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="644.0,1509.1 746.0,1497.0 824.8,1477.3 831.8,1475.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="953.5,732.2 1530.8,790.9 1537.8,791.6" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="953.7,736.6 1003.0,745.0 1036.0,948.0 1305.0,1226.0 1362.0,1249.6 1368.8,1252.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="639.6,664.5 664.0,669.0 825.2,709.7 832.4,711.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="651.9,612.0 787.7,612.0 794.8,612.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="639.6,626.5 664.0,631.0 848.7,708.6 855.2,711.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="639.6,740.5 664.0,745.0 779.0,1304.0 1305.0,1340.0 1538.0,1354.0 1777.0,1361.0 1978.0,1361.0 2094.1,1338.1 2101.1,1336.7" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="645.8,726.0 821.2,726.0 828.3,726.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="639.6,702.5 664.0,707.0 779.0,745.0 798.0,748.2 805.0,749.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="639.6,702.5 664.0,707.0 697.0,736.0 1003.0,973.0 1036.0,1194.0 1327.8,1251.9 1334.8,1253.3" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="659.0,699.4 821.3,718.1 828.4,718.9" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="638.2,764.0 771.9,764.0 779.0,764.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="638.2,755.0 821.2,733.9 828.3,733.1" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="639.6,854.5 664.0,859.0 746.0,1065.0 779.0,1170.0 870.7,1265.0 875.9,1270.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="576.2,892.8 664.0,973.0 779.0,1170.0 870.7,1265.0 875.9,1270.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,697.0 440.0,1170.0 1327.4,1259.3 1334.7,1260.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,445.5 401.0,403.0 440.0,77.0 476.0,71.2 482.9,70.1" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,652.0 440.0,859.0 482.4,865.8 489.4,867.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,667.0 440.0,909.0 1003.0,1020.0 1128.9,1119.9 1134.6,1124.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,682.0 440.0,939.0 545.7,1118.2 549.3,1124.3" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 440.0,515.0 1272.0,537.0 1758.0,560.0 1777.0,1245.0 1818.0,1253.1 1825.0,1254.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,712.0 440.0,1215.0 697.0,1262.0 840.5,1279.1 847.6,1280.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 440.0,531.0 530.8,593.3 536.6,597.3" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 440.0,707.0 465.2,711.1 472.2,712.2" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 440.0,669.0 460.5,672.3 467.7,673.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 440.0,631.0 460.5,634.3 467.7,635.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,622.0 440.0,783.0 471.1,788.0 478.3,789.2" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,637.0 440.0,821.0 463.3,824.8 470.4,825.9" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="352.7,470.5 401.0,478.0 421.0,727.0 440.0,1246.0 548.9,1497.8 551.7,1504.3" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1479.6,61.0 1777.7,73.1 1784.8,73.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="966.2,96.0 1308.1,96.0 1315.2,96.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1447.1,311.5 1505.0,332.0 1758.0,560.0 1777.0,1321.0 1815.4,1328.6 1822.4,1329.9" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1472.5,1025.0 1785.3,1025.0 1792.3,1025.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1956.5,1025.0 2031.8,1025.0 2039.0,1025.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1956.5,1036.2 2058.3,1050.3 2065.3,1051.2" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1918.1,1153.5 1978.0,1174.0 2039.0,1283.0 2107.1,1309.9 2113.7,1312.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1918.1,1153.5 1978.0,1174.0 2006.0,1186.0 2117.0,1245.9 2123.3,1249.3" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="974.5,1042.9 1299.6,1058.1 1306.8,1058.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1503.1,1072.7 1758.0,1098.0 1825.7,1122.0 1832.5,1124.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1503.2,1055.1 1785.3,1032.2 1792.4,1031.6" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1503.3,1063.0 2058.2,1063.0 2065.2,1063.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1481.8,1115.5 1505.0,1120.0 1538.0,1145.0 1758.0,1169.0 1777.0,1283.0 1792.5,1286.0 1799.4,1287.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1499.9,1113.5 1758.0,1148.0 1777.0,1245.0 1818.0,1253.1 1825.0,1254.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="976.3,1116.3 1272.0,1121.0 1297.7,1124.5 1305.0,1125.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1497.3,1153.5 1538.0,1160.0 1758.0,1192.0 1777.0,1283.0 1792.5,1286.0 1799.4,1287.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1505.0,1134.5 1538.0,1133.0 1758.0,1133.0 1777.0,1170.0 1842.2,1207.8 1848.4,1211.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1505.5,1145.5 1758.0,1162.0 1777.0,1245.0 1818.0,1253.1 1825.0,1254.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="640.3,1139.0 1028.7,1139.0 1035.9,1139.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="970.6,1563.0 1303.4,1563.0 1310.6,1563.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1964.0,1563.0 2062.1,1563.0 2069.1,1563.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1964.0,1575.2 2066.4,1589.4 2073.7,1590.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="2233.5,1563.0 2381.5,1563.0 2388.7,1563.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="2233.5,1574.1 2323.8,1586.5 2330.9,1587.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="2229.1,1590.5 2381.8,1569.6 2388.9,1568.6" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="2229.1,1601.0 2323.7,1601.0 2330.8,1601.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1499.2,1563.0 1777.5,1563.0 1784.8,1563.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="115.2,1522.5 148.0,1525.0 440.0,1538.0 664.0,1538.0 840.5,1477.8 847.2,1475.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="70.6,1504.5 148.0,490.0 168.0,402.0 208.9,395.6 216.0,394.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="112.0,1533.5 283.5,1592.0 892.0,1592.0 1304.0,1568.7 1311.0,1568.3" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="70.4,1504.5 148.0,265.0 516.0,113.3 522.7,110.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="70.3,1504.3 148.0,127.0 440.0,77.0 476.0,71.2 482.9,70.1" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="70.9,1504.3 168.0,478.0 209.2,471.6 216.3,470.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="70.8,1504.2 148.0,603.0 168.0,440.0 196.6,435.5 203.9,434.4" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="115.2,1512.0 401.0,1468.0 548.0,1160.1 551.0,1153.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="115.2,1514.7 401.0,1488.0 848.4,1302.3 854.8,1299.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="93.1,1504.3 148.0,1470.0 401.0,1425.0 440.0,783.0 472.9,777.7 479.9,776.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="86.5,1504.2 148.0,1451.0 401.0,1425.0 440.0,821.0 471.1,816.0 478.3,814.8" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="107.8,1504.3 148.0,1489.0 401.0,1449.0 421.0,1371.0 440.0,859.0 463.3,855.2 470.4,854.1" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="71.6,1504.3 168.0,831.0 232.2,821.0 239.2,819.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1500.6,184.6 1795.1,189.7 1802.3,189.8" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1500.6,196.2 1795.1,237.1 1802.3,238.1" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="972.6,285.0 1324.7,232.8 1331.8,231.7" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="990.1,1074.3 1299.7,1065.8 1306.7,1065.7" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="616.6,472.5 664.0,483.0 697.0,892.0 779.0,1507.0 1303.8,1554.0 1310.8,1554.6" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="616.6,449.7 664.0,441.0 697.0,344.0 779.0,271.0 1036.0,225.0 1302.1,194.6 1309.2,193.8" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="616.6,449.7 664.0,441.0 779.0,332.0 837.0,313.7 843.9,311.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="616.0,474.5 664.0,487.0 779.0,1058.0 798.0,1061.2 805.0,1062.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="616.6,449.7 664.0,441.0 697.0,380.0 779.0,278.0 1036.0,277.0 1272.0,277.0 1331.8,286.1 1338.8,287.1" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="315.5,1037.4 401.0,996.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="315.5,1037.4 401.0,996.0 440.0,332.0 547.3,117.3 550.6,110.8" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="315.5,1037.4 401.0,996.0 440.0,77.0 476.0,71.2 482.9,70.1" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1341.5 401.0,1299.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="318.0,1341.4 421.0,1295.0 440.0,973.0 534.1,897.2 539.8,892.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1341.5 401.0,1299.0 664.0,1158.0 779.0,1096.0 798.0,1092.8 805.0,1091.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1113.5 401.0,1071.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1379.5 401.0,1337.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1379.5 401.0,1337.0 421.0,1298.0 440.0,973.0 534.1,897.2 539.8,892.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="333.8,1379.5 664.0,1280.0 779.0,1096.0 798.0,1092.8 805.0,1091.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="357.7,1405.2 401.0,1412.0 530.7,1500.4 536.5,1504.3" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1151.5 401.0,1109.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="337.5,1151.4 421.0,1128.0 440.0,783.0 472.9,777.7 479.9,776.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1303.5 401.0,1261.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="355.4,1314.2 746.0,1293.0 840.9,1287.7 848.0,1287.3" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1303.5 401.0,1261.0 421.0,1218.0 440.0,859.0 463.3,855.2 470.4,854.1" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="303.6,1075.3 401.0,996.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1265.5 401.0,1223.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="327.6,1265.4 421.0,1233.0 440.0,1176.0 504.7,1155.7 511.7,1153.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1227.5 401.0,1185.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="315.6,1227.3 421.0,1176.0 440.0,973.0 534.1,897.2 539.8,892.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,1189.5 401.0,1147.0 440.0,487.0 494.3,474.6 501.4,472.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="348.9,1189.5 421.0,1173.0 440.0,973.0 534.1,897.2 539.8,892.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1466.7,247.3 1505.0,240.0 1538.0,222.0 1833.3,94.4 1839.8,91.6" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1466.6,250.2 1795.2,202.4 1802.3,201.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1466.6,257.6 1795.2,249.8 1802.3,249.7" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="971.2,460.0 1322.2,460.0 1329.3,460.0" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="615.6,421.7 808.6,420.5 815.9,420.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="930.9,405.4 1272.0,277.0 1305.0,240.0 1324.6,236.2 1331.8,234.9" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="966.0,434.0 1003.0,441.0 1036.0,502.0 1272.0,935.0 1305.0,1082.0 1321.1,1085.1 1328.2,1086.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="966.0,434.0 1003.0,441.0 1036.0,1170.0 1305.0,1507.0 1371.9,1544.8 1378.2,1548.4" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="912.8,405.5 1305.0,131.0 1356.1,112.9 1362.9,110.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="961.9,405.4 1036.0,390.0 1272.0,353.0 1305.0,278.0 1336.2,272.0 1343.3,270.7" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="966.0,434.0 1003.0,441.0 1272.0,500.0 1305.0,1044.0 1321.1,1047.1 1328.2,1048.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="966.2,422.5 1505.0,441.0 1758.0,521.0 1868.6,1003.5 1870.2,1010.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="966.0,434.0 1003.0,441.0 1272.0,950.0 1305.0,1120.0 1321.1,1123.1 1328.2,1124.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="966.2,410.2 1272.0,370.0 1305.0,332.0 1356.1,313.9 1362.9,311.5" fill="none" stroke="#777777" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,798.5 401.0,756.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,836.5 401.0,794.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,874.5 401.0,832.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,912.5 401.0,870.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="315.5,532.4 401.0,491.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="303.6,570.3 401.0,491.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,608.5 401.0,566.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,646.5 401.0,604.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,684.5 401.0,642.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,722.5 401.0,680.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,760.5 401.0,718.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,950.5 401.0,908.0 420.0,532.0 440.0,332.0 547.3,117.3 550.6,110.8" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,950.5 401.0,908.0 440.0,77.0 476.0,71.2 482.9,70.1" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="341.2,973.7 401.0,983.0 421.0,1054.0 440.0,1170.0 1505.0,1248.0 1777.0,1321.0 1815.4,1328.6 1822.4,1329.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,950.5 401.0,908.0 440.0,441.0 495.3,432.1 502.5,430.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="314.9,950.5 401.0,908.0 440.0,560.0 664.0,511.0 818.4,476.2 825.5,474.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="341.2,973.7 401.0,983.0 421.0,1069.0 440.0,1289.0 547.1,1497.8 550.4,1504.3" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="615.6,432.2 664.0,441.0 697.0,458.0 803.7,459.1 810.9,459.2" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="811.0,450.9 622.7,429.2 615.6,428.4" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<polyline points="810.8,472.1 440.0,529.0 401.0,908.0 321.6,947.2 314.9,950.5" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="5,4"/>
+<rect x="693.8" y="444.5" width="55.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="721.5" y="456.0" text-anchor="middle" font-size="10" fill="#333333">zsh guard</text>
+<rect x="693.8" y="425.5" width="55.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="721.5" y="437.0" text-anchor="middle" font-size="10" fill="#333333">runs "$@"</text>
+<rect x="531.2" y="482.5" width="55.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="559.0" y="494.0" text-anchor="middle" font-size="10" fill="#333333">runs "$@"</text>
+<rect x="22.0" y="1504.5" width="93.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="68.5" y="1522.4" text-anchor="middle" font-size="11" font-weight="bold">init_logger</text>
+<rect x="474.0" y="1504.5" width="170.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="559.0" y="1522.4" text-anchor="middle" font-size="11" font-weight="bold">check_logger_available</text>
+<rect x="239.5" y="798.5" width="90.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="816.4" text-anchor="middle" font-size="11" font-weight="bold">log_debug</text>
+<rect x="246.5" y="836.5" width="76.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="854.4" text-anchor="middle" font-size="11" font-weight="bold">log_info</text>
+<rect x="239.0" y="874.5" width="91.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="892.4" text-anchor="middle" font-size="11" font-weight="bold">log_notice</text>
+<rect x="243.0" y="912.5" width="83.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="930.4" text-anchor="middle" font-size="11" font-weight="bold">log_warn</text>
+<rect x="243.0" y="532.5" width="83.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="550.4" text-anchor="middle" font-size="11" font-weight="bold">log_error</text>
+<rect x="237.0" y="570.5" width="95.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="588.4" text-anchor="middle" font-size="11" font-weight="bold">log_critical</text>
+<rect x="243.5" y="608.5" width="82.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="626.4" text-anchor="middle" font-size="11" font-weight="bold">log_alert</text>
+<rect x="224.0" y="646.5" width="121.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="664.4" text-anchor="middle" font-size="11" font-weight="bold">log_emergency</text>
+<rect x="244.0" y="684.5" width="81.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="702.4" text-anchor="middle" font-size="11" font-weight="bold">log_fatal</text>
+<rect x="248.0" y="722.5" width="73.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="740.4" text-anchor="middle" font-size="11" font-weight="bold">log_init</text>
+<rect x="230.0" y="760.5" width="109.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="778.4" text-anchor="middle" font-size="11" font-weight="bold">log_sensitive</text>
+<rect x="228.0" y="950.5" width="113.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="968.4" text-anchor="middle" font-size="11" font-weight="bold">log_to_journal</text>
+<rect x="231.0" y="1037.5" width="107.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1055.4" text-anchor="middle" font-size="11" font-weight="bold">set_log_level</text>
+<rect x="225.0" y="1113.5" width="119.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1131.4" text-anchor="middle" font-size="11" font-weight="bold">set_log_format</text>
+<rect x="217.0" y="1341.5" width="135.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1359.4" text-anchor="middle" font-size="11" font-weight="bold">set_timezone_utc</text>
+<rect x="211.5" y="1379.5" width="146.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1397.4" text-anchor="middle" font-size="11" font-weight="bold">set_journal_logging</text>
+<rect x="223.5" y="1151.5" width="122.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1169.4" text-anchor="middle" font-size="11" font-weight="bold">set_journal_tag</text>
+<rect x="214.0" y="1303.5" width="141.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1321.4" text-anchor="middle" font-size="11" font-weight="bold">set_syslog_facility</text>
+<rect x="223.0" y="1075.5" width="123.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1093.4" text-anchor="middle" font-size="11" font-weight="bold">set_color_mode</text>
+<rect x="220.5" y="1265.5" width="128.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1283.4" text-anchor="middle" font-size="11" font-weight="bold">set_script_name</text>
+<rect x="188.0" y="1227.5" width="193.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1245.4" text-anchor="middle" font-size="11" font-weight="bold">set_unsafe_allow_newlines</text>
+<rect x="182.0" y="1189.5" width="205.0" height="29.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="284.5" y="1207.4" text-anchor="middle" font-size="11" font-weight="bold">set_unsafe_allow_ansi_codes</text>
+<rect x="502.5" y="407.5" width="113.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="559.0" y="425.4" text-anchor="middle" font-size="11" font-weight="bold">_log_message</text>
+<rect x="816.0" y="405.5" width="150.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="891.0" y="423.4" text-anchor="middle" font-size="11" font-weight="bold">_write_log_message</text>
+<rect x="501.5" y="445.5" width="115.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="559.0" y="463.4" text-anchor="middle" font-size="11" font-weight="bold">_config_notice</text>
+<rect x="216.5" y="445.5" width="136.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="284.5" y="463.4" text-anchor="middle" font-size="11" font-weight="bold">_parse_config_file</text>
+<rect x="811.0" y="445.5" width="160.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="891.0" y="463.4" text-anchor="middle" font-size="11" font-weight="bold">_run_log_call_isolated</text>
+<rect x="1329.5" y="445.5" width="151.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="1405.0" y="463.4" text-anchor="middle" font-size="11" font-weight="bold">_exit_with_log_state</text>
+<rect x="216.0" y="369.5" width="137.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="284.5" y="387.4" text-anchor="middle" font-size="11" font-weight="bold">_find_caller_script</text>
+<rect x="204.0" y="407.5" width="161.0" height="29.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="284.5" y="425.4" text-anchor="middle" font-size="11" font-weight="bold">_require_option_value</text>
+<rect x="828.5" y="711.5" width="125.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="891.0" y="729.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_string</text>
+<rect x="454.0" y="635.5" width="210.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="653.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_config_value_length</text>
+<rect x="466.5" y="597.5" width="185.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="615.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_config_file_path</text>
+<rect x="472.5" y="711.5" width="173.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="729.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_config_format</text>
+<rect x="459.0" y="673.5" width="200.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="691.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_config_journal_tag</text>
+<rect x="480.0" y="749.5" width="158.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="767.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_journal_tag</text>
+<rect x="470.5" y="825.5" width="177.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="843.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_syslog_facility</text>
+<rect x="478.5" y="787.5" width="161.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="805.4" text-anchor="middle" font-size="11" font-weight="bold">_validate_length_limit</text>
+<rect x="489.5" y="863.5" width="139.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="881.4" text-anchor="middle" font-size="11" font-weight="bold">_parse_bool_value</text>
+<rect x="1538.0" y="787.5" width="206.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1641.0" y="805.4" text-anchor="middle" font-size="11" font-weight="bold">_contains_control_characters</text>
+<rect x="779.0" y="749.5" width="224.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="891.0" y="767.4" text-anchor="middle" font-size="11" font-weight="bold">_contains_shell_metacharacters</text>
+<rect x="795.0" y="597.5" width="192.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="891.0" y="615.4" text-anchor="middle" font-size="11" font-weight="bold">_has_word_after_separator</text>
+<rect x="483.0" y="43.5" width="152.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="61.4" text-anchor="middle" font-size="11" font-weight="bold">_get_log_level_value</text>
+<rect x="483.0" y="81.5" width="152.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="99.4" text-anchor="middle" font-size="11" font-weight="bold">_get_log_level_name</text>
+<rect x="1330.5" y="43.5" width="149.0" height="29.0" rx="6" fill="#ffffff" stroke="#6c8ebf" stroke-dasharray="4,3"/>
+<text x="1405.0" y="61.4" text-anchor="middle" font-size="11" font-weight="bold">_get_log_level_color</text>
+<rect x="1785.0" y="62.5" width="179.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1874.5" y="80.4" text-anchor="middle" font-size="11" font-weight="bold">_get_log_level_color_into</text>
+<rect x="816.0" y="81.5" width="150.0" height="29.0" rx="6" fill="#ffffff" stroke="#6c8ebf" stroke-dasharray="4,3"/>
+<text x="891.0" y="99.4" text-anchor="middle" font-size="11" font-weight="bold">_get_syslog_priority</text>
+<rect x="1315.5" y="81.5" width="179.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="99.4" text-anchor="middle" font-size="11" font-weight="bold">_get_syslog_priority_into</text>
+<rect x="1310.5" y="1086.5" width="189.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="1104.4" text-anchor="middle" font-size="11" font-weight="bold">_cap_message_length_into</text>
+<rect x="807.5" y="1024.5" width="167.0" height="29.0" rx="6" fill="#ffffff" stroke="#6c8ebf" stroke-dasharray="4,3"/>
+<text x="891.0" y="1042.4" text-anchor="middle" font-size="11" font-weight="bold">_sanitize_log_message</text>
+<rect x="1307.0" y="1048.5" width="196.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="1066.4" text-anchor="middle" font-size="11" font-weight="bold">_sanitize_log_message_into</text>
+<rect x="792.0" y="1062.5" width="198.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="891.0" y="1080.4" text-anchor="middle" font-size="11" font-weight="bold">_sanitize_config_notice_into</text>
+<rect x="1777.0" y="1124.5" width="195.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1874.5" y="1142.4" text-anchor="middle" font-size="11" font-weight="bold">_replace_line_control_chars</text>
+<rect x="1338.0" y="1010.5" width="134.0" height="29.0" rx="6" fill="#ffffff" stroke="#6c8ebf" stroke-dasharray="4,3"/>
+<text x="1405.0" y="1028.4" text-anchor="middle" font-size="11" font-weight="bold">_strip_ansi_codes</text>
+<rect x="1792.5" y="1010.5" width="164.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1874.5" y="1028.4" text-anchor="middle" font-size="11" font-weight="bold">_strip_ansi_codes_into</text>
+<rect x="2039.0" y="1010.5" width="225.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2151.5" y="1028.4" text-anchor="middle" font-size="11" font-weight="bold">_contains_strippable_characters</text>
+<rect x="2065.5" y="1048.5" width="172.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2151.5" y="1066.4" text-anchor="middle" font-size="11" font-weight="bold">_strip_trailing_newlines</text>
+<rect x="806.0" y="1100.5" width="170.0" height="29.0" rx="6" fill="#ffffff" stroke="#6c8ebf" stroke-dasharray="4,3"/>
+<text x="891.0" y="1118.4" text-anchor="middle" font-size="11" font-weight="bold">_truncate_log_message</text>
+<rect x="1305.0" y="1124.5" width="200.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="1142.4" text-anchor="middle" font-size="11" font-weight="bold">_truncate_log_message_into</text>
+<rect x="478.0" y="1124.5" width="162.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="559.0" y="1142.4" text-anchor="middle" font-size="11" font-weight="bold">_sanitize_script_name</text>
+<rect x="1036.0" y="1124.5" width="236.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1154.0" y="1142.4" text-anchor="middle" font-size="11" font-weight="bold">_replace_unsafe_name_characters</text>
+<rect x="811.5" y="1548.5" width="159.0" height="29.0" rx="6" fill="#ffffff" stroke="#6c8ebf" stroke-dasharray="4,3"/>
+<text x="891.0" y="1566.4" text-anchor="middle" font-size="11" font-weight="bold">_format_log_message</text>
+<rect x="1311.0" y="1548.5" width="188.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="1566.4" text-anchor="middle" font-size="11" font-weight="bold">_format_log_message_into</text>
+<rect x="1785.0" y="1548.5" width="179.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1874.5" y="1566.4" text-anchor="middle" font-size="11" font-weight="bold">_current_timestamp_into</text>
+<rect x="2069.5" y="1548.5" width="164.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2151.5" y="1566.4" text-anchor="middle" font-size="11" font-weight="bold">_bash_timestamp_into</text>
+<rect x="2074.0" y="1586.5" width="155.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2151.5" y="1604.4" text-anchor="middle" font-size="11" font-weight="bold">_zsh_timestamp_into</text>
+<rect x="2331.0" y="1586.5" width="200.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2431.0" y="1604.4" text-anchor="middle" font-size="11" font-weight="bold">_utc_timestamp_from_epoch</text>
+<rect x="2389.0" y="1548.5" width="84.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2431.0" y="1566.4" text-anchor="middle" font-size="11" font-weight="bold">_is_digits</text>
+<rect x="1343.5" y="244.5" width="123.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="262.4" text-anchor="middle" font-size="11" font-weight="bold">_log_to_console</text>
+<rect x="1309.5" y="168.5" width="191.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="186.4" text-anchor="middle" font-size="11" font-weight="bold">_log_set_config_to_console</text>
+<rect x="1802.5" y="176.5" width="144.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1874.5" y="194.4" text-anchor="middle" font-size="11" font-weight="bold">_should_use_colors</text>
+<rect x="2070.5" y="176.5" width="162.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2151.5" y="194.4" text-anchor="middle" font-size="11" font-weight="bold">_detect_color_support</text>
+<rect x="1802.5" y="233.5" width="144.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1874.5" y="251.4" text-anchor="middle" font-size="11" font-weight="bold">_should_use_stderr</text>
+<rect x="1332.0" y="206.5" width="146.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="224.4" text-anchor="middle" font-size="11" font-weight="bold">_append_to_log_file</text>
+<rect x="809.5" y="282.5" width="163.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="891.0" y="300.4" text-anchor="middle" font-size="11" font-weight="bold">_log_set_config_to_file</text>
+<rect x="1339.0" y="282.5" width="132.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1405.0" y="300.4" text-anchor="middle" font-size="11" font-weight="bold">_write_to_journal</text>
+<rect x="798.5" y="1446.5" width="185.0" height="29.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="891.0" y="1464.4" text-anchor="middle" font-size="11" font-weight="bold">_find_and_validate_logger</text>
+<rect x="1356.0" y="1461.5" width="98.0" height="29.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="1405.0" y="1479.4" text-anchor="middle" font-size="11" font-weight="bold">_is_symlink</text>
+<rect x="1353.0" y="1423.5" width="104.0" height="29.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="1405.0" y="1441.4" text-anchor="middle" font-size="11" font-weight="bold">_is_plain_file</text>
+<rect x="1822.5" y="1325.5" width="104.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1874.5" y="1343.4" text-anchor="middle" font-size="11" font-weight="bold">_is_readonly</text>
+<rect x="1339.0" y="1306.5" width="132.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1405.0" y="1324.4" text-anchor="middle" font-size="11" font-weight="bold">_logger_readonly</text>
+<rect x="2061.0" y="1249.5" width="181.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="2151.5" y="1267.4" text-anchor="middle" font-size="11" font-weight="bold">_shell_counts_characters</text>
+<rect x="1335.0" y="1252.5" width="140.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1405.0" y="1270.4" text-anchor="middle" font-size="11" font-weight="bold">_count_characters</text>
+<rect x="1825.0" y="1249.5" width="99.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1874.5" y="1267.4" text-anchor="middle" font-size="11" font-weight="bold">_text_prefix</text>
+<rect x="1823.0" y="1211.5" width="103.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1874.5" y="1229.4" text-anchor="middle" font-size="11" font-weight="bold">_text_length</text>
+<rect x="2101.5" y="1312.5" width="100.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="2151.5" y="1330.4" text-anchor="middle" font-size="11" font-weight="bold">_replace_all</text>
+<rect x="1798.5" y="1287.5" width="152.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="1874.5" y="1305.4" text-anchor="middle" font-size="11" font-weight="bold">_parse_shell_integer</text>
+<rect x="848.0" y="1270.5" width="86.0" height="29.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="891.0" y="1288.4" text-anchor="middle" font-size="11" font-weight="bold">_to_lower</text>
+<rect x="2583.0" y="10" width="348" height="198" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="2591.0" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="2593.0" y="36" width="28" height="16" rx="3" fill="#d5e8d4" stroke="#82b366"/>
+<text x="2629.0" y="48" font-size="10">Public API (call from scripts)</text>
+<rect x="2593.0" y="60" width="28" height="16" rx="3" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="2629.0" y="72" font-size="10">Internal orchestrator</text>
+<rect x="2593.0" y="84" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="2629.0" y="96" font-size="10">Internal helper (_ prefix)</text>
+<rect x="2593.0" y="108" width="28" height="16" rx="3" fill="#ffffff" stroke="#6c8ebf" stroke-dasharray="4,3"/>
+<text x="2629.0" y="120" font-size="10">Print wrapper: no library caller, kept for tests</text>
+<rect x="2593.0" y="132" width="28" height="16" rx="3" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="2629.0" y="144" font-size="10">Output sink / external process</text>
+<rect x="2593.0" y="156" width="28" height="16" rx="3" fill="#f8cecc" stroke="#b85450"/>
+<text x="2629.0" y="168" font-size="10">Security gate / check</text>
+<rect x="2593.0" y="180" width="28" height="16" rx="3" fill="#f5f5f5" stroke="#666666"/>
+<text x="2629.0" y="192" font-size="10">Internal primitive / shell portability</text>
+</svg>

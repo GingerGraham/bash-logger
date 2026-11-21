@@ -33,6 +33,8 @@ Great! Here's the process:
 2. **Fork the repository** and create a branch from `main`
 
 3. **Make your changes**
+   * New to the code? Start with the [logging.sh Architecture Reference](architecture/logging-sh-reference.md) and the
+     [Test Suite Reference](architecture/tests-reference.md). They map every function and every test suite. Both describe version 3.0.3
    * Keep changes focused on a single issue/feature
    * Follow existing code style (see below)
    * Add comments for complex logic

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="976" height="1102" viewBox="0 -40 976 1102" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="976" height="1102" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">T2. Life of one test function (test_helpers.sh contract)</text>
+<polyline points="273.0,36.1 273.0,53.5 273.0,60.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="273.0,104.2 273.0,121.8 273.0,129.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="273.0,201.0 273.0,218.6 273.0,225.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="273.0,284.0 273.0,301.5 273.0,308.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="246.6,360.0 197.2,398.5 191.5,402.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="165.0,446.1 165.0,543.8 165.0,551.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="216.2,446.0 296.4,478.3 303.2,481.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="296.4,361.0 342.0,403.0 362.8,474.0 364.8,480.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="373.0,539.2 373.0,598.9 373.0,605.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="373.0,678.2 373.0,695.7 373.0,702.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="413.9,749.2 550.5,801.7 557.2,804.3" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="368.2,761.0 363.2,789.8 361.9,796.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="546.9,847.6 524.0,855.0 439.7,878.0 432.7,879.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="357.0,855.2 357.0,872.2 357.0,879.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="165.0,594.1 165.0,690.0 165.0,827.0 190.0,855.0 274.3,878.0 281.3,879.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="357.0,923.0 357.0,940.5 357.0,947.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="357.0,991.3 357.0,1008.8 357.0,1015.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="216.8" y="377.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="228.0" y="389.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="156.8" y="455.5" width="77.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="195.5" y="467.0" text-anchor="middle" font-size="10" fill="#333333">not installed</text>
+<rect x="262.8" y="455.5" width="55.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="290.5" y="467.0" text-anchor="middle" font-size="10" fill="#333333">installed</text>
+<rect x="353.0" y="416.5" width="17.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="361.5" y="428.0" text-anchor="middle" font-size="10" fill="#333333">no</text>
+<rect x="503.8" y="771.5" width="22.5" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="515.0" y="783.0" text-anchor="middle" font-size="10" fill="#333333">yes</text>
+<rect x="357.0" y="771.5" width="105.0" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="409.5" y="783.0" text-anchor="middle" font-size="10" fill="#333333">no: return at once</text>
+<ellipse cx="273.0" cy="18.0" rx="270.4" ry="18.0" fill="#333333" stroke="#333333"/>
+<text fill="#ffffff" x="273.0" y="21.4" text-anchor="middle" font-size="11" font-weight="bold">test_something   (called explicitly at the bottom of the suite file)</text>
+<rect x="144.5" y="61.0" width="257.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="273.0" y="79.1" text-anchor="middle" font-size="11" font-weight="bold">start_test "Display name"</text><text x="273.0" y="92.6" text-anchor="middle" font-size="10">current_test, suite_tests++, TEST_START_TIME</text>
+<rect x="116.0" y="129.0" width="314.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="273.0" y="148.1" text-anchor="middle" font-size="11" font-weight="bold">setup_test</text><text x="273.0" y="161.6" text-anchor="middle" font-size="10">source logging.sh again → every setting back to its default</text><text x="273.0" y="175.1" text-anchor="middle" font-size="10">TEST_DIR = mktemp -d "$TEST_TMP_DIR/test.XXXXXX"</text><text x="273.0" y="188.6" text-anchor="middle" font-size="10">TEST_STDOUT / TEST_STDERR paths</text>
+<rect x="125.0" y="226.0" width="296.0" height="58.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="273.0" y="244.9" text-anchor="middle" font-size="11" font-weight="bold">Arrange</text><text x="273.0" y="258.4" text-anchor="middle" font-size="10">init_logger --quiet …, LOG_FILE="$TEST_DIR/x.log"</text><text x="273.0" y="271.9" text-anchor="middle" font-size="10">optional stub: _find_and_validate_logger() { return 0; }</text>
+<polygon points="273.0,309.0 370.2,338.5 273.0,368.0 175.8,338.5" fill="#fff2cc" stroke="#d6b656"/>
+<text x="273.0" y="335.1" text-anchor="middle" font-size="11" font-weight="bold">needs another</text><text x="273.0" y="348.6" text-anchor="middle" font-size="10">shell?</text>
+<rect x="0.0" y="403.0" width="330.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="165.0" y="421.1" text-anchor="middle" font-size="11" font-weight="bold">require_shell zsh || return 0</text><text x="165.0" y="434.6" text-anchor="middle" font-size="10">(missing → skip_test, or fail_test if in TEST_REQUIRE_SHELLS)</text>
+<rect x="210.0" y="481.0" width="326.0" height="58.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="373.0" y="499.9" text-anchor="middle" font-size="11" font-weight="bold">Act</text><text x="373.0" y="513.4" text-anchor="middle" font-size="10">log_* / set_* in-process, or bash -c / run_with_logger_in_shell</text><text x="373.0" y="526.9" text-anchor="middle" font-size="10">capture_output, capture_streams, run_with_timeout</text>
+<rect x="242.0" y="606.0" width="262.0" height="72.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="373.0" y="625.1" text-anchor="middle" font-size="11" font-weight="bold">Assert</text><text x="373.0" y="638.6" text-anchor="middle" font-size="10">assert_equals, assert_contains, assert_matches</text><text x="373.0" y="652.1" text-anchor="middle" font-size="10">assert_file_contains / _not_contains / _empty …</text><text x="373.0" y="665.6" text-anchor="middle" font-size="10">assert_success / assert_failure      … || return</text>
+<polygon points="373.0,703.0 466.1,732.5 373.0,762.0 279.9,732.5" fill="#fff2cc" stroke="#d6b656"/>
+<text x="373.0" y="729.1" text-anchor="middle" font-size="11" font-weight="bold">all assertions</text><text x="373.0" y="742.6" text-anchor="middle" font-size="10">passed?</text>
+<rect x="536.5" y="804.5" width="149.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="611.0" y="822.6" text-anchor="middle" font-size="11" font-weight="bold">pass_test</text><text x="611.0" y="836.1" text-anchor="middle" font-size="10">suite_passed++, print ✓</text>
+<rect x="203.0" y="797.0" width="308.0" height="58.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="357.0" y="815.9" text-anchor="middle" font-size="11" font-weight="bold">fail_test MSG   (called by the assert_* helper)</text><text x="357.0" y="829.4" text-anchor="middle" font-size="10">suite_failed++, print ✗ + reason</text><text x="357.0" y="842.9" text-anchor="middle" font-size="10">FAILED_TEST_DETAILS += name: reason</text>
+<rect x="89.0" y="551.0" width="152.0" height="43.0" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="165.0" y="569.1" text-anchor="middle" font-size="11" font-weight="bold">skip_test REASON</text><text x="165.0" y="582.6" text-anchor="middle" font-size="10">suite_skipped++, print ⊘</text>
+<rect x="163.5" y="880.0" width="387.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="357.0" y="898.1" text-anchor="middle" font-size="11" font-weight="bold">JUNIT_OUTPUT=true → _add_junit_testcase pass | fail | skip</text><text x="357.0" y="911.6" text-anchor="middle" font-size="10">(_get_test_duration, _junit_xml_escape) → CURRENT_SUITE_TESTCASES</text>
+<rect x="223.5" y="948.0" width="267.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="357.0" y="966.1" text-anchor="middle" font-size="11" font-weight="bold">teardown_test</text><text x="357.0" y="979.6" text-anchor="middle" font-size="10">on failure, print the TEST_DIR path for debugging</text>
+<ellipse cx="357.0" cy="1034.0" rx="53.1" ry="18.0" fill="#ffffff" stroke="#333333"/>
+<text x="357.0" y="1037.4" text-anchor="middle" font-size="11" font-weight="bold">next test</text>
+<rect x="715.5" y="10" width="230" height="126" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="723.5" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="725.5" y="36" width="28" height="16" rx="3" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="761.5" y="48" font-size="10">Test body (your code)</text>
+<rect x="725.5" y="60" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="761.5" y="72" font-size="10">test_helpers.sh function</text>
+<rect x="725.5" y="84" width="28" height="16" rx="3" fill="#ffe6cc" stroke="#d79b00"/>
+<text x="761.5" y="96" font-size="10">Result recorder</text>
+<polygon points="739.5,108 753.5,116 739.5,124 725.5,116" fill="#fff2cc" stroke="#d6b656"/>
+<text x="761.5" y="120" font-size="10">Decision</text>
+</svg>

@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="952" height="2065" viewBox="0 -40 952 2065" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="952" height="2065" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">T5. Coverage map: which suites exercise which part of the code (primary focus)</text>
+<rect x="35.5" y="359.0" width="230.0" height="343.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="43.5" y="375.0" font-size="12" font-weight="bold">Levels, initialisation and output</text>
+<rect x="62.0" y="710.0" width="177.0" height="143.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="70.0" y="726.0" font-size="12" font-weight="bold">Configuration</text>
+<rect x="27.0" y="861.0" width="247.0" height="293.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="35.0" y="877.0" font-size="12" font-weight="bold">Security: message content</text>
+<rect x="26.5" y="1162.0" width="248.0" height="293.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="34.5" y="1178.0" font-size="12" font-weight="bold">Security: files, environment, input</text>
+<rect x="50.0" y="1463.0" width="201.0" height="243.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="58.0" y="1479.0" font-size="12" font-weight="bold">Robustness</text>
+<rect x="39.5" y="1714.0" width="222.0" height="293.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="47.5" y="1730.0" font-size="12" font-weight="bold">Cross-shell</text>
+<rect x="0.0" y="8.0" width="301.0" height="343.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="8.0" y="24.0" font-size="12" font-weight="bold">Repository tooling and test infrastructure</text>
+<rect x="387.0" y="925.0" width="267.0" height="631.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="395.0" y="941.0" font-size="12" font-weight="bold">logging.sh</text>
+<polyline points="210.2,525.8 301.0,541.0 387.0,1114.0 439.5,1121.5 446.7,1122.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="218.8,577.3 301.0,591.0 387.0,1150.0 440.6,1160.5 447.4,1161.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.9,625.1 301.0,641.0 387.0,1200.0 458.3,1214.0 465.2,1215.3" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.9,625.1 301.0,641.0 387.0,1250.0 424.5,1257.3 431.5,1258.7" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="220.6,427.5 301.0,441.0 387.0,1028.0 414.9,1033.5 422.2,1034.9" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="226.7,478.6 301.0,491.0 387.0,1078.0 411.4,1081.5 418.4,1082.5" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.9,681.6 301.0,709.0 387.0,1386.0 426.0,1391.6 433.0,1392.6" fill="none" stroke="#82b366" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.9,832.6 301.0,860.0 387.0,1300.0 445.6,1311.5 452.5,1312.8" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="225.4,779.4 301.0,792.0 496.5,955.7 502.0,960.3" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="222.3,1029.8 301.0,1043.0 387.0,1350.0 432.6,1356.5 439.8,1357.6" fill="none" stroke="#b85450" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="230.6,1081.2 301.0,1093.0 387.0,1350.0 432.6,1356.5 439.8,1357.6" fill="none" stroke="#b85450" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="226.7,1139.6 301.0,1161.0 387.0,1350.0 432.6,1356.5 439.8,1357.6" fill="none" stroke="#b85450" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="256.1,935.5 301.0,943.0 387.0,992.0 429.6,998.1 436.7,999.1" fill="none" stroke="#b85450" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="224.9,980.3 301.0,993.0 387.0,1200.0 458.3,1214.0 465.2,1215.3" fill="none" stroke="#b85450" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="224.9,980.3 301.0,993.0 387.0,1250.0 424.5,1257.3 431.5,1258.7" fill="none" stroke="#b85450" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="224.9,980.3 301.0,993.0 387.0,1078.0 411.4,1081.5 418.4,1082.5" fill="none" stroke="#b85450" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="224.6,1310.5 424.1,1287.1 431.2,1286.3" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="234.1,1270.6 424.3,1274.2 431.4,1274.3" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="202.1,1197.3 301.0,1155.0 387.0,1079.0 414.9,1073.7 422.2,1072.4" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="202.1,1197.3 301.0,1155.0 387.0,1115.0 411.4,1111.7 418.4,1110.7" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="226.7,1405.9 301.0,1393.0 387.0,1351.0 445.6,1340.0 452.5,1338.7" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="226.9,1423.5 467.3,1437.9 474.4,1438.3" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.8,1369.0 432.6,1369.0 439.8,1369.0" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.8,1362.7 445.3,1334.7 452.5,1333.8" fill="none" stroke="#9673a6" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="202.1,1498.3 301.0,1456.0 387.0,1151.0 439.5,1143.9 446.7,1142.9" fill="none" stroke="#6c8ebf" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="202.1,1498.3 301.0,1456.0 387.0,1251.0 458.3,1237.5 465.2,1236.2" fill="none" stroke="#6c8ebf" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="229.8,1556.4 301.0,1544.0 387.0,1201.0 440.6,1190.9 447.4,1189.6" fill="none" stroke="#6c8ebf" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="229.8,1556.4 301.0,1544.0 387.0,1301.0 424.5,1293.9 431.5,1292.6" fill="none" stroke="#6c8ebf" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="237.2,1655.1 301.0,1644.0 387.0,1301.0 424.5,1293.9 431.5,1292.6" fill="none" stroke="#6c8ebf" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="237.2,1655.1 301.0,1644.0 387.0,1495.0 431.2,1489.0 438.2,1488.0" fill="none" stroke="#6c8ebf" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="226.7,1606.9 301.0,1594.0 387.0,1387.0 432.6,1380.8 439.8,1379.8" fill="none" stroke="#6c8ebf" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="220.1,1959.5 301.0,1946.0 505.0,1548.2 508.4,1541.7" fill="none" stroke="#3d8b8b" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="221.9,1858.8 301.0,1845.0 501.1,1547.4 505.0,1541.6" fill="none" stroke="#3d8b8b" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="221.9,1858.8 301.0,1845.0 387.0,1423.0 426.0,1417.7 433.0,1416.8" fill="none" stroke="#3d8b8b" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="216.2,1910.2 301.0,1896.0 387.0,1495.0 431.2,1489.0 438.2,1488.0" fill="none" stroke="#3d8b8b" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="247.9,1804.2 301.0,1795.0 387.0,1459.0 467.0,1448.1 474.3,1447.1" fill="none" stroke="#3d8b8b" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="202.1,1749.3 301.0,1707.0 387.0,1387.0 432.6,1380.8 439.8,1379.8" fill="none" stroke="#3d8b8b" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.8,211.3 428.2,196.2 435.3,195.7" fill="none" stroke="#888888" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="218.4,253.4 301.0,239.0 428.4,210.4 435.3,208.9" fill="none" stroke="#888888" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="216.6,303.7 301.0,289.0 465.3,214.6 471.8,211.6" fill="none" stroke="#888888" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="205.9,74.1 301.0,90.0 465.8,165.4 472.4,168.4" fill="none" stroke="#888888" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="218.8,126.3 301.0,140.0 428.4,169.2 435.3,170.7" fill="none" stroke="#888888" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="248.2,171.6 428.1,183.8 435.3,184.3" fill="none" stroke="#888888" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="91.0" y="494.5" width="119.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="512.6" text-anchor="middle" font-size="11" font-weight="bold">test_log_levels</text><text x="150.5" y="526.1" text-anchor="middle" font-size="10">13 test functions</text>
+<rect x="82.5" y="544.5" width="136.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="562.6" text-anchor="middle" font-size="11" font-weight="bold">test_initialization</text><text x="150.5" y="576.1" text-anchor="middle" font-size="10">34 test functions</text>
+<rect x="95.5" y="594.5" width="110.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="612.6" text-anchor="middle" font-size="11" font-weight="bold">test_output</text><text x="150.5" y="626.1" text-anchor="middle" font-size="10">24 test functions</text>
+<rect x="80.5" y="394.5" width="140.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="412.6" text-anchor="middle" font-size="11" font-weight="bold">test_source_guard</text><text x="150.5" y="426.1" text-anchor="middle" font-size="10">9 test functions</text>
+<rect x="74.5" y="444.5" width="152.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="462.6" text-anchor="middle" font-size="11" font-weight="bold">test_journal_logging</text><text x="150.5" y="476.1" text-anchor="middle" font-size="10">17 test functions</text>
+<rect x="95.5" y="644.5" width="110.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="662.6" text-anchor="middle" font-size="11" font-weight="bold">test_format</text><text x="150.5" y="676.1" text-anchor="middle" font-size="10">33 test functions</text>
+<rect x="95.5" y="795.5" width="110.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="813.6" text-anchor="middle" font-size="11" font-weight="bold">test_config</text><text x="150.5" y="827.1" text-anchor="middle" font-size="10">37 test functions</text>
+<rect x="76.0" y="745.5" width="149.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="763.6" text-anchor="middle" font-size="11" font-weight="bold">test_runtime_config</text><text x="150.5" y="777.1" text-anchor="middle" font-size="10">68 test functions</text>
+<rect x="79.0" y="996.5" width="143.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1014.6" text-anchor="middle" font-size="11" font-weight="bold">test_ansi_injection</text><text x="150.5" y="1028.1" text-anchor="middle" font-size="10">25 test functions</text>
+<rect x="70.5" y="1046.5" width="160.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1064.6" text-anchor="middle" font-size="11" font-weight="bold">test_unsafe_newlines</text><text x="150.5" y="1078.1" text-anchor="middle" font-size="10">20 test functions</text>
+<rect x="41.0" y="1096.5" width="219.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1114.6" text-anchor="middle" font-size="11" font-weight="bold">test_mixed_sanitization_modes</text><text x="150.5" y="1128.1" text-anchor="middle" font-size="10">19 test functions</text>
+<rect x="45.0" y="896.5" width="211.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="914.6" text-anchor="middle" font-size="11" font-weight="bold">test_script_name_sanitization</text><text x="150.5" y="928.1" text-anchor="middle" font-size="10">14 test functions</text>
+<rect x="76.5" y="946.5" width="148.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="964.6" text-anchor="middle" font-size="11" font-weight="bold">test_sensitive_data</text><text x="150.5" y="978.1" text-anchor="middle" font-size="10">16 test functions</text>
+<rect x="76.5" y="1297.5" width="148.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1315.6" text-anchor="middle" font-size="11" font-weight="bold">test_path_traversal</text><text x="150.5" y="1329.1" text-anchor="middle" font-size="10">13 test functions</text>
+<rect x="67.0" y="1247.5" width="167.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1265.6" text-anchor="middle" font-size="11" font-weight="bold">test_toctou_protection</text><text x="150.5" y="1279.1" text-anchor="middle" font-size="10">16 test functions</text>
+<rect x="54.5" y="1197.5" width="192.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1215.6" text-anchor="middle" font-size="11" font-weight="bold">test_environment_security</text><text x="150.5" y="1229.1" text-anchor="middle" font-size="10">24 test functions</text>
+<rect x="74.5" y="1397.5" width="152.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1415.6" text-anchor="middle" font-size="11" font-weight="bold">test_config_security</text><text x="150.5" y="1429.1" text-anchor="middle" font-size="10">26 test functions</text>
+<rect x="95.5" y="1347.5" width="110.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1365.6" text-anchor="middle" font-size="11" font-weight="bold">test_fuzzing</text><text x="150.5" y="1379.1" text-anchor="middle" font-size="10">27 test functions</text>
+<rect x="86.0" y="1498.5" width="129.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1516.6" text-anchor="middle" font-size="11" font-weight="bold">test_edge_cases</text><text x="150.5" y="1530.1" text-anchor="middle" font-size="10">16 test functions</text>
+<rect x="71.5" y="1548.5" width="158.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1566.6" text-anchor="middle" font-size="11" font-weight="bold">test_error_conditions</text><text x="150.5" y="1580.1" text-anchor="middle" font-size="10">23 test functions</text>
+<rect x="64.0" y="1648.5" width="173.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1666.6" text-anchor="middle" font-size="11" font-weight="bold">test_concurrent_access</text><text x="150.5" y="1680.1" text-anchor="middle" font-size="10">18 test functions</text>
+<rect x="74.5" y="1598.5" width="152.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1616.6" text-anchor="middle" font-size="11" font-weight="bold">test_resource_limits</text><text x="150.5" y="1630.1" text-anchor="middle" font-size="10">19 test functions</text>
+<rect x="81.0" y="1949.5" width="139.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1967.6" text-anchor="middle" font-size="11" font-weight="bold">test_shell_compat</text><text x="150.5" y="1981.1" text-anchor="middle" font-size="10">2 test functions</text>
+<rect x="79.5" y="1849.5" width="142.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1867.6" text-anchor="middle" font-size="11" font-weight="bold">test_posix_compat</text><text x="150.5" y="1881.1" text-anchor="middle" font-size="10">48 test functions</text>
+<rect x="85.0" y="1899.5" width="131.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1917.6" text-anchor="middle" font-size="11" font-weight="bold">test_zsh_compat</text><text x="150.5" y="1931.1" text-anchor="middle" font-size="10">7 test functions</text>
+<rect x="53.5" y="1799.5" width="194.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1817.6" text-anchor="middle" font-size="11" font-weight="bold">test_validator_equivalence</text><text x="150.5" y="1831.1" text-anchor="middle" font-size="10">3 test functions</text>
+<rect x="57.0" y="1749.5" width="187.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="1767.6" text-anchor="middle" font-size="11" font-weight="bold">test_sanitize_equivalence</text><text x="150.5" y="1781.1" text-anchor="middle" font-size="10">3 test functions</text>
+<rect x="95.5" y="193.5" width="110.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="211.6" text-anchor="middle" font-size="11" font-weight="bold">test_install</text><text x="150.5" y="225.1" text-anchor="middle" font-size="10">54 test functions</text>
+<rect x="83.0" y="243.5" width="135.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="261.6" text-anchor="middle" font-size="11" font-weight="bold">test_license_year</text><text x="150.5" y="275.1" text-anchor="middle" font-size="10">13 test functions</text>
+<rect x="84.5" y="293.5" width="132.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="311.6" text-anchor="middle" font-size="11" font-weight="bold">test_junit_output</text><text x="150.5" y="325.1" text-anchor="middle" font-size="10">27 test functions</text>
+<rect x="95.5" y="43.5" width="110.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="61.6" text-anchor="middle" font-size="11" font-weight="bold">test_runner</text><text x="150.5" y="75.1" text-anchor="middle" font-size="10">21 test functions</text>
+<rect x="82.5" y="93.5" width="136.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="111.6" text-anchor="middle" font-size="11" font-weight="bold">test_bench_script</text><text x="150.5" y="125.1" text-anchor="middle" font-size="10">34 test functions</text>
+<rect x="53.0" y="143.5" width="195.0" height="43.0" rx="6" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="150.5" y="161.6" text-anchor="middle" font-size="11" font-weight="bold">test_bash32_compat_check</text><text x="150.5" y="175.1" text-anchor="middle" font-size="10">9 test functions</text>
+<rect x="422.5" y="1032.5" width="196.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1050.6" text-anchor="middle" font-size="11" font-weight="bold">Source-time guards</text><text x="520.5" y="1064.1" text-anchor="middle" font-size="10">readonly constants, env scrubbing</text>
+<rect x="447.5" y="1154.5" width="146.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1172.6" text-anchor="middle" font-size="11" font-weight="bold">init_logger</text><text x="520.5" y="1186.1" text-anchor="middle" font-size="10">options, caller detection</text>
+<rect x="452.5" y="1304.5" width="136.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1322.6" text-anchor="middle" font-size="11" font-weight="bold">_parse_config_file</text><text x="520.5" y="1336.1" text-anchor="middle" font-size="10">config keys</text>
+<rect x="474.5" y="1426.5" width="92.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1444.4" text-anchor="middle" font-size="11" font-weight="bold">Validators</text>
+<rect x="447.0" y="1118.5" width="147.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1136.4" text-anchor="middle" font-size="11" font-weight="bold">Levels and filtering</text>
+<rect x="440.0" y="1354.5" width="161.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1372.4" text-anchor="middle" font-size="11" font-weight="bold">Sanitise and truncate</text>
+<rect x="437.0" y="996.5" width="167.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1014.4" text-anchor="middle" font-size="11" font-weight="bold">Script name sanitising</text>
+<rect x="433.0" y="1390.5" width="175.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1408.4" text-anchor="middle" font-size="11" font-weight="bold">Format and timestamps</text>
+<rect x="465.5" y="1204.5" width="110.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1222.6" text-anchor="middle" font-size="11" font-weight="bold">Console sink</text><text x="520.5" y="1236.1" text-anchor="middle" font-size="10">streams, colours</text>
+<rect x="431.5" y="1254.5" width="178.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1272.6" text-anchor="middle" font-size="11" font-weight="bold">File sink</text><text x="520.5" y="1286.1" text-anchor="middle" font-size="10">creation, TOCTOU, write errors</text>
+<rect x="418.5" y="1082.5" width="204.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1100.4" text-anchor="middle" font-size="11" font-weight="bold">Journal and logger discovery</text>
+<rect x="401.0" y="960.5" width="239.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="978.4" text-anchor="middle" font-size="11" font-weight="bold">Runtime set_* and CONFIG notices</text>
+<rect x="438.5" y="1462.5" width="164.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1480.4" text-anchor="middle" font-size="11" font-weight="bold">zsh re-entrancy guard</text>
+<rect x="428.0" y="1498.5" width="185.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="520.5" y="1516.6" text-anchor="middle" font-size="11" font-weight="bold">Shell portability</text><text x="520.5" y="1530.1" text-anchor="middle" font-size="10">(bash 3.2 → zsh, dash, busybox)</text>
+<rect x="435.5" y="168.5" width="170.0" height="43.0" rx="6" fill="#f5f5f5" stroke="#666666"/>
+<text x="520.5" y="186.6" text-anchor="middle" font-size="11" font-weight="bold">install.sh, run_tests.sh</text><text x="520.5" y="200.1" text-anchor="middle" font-size="10">scripts/*</text>
+<rect x="692.0" y="10" width="230" height="102" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="700.0" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="702.0" y="36" width="28" height="16" rx="3" fill="#e0f2f1" stroke="#26a69a"/>
+<text x="738.0" y="48" font-size="10">Test suite</text>
+<rect x="702.0" y="60" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="738.0" y="72" font-size="10">logging.sh subsystem</text>
+<rect x="702.0" y="84" width="28" height="16" rx="3" fill="#f5f5f5" stroke="#666666"/>
+<text x="738.0" y="96" font-size="10">Repository tooling</text>
+</svg>

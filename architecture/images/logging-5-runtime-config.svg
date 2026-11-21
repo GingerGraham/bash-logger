@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2006" height="704" viewBox="0 -40 2006 704" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555555"/></marker></defs>
+<rect x="0" y="-40" width="2006" height="704" fill="#ffffff"/>
+<text x="8" y="-14" font-size="16" font-weight="bold">5. Runtime configuration: set_* functions and the CONFIG notice</text>
+<rect x="0.0" y="8.0" width="405.0" height="624.0" rx="6" fill="#f3faf1" stroke="#82b366"/>
+<text x="8.0" y="24.0" font-size="12" font-weight="bold">Public setters (each changes a global, then announces it)</text>
+<rect x="420.0" y="8.0" width="485.0" height="389.0" rx="6" fill="#f4f8fd" stroke="#6c8ebf"/>
+<text x="428.0" y="24.0" font-size="12" font-weight="bold">Validation (invalid input → error on stderr, return 1, nothing changes)</text>
+<rect x="534.5" y="405.0" width="1025.5" height="241.0" rx="6" fill="#fff8f0" stroke="#d79b00"/>
+<text x="542.5" y="421.0" font-size="12" font-weight="bold">_config_notice TEXT [colour] [journal tag] [journal text] [force]</text>
+<polyline points="276.2,467.1 405.0,448.0 420.0,401.0 579.3,370.0 586.4,368.6" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="288.1,347.4 405.0,330.0 420.0,317.0 572.7,298.0 579.7,297.2" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="293.7,78.0 405.0,94.0 420.0,257.0 572.7,276.0 579.7,276.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="293.6,65.0 570.1,65.0 577.3,65.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="317.3,402.0 405.0,389.0 420.0,317.0 572.7,298.0 579.7,297.2" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="323.2,297.3 572.8,289.7 580.0,289.5" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="276.7,124.0 535.6,124.0 542.9,124.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="285.5,183.0 566.6,183.0 573.8,183.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="285.5,240.7 574.0,236.3 581.2,236.2" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="276.2,475.4 541.3,466.2 548.3,465.9" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="293.1,582.6 405.0,566.0 601.6,486.3 608.4,483.6" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="288.1,372.2 405.0,389.0 420.0,401.0 569.4,438.7 576.4,440.5" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="293.7,78.0 405.0,94.0 420.0,401.0 569.4,438.7 576.4,440.5" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="276.8,134.6 405.0,153.0 420.0,401.0 569.4,438.7 576.4,440.5" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="285.7,194.9 405.0,212.0 420.0,401.0 569.4,438.7 576.4,440.5" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="285.7,524.7 405.0,507.0 541.0,483.1 548.2,481.9" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="285.7,253.9 405.0,271.0 420.0,401.0 569.4,438.7 576.4,440.5" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="317.2,429.7 541.2,450.7 548.3,451.4" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="323.1,318.2 405.0,330.0 420.0,401.0 569.4,438.7 576.4,440.5" fill="none" stroke="#d79b00" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="776.6,473.3 926.6,488.2 933.9,488.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1216.5,488.5 1283.2,481.5 1290.3,480.8" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1219.3,517.4 1281.4,523.7 1288.5,524.4" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1120.8,517.5 1262.0,565.0 1288.1,572.0 1295.1,573.9" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1517.6,469.0 1581.8,469.0 1589.0,469.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1519.0,536.0 1598.1,536.0 1605.4,536.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1546.2,603.0 1604.3,603.0 1611.7,603.0" fill="none" stroke="#555555" stroke-width="1.1" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="128.0" y="456.5" width="148.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="474.6" text-anchor="middle" font-size="11" font-weight="bold">set_log_level LEVEL</text><text x="202.0" y="488.1" text-anchor="middle" font-size="10">→ CURRENT_LOG_LEVEL</text>
+<rect x="111.0" y="574.5" width="182.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="592.6" text-anchor="middle" font-size="11" font-weight="bold">set_log_format FMT</text><text x="202.0" y="606.1" text-anchor="middle" font-size="10">→ LOG_FORMAT (not validated)</text>
+<rect x="116.0" y="338.5" width="172.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="356.6" text-anchor="middle" font-size="11" font-weight="bold">set_timezone_utc BOOL</text><text x="202.0" y="370.1" text-anchor="middle" font-size="10">→ USE_UTC</text>
+<rect x="110.5" y="43.5" width="183.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="61.6" text-anchor="middle" font-size="11" font-weight="bold">set_journal_logging BOOL</text><text x="202.0" y="75.1" text-anchor="middle" font-size="10">→ USE_JOURNAL</text>
+<rect x="127.5" y="102.5" width="149.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="120.6" text-anchor="middle" font-size="11" font-weight="bold">set_journal_tag TAG</text><text x="202.0" y="134.1" text-anchor="middle" font-size="10">→ JOURNAL_TAG</text>
+<rect x="118.5" y="161.5" width="167.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="179.6" text-anchor="middle" font-size="11" font-weight="bold">set_syslog_facility FAC</text><text x="202.0" y="193.1" text-anchor="middle" font-size="10">→ SYSLOG_FACILITY</text>
+<rect x="118.5" y="515.5" width="167.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="533.6" text-anchor="middle" font-size="11" font-weight="bold">set_color_mode MODE</text><text x="202.0" y="547.1" text-anchor="middle" font-size="10">→ USE_COLORS (inline case)</text>
+<rect x="118.5" y="220.5" width="167.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="238.6" text-anchor="middle" font-size="11" font-weight="bold">set_script_name NAME</text><text x="202.0" y="252.1" text-anchor="middle" font-size="10">→ SCRIPT_NAME</text>
+<rect x="87.0" y="397.5" width="230.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="415.6" text-anchor="middle" font-size="11" font-weight="bold">set_unsafe_allow_newlines BOOL</text><text x="202.0" y="429.1" text-anchor="middle" font-size="10">→ LOG_UNSAFE_ALLOW_NEWLINES</text>
+<rect x="81.0" y="279.5" width="242.0" height="43.0" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+<text x="202.0" y="297.6" text-anchor="middle" font-size="11" font-weight="bold">set_unsafe_allow_ansi_codes BOOL</text><text x="202.0" y="311.1" text-anchor="middle" font-size="10">→ LOG_UNSAFE_ALLOW_ANSI_CODES</text>
+<rect x="586.5" y="325.0" width="152.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="662.5" y="343.9" text-anchor="middle" font-size="11" font-weight="bold">_get_log_level_value</text><text x="662.5" y="357.4" text-anchor="middle" font-size="10">_get_log_level_name</text><text x="662.5" y="370.9" text-anchor="middle" font-size="10">(invalid level → INFO)</text>
+<rect x="580.0" y="265.5" width="165.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="662.5" y="283.6" text-anchor="middle" font-size="11" font-weight="bold">_parse_bool_value</text><text x="662.5" y="297.1" text-anchor="middle" font-size="10">true/yes/on/1 | false/no/off/0</text>
+<rect x="577.5" y="43.5" width="170.0" height="43.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="662.5" y="61.6" text-anchor="middle" font-size="11" font-weight="bold">check_logger_available</text><text x="662.5" y="75.1" text-anchor="middle" font-size="10">→ _find_and_validate_logger</text>
+<rect x="543.0" y="102.5" width="239.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="662.5" y="120.6" text-anchor="middle" font-size="11" font-weight="bold">_validate_journal_tag</text><text x="662.5" y="134.1" text-anchor="middle" font-size="10">≤ 64 chars, no controls, no metacharacters</text>
+<rect x="574.0" y="161.5" width="177.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="662.5" y="179.6" text-anchor="middle" font-size="11" font-weight="bold">_validate_syslog_facility</text><text x="662.5" y="193.1" text-anchor="middle" font-size="10">+ _to_lower</text>
+<rect x="581.5" y="220.5" width="162.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="662.5" y="238.4" text-anchor="middle" font-size="11" font-weight="bold">_sanitize_script_name</text>
+<rect x="548.5" y="440.5" width="228.0" height="43.0" rx="6" fill="#f8cecc" stroke="#b85450"/>
+<text x="662.5" y="458.6" text-anchor="middle" font-size="11" font-weight="bold">_sanitize_config_notice_into</text><text x="662.5" y="472.1" text-anchor="middle" font-size="10">full sanitising, ignores the unsafe opt-ins</text>
+<rect x="934.0" y="488.5" width="285.0" height="29.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1076.5" y="506.4" text-anchor="middle" font-size="11" font-weight="bold">_format_log_message_into "CONFIG" TEXT</text>
+<rect x="1290.5" y="440.0" width="227.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1404.0" y="458.9" text-anchor="middle" font-size="11" font-weight="bold">_log_set_config_to_console</text><text x="1404.0" y="472.4" text-anchor="middle" font-size="10">ignores log level; NOTICE stream</text><text x="1404.0" y="485.9" text-anchor="middle" font-size="10">(stderr if LOG_STDERR_LEVEL ≥ NOTICE)</text>
+<rect x="1289.0" y="514.5" width="230.0" height="43.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1404.0" y="532.6" text-anchor="middle" font-size="11" font-weight="bold">_log_set_config_to_file</text><text x="1404.0" y="546.1" text-anchor="middle" font-size="10">→ _append_to_log_file (even with --quiet)</text>
+<rect x="1262.0" y="574.0" width="284.0" height="58.0" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1404.0" y="592.9" text-anchor="middle" font-size="11" font-weight="bold">_write_to_journal notice TAG "CONFIG: …"</text><text x="1404.0" y="606.4" text-anchor="middle" font-size="10">set_journal_tag uses the old tag</text><text x="1404.0" y="619.9" text-anchor="middle" font-size="10">set_journal_logging forces on→off</text>
+<rect x="1589.0" y="454.5" width="117.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1647.5" y="472.4" text-anchor="middle" font-size="11" font-weight="bold">stdout / stderr</text>
+<rect x="1605.5" y="521.5" width="84.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1647.5" y="539.4" text-anchor="middle" font-size="11" font-weight="bold">LOG_FILE</text>
+<rect x="1612.0" y="588.5" width="71.0" height="29.0" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1647.5" y="606.4" text-anchor="middle" font-size="11" font-weight="bold">journal</text>
+<rect x="1736.0" y="10" width="240" height="126" rx="4" fill="#ffffff" stroke="#999999"/>
+<text x="1744.0" y="26" font-size="11" font-weight="bold">Legend</text>
+<rect x="1746.0" y="36" width="28" height="16" rx="3" fill="#d5e8d4" stroke="#82b366"/>
+<text x="1782.0" y="48" font-size="10">Public API (call from scripts)</text>
+<rect x="1746.0" y="60" width="28" height="16" rx="3" fill="#dae8fc" stroke="#6c8ebf"/>
+<text x="1782.0" y="72" font-size="10">Internal helper (_ prefix)</text>
+<rect x="1746.0" y="84" width="28" height="16" rx="3" fill="#f8cecc" stroke="#b85450"/>
+<text x="1782.0" y="96" font-size="10">Security gate / check</text>
+<rect x="1746.0" y="108" width="28" height="16" rx="3" fill="#e1d5e7" stroke="#9673a6"/>
+<text x="1782.0" y="120" font-size="10">Output sink / external process</text>
+</svg>

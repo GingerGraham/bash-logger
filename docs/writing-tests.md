@@ -493,4 +493,5 @@ sources the file and relies on the calls at the bottom to run the tests.
 Copy `tests/test_example.sh` as your starting point. It is a working suite with three annotated
 example tests that demonstrate the patterns described here.
 
-For the full assertion API reference, see [Testing](testing.md).
+For the full assertion API reference, see [Testing](testing.md). For how the runner, the helper library and the cross-shell machinery fit together, see the
+[Test Suite Reference](../architecture/tests-reference.md) (describes version 3.0.3).
