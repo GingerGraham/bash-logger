@@ -2098,6 +2098,20 @@ _require_option_value() {
     return 0
 }
 
+# Check that an init_logger option has a non-empty value after it (internal).
+# Usage: _require_nonempty_option_value "$@"   (with the option as $1)
+# A missing value and an empty value are both errors, so a script that passes an unset
+# variable (init_logger --facility "$FACILITY") gets the same answer from every option.
+# Options that accept an empty value do not use this check.
+_require_nonempty_option_value() {
+    _require_option_value "$@" || return 1
+    if [ -z "$2" ]; then
+        printf '%s\n' "Error: $1 requires a non-empty value" >&2
+        return 1
+    fi
+    return 0
+}
+
 # Function to initialize logger with custom settings
 init_logger() {
     # Get the calling script's name (can be overridden with -n|--name option)
@@ -2155,7 +2169,7 @@ init_logger() {
                 shift
                 ;;
             -d|--level)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 local level_value=""
                 level_value=$(_get_log_level_value "$2")
                 CURRENT_LOG_LEVEL=$level_value
@@ -2163,7 +2177,7 @@ init_logger() {
                 shift 2
                 ;;
             -f|--format)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 LOG_FORMAT="$2"
                 shift 2
                 ;;
@@ -2181,7 +2195,7 @@ init_logger() {
                 shift 2
                 ;;
             -n|--name|--script-name)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 # Sanitize to prevent shell metacharacter injection
                 custom_script_name=$(_sanitize_script_name "$2")
                 shift 2
@@ -2191,7 +2205,7 @@ init_logger() {
                 shift
                 ;;
             -t|--tag)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 # Validated as in the config file and set_journal_tag
                 if _validate_journal_tag "$2"; then
                     JOURNAL_TAG="$2"
@@ -2201,10 +2215,7 @@ init_logger() {
                 shift 2
                 ;;
             -F|--facility)
-                if [ -z "${2:-}" ]; then
-                    printf '%s\n' "Error: --facility requires a value" >&2
-                    return 1
-                fi
+                _require_nonempty_option_value "$@" || return 1
                 if _validate_syslog_facility "$2"; then
                     SYSLOG_FACILITY="$(_to_lower "$2")"
                 else
@@ -2222,7 +2233,7 @@ init_logger() {
                 shift
                 ;;
             -e|--stderr-level)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 local stderr_level_value=""
                 stderr_level_value=$(_get_log_level_value "$2")
                 LOG_STDERR_LEVEL=$stderr_level_value
@@ -2237,20 +2248,14 @@ init_logger() {
                 shift
                 ;;
             --max-line-length)
-                if [ -z "${2:-}" ]; then
-                    printf '%s\n' "Error: --max-line-length requires a value" >&2
-                    return 1
-                fi
+                _require_nonempty_option_value "$@" || return 1
                 if _validate_length_limit "$2" "max-line-length" "" "$LOG_MAX_LINE_LENGTH"; then
                     LOG_MAX_LINE_LENGTH="$2"
                 fi
                 shift 2
                 ;;
             --max-journal-length)
-                if [ -z "${2:-}" ]; then
-                    printf '%s\n' "Error: --max-journal-length requires a value" >&2
-                    return 1
-                fi
+                _require_nonempty_option_value "$@" || return 1
                 if _validate_length_limit "$2" "max-journal-length" "" "$LOG_MAX_JOURNAL_LENGTH"; then
                     LOG_MAX_JOURNAL_LENGTH="$2"
                 fi

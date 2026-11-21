@@ -57,7 +57,12 @@ reason_for_check() {
             fi
             ;;
         init_max_line_length)
-            printf '%s' "A CLI line limit that is invalid octal or above 1048576 is rejected with the config file's warning, and the limit in effect stays (#150)"
+            # Corpus id 511 is the empty input in validator_corpus.txt
+            if [[ "$2" == "validators.tsv" && "$3" == "511" ]]; then
+                printf '%s' "An empty CLI line limit is an error, as for every init_logger option that takes a value (#189)"
+            else
+                printf '%s' "A CLI line limit that is invalid octal or above 1048576 is rejected with the config file's warning, and the limit in effect stays (#150)"
+            fi
             ;;
         parse_max_line_length)
             printf '%s' "The config warning for an invalid limit now names the limit in effect, not the default (#150)"

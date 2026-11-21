@@ -292,27 +292,17 @@ test_format_special_chars() {
     pass_test
 }
 
-# Test: Empty format string
+# Test: Empty format string is an error (Issue #189)
 test_format_empty() {
-    start_test "Empty format string produces minimal output"
+    start_test "Empty format string is rejected by init_logger"
 
-    init_logger --quiet --format ""
-    local log_file="$TEST_DIR/empty_format.log"
-    # shellcheck disable=SC2034
-    LOG_FILE="$log_file"
+    init_logger --quiet --format "%l: %m"
+    init_logger --quiet --format "" 2>"$TEST_STDERR"
+    local exit_code=$?
 
-    log_info "This won't show much"
-
-    # Empty format will still write a newline
-    assert_file_exists "$log_file" || return
-
-    # Content should be minimal (just newline)
-    local size
-    size=$(wc -c < "$log_file")
-    [[ $size -le 1 ]] || {
-        fail_test "Expected minimal output, got $size bytes"
-        return
-    }
+    assert_equals 1 "$exit_code" "Empty format should return 1" || return
+    assert_file_contains "$TEST_STDERR" "Error: --format requires a non-empty value" || return
+    assert_equals "%l: %m" "$LOG_FORMAT" "The current format should be kept" || return
 
     pass_test
 }

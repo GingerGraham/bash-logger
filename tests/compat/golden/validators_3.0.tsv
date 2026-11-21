@@ -1123,6 +1123,7 @@ init_max_line_length	509	0	401427455	A CLI line limit that is invalid octal or a
 parse_max_line_length	509	0	667549768	The config warning for an invalid limit now names the limit in effect, not the default (#150)
 init_max_line_length	510	0	2443687886	A CLI line limit that is invalid octal or above 1048576 is rejected with the config file's warning, and the limit in effect stays (#150)
 parse_max_line_length	510	0	2202128813	The config warning for an invalid limit now names the limit in effect, not the default (#150)
+init_max_line_length	511	1	3603544720	An empty CLI line limit is an error, as for every init_logger option that takes a value (#189)
 parse_max_line_length	511	0	2477566580	The config warning for an invalid limit now names the limit in effect, not the default (#150)
 init_max_line_length	512	0	3648666526	A CLI line limit that is invalid octal or above 1048576 is rejected with the config file's warning, and the limit in effect stays (#150)
 parse_max_line_length	512	0	2477566580	The config warning for an invalid limit now names the limit in effect, not the default (#150)

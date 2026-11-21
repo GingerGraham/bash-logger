@@ -80,6 +80,15 @@ The `init_logger` function accepts the following options:
 **Journal tags:** `-t` and `--tag` are validated in the same way as the `tag` configuration key and `set_journal_tag`: a tag must not be empty, longer than 64 characters,
 or contain control characters or shell metacharacters. An invalid tag prints an error, and the previous tag is kept. See [Tag Rules](journal-logging.md#tag-rules).
 
+**Option values:** Every option in the table that takes a value follows one rule, except `-c`/`--config` and `-l`/`--log`, which are described in their own sections:
+
+* A **missing** value (the option is the last argument) prints `Error: <option> requires a value` and returns 1.
+* An **empty** value (`--facility ""`, for example an unset variable passed as `"$FACILITY"`) prints `Error: <option> requires a non-empty value` and returns 1. Nothing is changed
+  by that option. This covers `-n`, `-d`, `-e`, `-f`, `-t`, `-F`, `--max-line-length` and `--max-journal-length`.
+* A **non-empty value that is not valid** (`--facility bogus`, `--max-line-length abc`) prints a warning, keeps the current setting and returns 0.
+
+`--log ""` is accepted and means no log file.
+
 **Log file access:** A log file that `init_logger` creates, and any directory it creates for it, is readable only by its owner (mode 600 and 700). Existing files and directories keep
 their permissions. To let a group read the log, create the file first with the mode you want, or change the mode afterwards. See
 [Log File Security](sensitive-data.md#log-file-security-toctou-protection) for the symbolic link checks.
@@ -310,6 +319,13 @@ fi
 ```bash
 # Check directory exists and is writable
 init_logger --log "/nonexistent/dir/app.log"  # Returns 1
+```
+
+**Empty option value:**
+
+```bash
+FACILITY=""   # for example, an unset environment variable
+init_logger --facility "$FACILITY"  # Returns 1: --facility requires a non-empty value
 ```
 
 **Invalid log level:**

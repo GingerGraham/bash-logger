@@ -405,8 +405,8 @@ These came up while mapping the code. They are candidates for review, not confir
 3. **Extra arguments to the level functions are dropped (checked).** `log_info first second` logs `first`. `log_to_journal` uses `$*`, so the two behave differently.
 4. **`log_to_journal` writes to every destination.** It passes `force_journal=true` but not `skip_file`, so the message also reaches the console and the file. The comment "Log a
    single message directly to the system journal" could suggest journal only.
-5. **Option value checks differ.** `-F`, `--max-line-length` and `--max-journal-length` test `${2:-}`, so an explicit empty value is an error. Other options use
-   `_require_option_value`, which only checks that an argument exists.
+5. **Option value checks differed (fixed).** An empty value for `--name`, `--level`, `--stderr-level`, `--format`, `--tag`, `-F`, `--max-line-length` or `--max-journal-length` is now an
+   error for every one of them, through `_require_nonempty_option_value`.
 6. **`docs/api-reference.md` lists 11 internal functions.** There are 66. Linking this document from there would close the gap.
 7. **Config key naming.** `journal-max-line-length` is the only alias that does not follow the `max_journal_length` pattern.
 8. **Two journal tag validators.** `_validate_config_journal_tag` and `_validate_journal_tag` differ only in message wording and the config line number.
