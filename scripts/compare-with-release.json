@@ -38,6 +38,21 @@
         "zsh"
       ],
       "cases": [
+        "warn_create_global"
+      ],
+      "outputs": [
+        "stderr"
+      ],
+      "pattern": "^[A-Za-z_<>][A-Za-z0-9_<>]*:N: scalar parameter LOG_DIR created globally in function init_logger\\n",
+      "replacement": "",
+      "reason": "init_logger no longer sets LOG_DIR, so setopt warn_create_global no longer reports it in 3.0. Only this warning is removed from the 2.x output, so a warning about any other variable still fails the comparison.",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "zsh"
+      ],
+      "cases": [
         "glob_subst"
       ],
       "outputs": [
@@ -348,6 +363,33 @@
       ],
       "reason": "The read-only error for a preset constant names _logger_readonly as its location",
       "guide": "#internal-names"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:multi-args",
+      "outputs": [
+        "stdout"
+      ],
+      "reason": "A level function logs all its arguments, joined with a space; 2.x logged only the first",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:no-args-u",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "A level function called with no argument under set -u logs an empty message; 2.x failed with an unbound variable error",
+      "guide": "#changes-in-bash-and-zsh"
     }
   ]
 }

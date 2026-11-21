@@ -494,6 +494,7 @@ Current runnable suite files include:
 * `test_source_guard.sh`
 * `test_toctou_protection.sh`
 * `test_unsafe_newlines.sh`
+* `test_unsupported_shells.sh`
 * `test_validator_equivalence.sh`
 * `test_zsh_compat.sh`
 
@@ -706,14 +707,15 @@ run (see [Run All Tests](#run-all-tests)).
 
 #### Shell Matrix Suites
 
-`test_shell_compat.sh`, `test_validator_equivalence.sh`, `test_sanitize_equivalence.sh` and
-`test_posix_compat.sh` run the library under every shell in `TEST_SHELLS` (default `bash`).
+`test_shell_compat.sh`, `test_validator_equivalence.sh`, `test_sanitize_equivalence.sh`,
+`test_posix_compat.sh` and `test_source_guard.sh` run the library under every shell in
+`TEST_SHELLS` (default `bash`).
 Separate commands with commas when a command has flags:
 
 ```bash
-TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh,mksh" \
     ./tests/run_tests.sh test_shell_compat test_validator_equivalence \
-    test_sanitize_equivalence test_posix_compat
+    test_sanitize_equivalence test_posix_compat test_source_guard
 ```
 
 * **`test_shell_compat.sh`** runs each script in `tests/compat/scenarios/` under bash and under
@@ -735,6 +737,10 @@ TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
   `-n`, `-e` and `-E`, which 2.7.0 logged as empty lines.
 * **`test_posix_compat.sh`** checks the behaviour documented in
   [Shell Compatibility](shell-compatibility.md).
+* **`test_source_guard.sh`** sources the library twice in each shell and checks that the readonly
+  constants survive, that the environment cannot bypass initialisation and that `_is_readonly`
+  answers correctly. The pipefail test is skipped in a shell that has no `pipefail` option, such as
+  dash.
 
 **Example**:
 
@@ -982,12 +988,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install zsh, dash and busybox
-        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
+      - name: Install zsh, dash, busybox and mksh
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox mksh
       - name: Run tests
         env:
-          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
-          TEST_REQUIRE_SHELLS: zsh dash busybox
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh,mksh
+          TEST_REQUIRE_SHELLS: zsh dash busybox mksh
         run: |
           cd tests
           ./run_tests.sh

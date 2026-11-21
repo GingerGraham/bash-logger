@@ -61,7 +61,7 @@ The suites fall into these areas:
 * **Security: message content** - `test_ansi_injection`, `test_unsafe_newlines`, `test_mixed_sanitization_modes`, `test_script_name_sanitization`, `test_sensitive_data`
 * **Security: files, environment and input** - `test_path_traversal`, `test_toctou_protection`, `test_environment_security`, `test_config_security`, `test_fuzzing`
 * **Robustness** - `test_edge_cases`, `test_error_conditions`, `test_concurrent_access`, `test_resource_limits`
-* **Cross-shell compatibility** - `test_shell_compat`, `test_posix_compat`, `test_zsh_compat`, `test_validator_equivalence`, `test_sanitize_equivalence`, `test_bash32_compat_check`
+* **Cross-shell compatibility** - `test_shell_compat`, `test_posix_compat`, `test_zsh_compat`, `test_validator_equivalence`, `test_sanitize_equivalence`, `test_unsupported_shells`, `test_bash32_compat_check`
 * **Repository tooling and test infrastructure** - `test_install`, `test_license_year`, `test_junit_output`, `test_runner`, `test_bench_script`
 
 `test_example.sh` is a template for new suites and `test_helpers.sh` is the shared library. The runner does not run either of them.

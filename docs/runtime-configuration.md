@@ -67,7 +67,7 @@ set_log_level LEVEL
 
 **Parameters:**
 
-* `LEVEL` - DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, or 0-7
+* `LEVEL` - DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, or 0-7. An unrecognised value prints a warning and sets INFO, and the function returns 0.
 
 **Examples:**
 
@@ -122,7 +122,7 @@ set_log_format FORMAT
 
 **Parameters:**
 
-* `FORMAT` - Format string with placeholders
+* `FORMAT` - Format string with placeholders. It must contain `%m`. An empty format, or one with no `%m`, prints an error, keeps the current format and returns 1.
 
 **Examples:**
 

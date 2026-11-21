@@ -10,6 +10,7 @@ set_log_format "%m"
 log_info "message with %d %l %s %z %m & \\& tokens"
 set_log_format "%m %m"
 log_info "twice"
+# A format with no %m and an empty format are rejected, so the format before them stays
 set_log_format "no tokens at all"
 log_info "ignored"
 set_log_format ""

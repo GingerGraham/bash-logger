@@ -1,7 +1,7 @@
 # Shell Compatibility
 
 `logging.sh` is written for **POSIX sh plus `local`**. The same file is sourced by bash, zsh,
-dash and busybox ash, so `/bin/sh` scripts on Debian, Ubuntu and Alpine can use it.
+dash, busybox ash and mksh, so `/bin/sh` scripts on Debian, Ubuntu and Alpine can use it.
 
 ## Table of Contents
 
@@ -21,11 +21,18 @@ dash and busybox ash, so `/bin/sh` scripts on Debian, Ubuntu and Alpine can use 
 | zsh                                | Supported                                          |
 | dash (Debian and Ubuntu `/bin/sh`) | Supported                                          |
 | busybox ash (Alpine `/bin/sh`)     | Supported                                          |
-| ksh93                              | Not supported: no `local` in POSIX-style functions |
+| mksh (Android `/bin/sh`)           | Supported, with 32-bit arithmetic (see below)      |
+| posh                               | Not supported: refused at load time                |
+| ksh93                              | Not supported: refused at load time                |
+| yash                               | Not supported: fails to parse the file             |
 | fish                               | Not supported: not a POSIX shell                   |
 
 Strict POSIX sh has no `local`. dash, busybox ash, FreeBSD `sh` and mksh all support it, so the
 library uses it.
+
+A shell that is not in the list is not tested. Where it cannot run the library safely, `logging.sh`
+refuses to load (see [Load-time self-check](#load-time-self-check)). yash cannot be checked this
+way, because it fails to parse the file before any check can run.
 
 ## Sourcing the Library
 
@@ -66,6 +73,28 @@ older than macOS 12.3), is not used, because where the link ends cannot be check
 ## Documented Differences
 
 The library behaves the same in every supported shell, with these exceptions.
+
+### 32-bit arithmetic
+
+mksh calculates with 32-bit numbers, where bash, zsh and dash use 64 bits, and some builds of
+busybox ash do too. `$((2147483647 + 1))` is `-2147483648` there. The library finds out when it is
+sourced, by testing for the overflow, and sets `_LOGGER_ARITH_32BIT`. It does not look at the
+shell's name, so any shell with 32-bit arithmetic is covered. Two places depend on it:
+
+* A number with more than 8 digits is read as 99999999 without being calculated. It is above every
+  limit that is checked (the largest is 1048576), and four times it still fits in 32 bits.
+* `_utc_timestamp_from_epoch` divides the seconds by 86400 one digit at a time, so that an epoch of
+  2147483648 (2038-01-19) or more is not wrapped. Only bash and zsh call it, to make UTC timestamps
+  without starting `date`. Other shells use `date -u`.
+
+### mksh has no printf builtin
+
+mksh runs the `printf` command for every message it writes. The library therefore writes message
+text with `printf -- '%s\n'`, and not `printf '%s\n'`. uutils coreutils, the default `printf` in
+Ubuntu 26.04, prints nothing for an operand that is exactly `--` when no `--` comes before the
+format, so a message of `--` became an empty line. GNU coreutils and the printf builtins of bash,
+zsh, dash and busybox ash are not affected, and all accept the leading `--`. A message of 128 KiB or
+more cannot be passed to the command at all, because Linux limits one argument to that size.
 
 ### Script name detection
 
@@ -139,6 +168,42 @@ inherited from the environment does not change it.
 * timestamps without a process in bash 4.2+ and zsh (see [Timestamps](#timestamps))
 
 Each of these lines has a `shellcheck disable` directive with the reason above it.
+
+### Load-time self-check
+
+Every shell other than bash and zsh runs the portable code, which is written and tested for dash
+and busybox ash. A shell that cannot run it correctly must not write log lines, and some do. posh
+loads the file, but its `${text%%"$separator"*}` leaves the text unchanged when the pattern is a
+quoted variable followed by `*`. The code that replaces a newline in a message then never
+replaces it, and a message can write a second, forged log line. ksh93 has no `local`, so each
+function changes the variables of its caller.
+
+When `_LOGGER_SHELL_FAMILY` is empty, `logging.sh` runs a short check before it defines any
+function. It tests the two things the sanitizing code needs:
+
+* `local` keeps a variable local to its function, so the caller's variable is unchanged
+* `${text%%"$separator"*}`, `${text%"$separator"*}`, `${text#*"$separator"}` and
+  `${text##*"$separator"}` give the expected results, with a newline and with a tab as the
+  separator
+
+If a test fails, the file prints one error to stderr and stops sourcing:
+
+```text
+logging.sh: this shell cannot run bash-logger safely (<reason>).
+  Supported shells: bash 3.2+, zsh, dash, busybox ash, mksh. See docs/shell-compatibility.md.
+```
+
+`.` then returns 1, so a script that runs under `set -e` stops. A script that carries on has no
+log functions to call, because none was defined. Run directly, the file exits with status 1.
+
+The check uses no command substitution and no external command, and does not run in bash or zsh,
+so it costs nothing measurable. No environment variable skips it, because an override would let
+the environment turn the protection off.
+
+yash parses the whole file before it runs any of it, and rejects `${remaining:$offset:256}`
+(bash and zsh only, so it never runs there). It already fails closed, with a syntax error, so the
+check cannot help and yash is documented as not supported. Supporting it would mean moving the
+bash-only expansions into `eval` strings, as some already are.
 
 ### Security validators
 
@@ -264,7 +329,7 @@ The original helpers (`_sanitize_log_message`, `_strip_ansi_codes`, `_truncate_l
 
 ## Testing Across Shells
 
-Four suites run `logging.sh` under every shell in `TEST_SHELLS`:
+Five suites run `logging.sh` under every shell in `TEST_SHELLS`:
 
 | Suite                           | What it checks                                                           |
 | ------------------------------- | ------------------------------------------------------------------------ |
@@ -272,21 +337,22 @@ Four suites run `logging.sh` under every shell in `TEST_SHELLS`:
 | `test_validator_equivalence.sh` | The validators match the golden results in `tests/compat/golden/`        |
 | `test_sanitize_equivalence.sh`  | Messages are logged exactly as 2.7.0 logged them (golden corpus)         |
 | `test_posix_compat.sh`          | The documented differences above, `set -eu`, and the color bytes         |
+| `test_source_guard.sh`          | Sourcing twice, the readonly constants and `_is_readonly`                |
 
 ```bash
-TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
-TEST_REQUIRE_SHELLS="zsh dash busybox" \
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh,mksh" \
+TEST_REQUIRE_SHELLS="zsh dash busybox mksh" \
     ./tests/run_tests.sh test_shell_compat test_validator_equivalence \
-    test_sanitize_equivalence test_posix_compat
+    test_sanitize_equivalence test_posix_compat test_source_guard
 ```
 
 `TEST_SHELLS` defaults to `bash`. Separate commands with commas when a command has flags. CI runs
-all five shells and sets `TEST_REQUIRE_SHELLS`, so a missing shell fails instead of skipping.
+all six shells and sets `TEST_REQUIRE_SHELLS`, so a missing shell fails instead of skipping.
 
 On Fedora, install the shells with:
 
 ```bash
-sudo dnf install zsh dash busybox
+sudo dnf install zsh dash busybox mksh
 ```
 
 `scripts/check-posix-compat.sh` runs `shellcheck --shell=dash` on `logging.sh` and fails on any

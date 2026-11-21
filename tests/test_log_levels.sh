@@ -247,6 +247,190 @@ test_log_init_function() {
     pass_test
 }
 
+# Test: --level falls back to INFO with a warning for an invalid name (Issue #192)
+test_init_invalid_level_warns() {
+    start_test "init_logger --level warns when an invalid name falls back to INFO"
+
+    init_logger --quiet --level DEBUG
+    init_logger --quiet --level WARNNING 2>"$TEST_STDERR"
+
+    assert_equals 0 "$?" "An invalid level should still return 0" || return
+    assert_equals "$LOG_LEVEL_INFO" "$CURRENT_LOG_LEVEL" "Fallback should be INFO" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level 'WARNNING' for --level, using INFO" || return
+    assert_file_contains "$TEST_STDERR" "Hint: Valid levels are: DEBUG, INFO" || return
+
+    pass_test
+}
+
+# Test: --stderr-level falls back to INFO with a warning for an invalid name (Issue #192)
+test_init_invalid_stderr_level_warns() {
+    start_test "init_logger --stderr-level warns when an invalid name falls back to INFO"
+
+    init_logger --quiet -e bogus 2>"$TEST_STDERR"
+
+    assert_equals 0 "$?" "An invalid level should still return 0" || return
+    assert_equals "$LOG_LEVEL_INFO" "$LOG_STDERR_LEVEL" "Fallback should be INFO" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level 'BOGUS' for -e, using INFO" || return
+
+    pass_test
+}
+
+# Test: set_log_level falls back to INFO with a warning for an invalid name (Issue #192)
+test_set_log_level_invalid_warns() {
+    start_test "set_log_level warns when an invalid name falls back to INFO"
+
+    init_logger --quiet --level DEBUG
+    set_log_level WARNNING 2>"$TEST_STDERR"
+
+    assert_equals 0 "$?" "An invalid level should still return 0" || return
+    assert_equals "$LOG_LEVEL_INFO" "$CURRENT_LOG_LEVEL" "Fallback should be INFO" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level 'WARNNING' for set_log_level, using INFO" || return
+
+    pass_test
+}
+
+# Test: an escape sequence in a rejected level name cannot reach the terminal
+test_invalid_level_warning_is_sanitized() {
+    start_test "The invalid level warning does not pass control characters through"
+
+    local escape_char=""
+    escape_char=$(printf '\033')
+
+    set_log_level "bad${escape_char}[31mred" 2>"$TEST_STDERR" >/dev/null
+
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level" || return
+    assert_file_not_contains "$TEST_STDERR" "$escape_char" || return
+
+    pass_test
+}
+
+# Test: valid names, aliases and numbers print no warning (Issue #192)
+test_valid_levels_print_no_warning() {
+    start_test "Valid level names and numbers print no warning"
+
+    local level_name=""
+    for level_name in DEBUG info Notice WARN warning ERR crit ALERT fatal 0 7; do
+        init_logger --quiet --level "$level_name" --stderr-level "$level_name" 2>"$TEST_STDERR"
+        assert_file_not_contains "$TEST_STDERR" "Invalid log level" "$level_name via init_logger" || return
+        set_log_level "$level_name" 2>"$TEST_STDERR" >/dev/null
+        assert_file_not_contains "$TEST_STDERR" "Invalid log level" "$level_name via set_log_level" || return
+    done
+
+    pass_test
+}
+
+# Test: every level function logs all its arguments, joined with a space (Issue #193)
+test_level_functions_log_all_arguments() {
+    start_test "Every level function logs all its arguments joined with a space"
+
+    local log_file="$TEST_DIR/all_arguments.log"
+    init_logger --quiet --no-color --level DEBUG --log "$log_file" --no-init-message 2>/dev/null
+
+    local level_function
+    for level_function in log_debug log_info log_notice log_warn log_error log_critical \
+        log_alert log_emergency log_fatal log_init; do
+        "$level_function" "$level_function" first second "third word"
+        assert_file_contains "$log_file" "$level_function first second third word" \
+            "$level_function should log every argument" || return
+    done
+
+    pass_test
+}
+
+# Test: a call with one argument logs what it logged before (Issue #193)
+test_level_functions_single_argument_unchanged() {
+    start_test "A level function call with one argument logs it as before"
+
+    local log_file="$TEST_DIR/one_argument.log"
+    init_logger --quiet --no-color --format "%l|%m" --log "$log_file" --no-init-message 2>/dev/null
+
+    log_info "one  argument with   spaces"
+    log_warn ""
+    log_error "  padded  "
+
+    assert_equals "INFO|one  argument with   spaces
+WARN|
+ERROR|  padded  " "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: the separator is a space whatever IFS is (Issue #193)
+test_level_functions_join_with_space_whatever_ifs() {
+    start_test "The words of a message are joined with a space whatever IFS is"
+
+    local log_file="$TEST_DIR/ifs.log"
+    init_logger --quiet --no-color --format "%m" --log "$log_file" --no-init-message 2>/dev/null
+
+    local old_ifs="$IFS"
+    local ifs_value
+    for ifs_value in ":" "" ","; do
+        IFS="$ifs_value"
+        log_info a b c
+        IFS="$old_ifs"
+    done
+    IFS=$'\n\t'
+    log_info a b c
+    IFS="$old_ifs"
+
+    assert_equals "a b c
+a b c
+a b c
+a b c" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: empty arguments take part in the join (Issue #193)
+test_level_functions_keep_empty_arguments() {
+    start_test "Empty arguments are kept in the joined message"
+
+    local log_file="$TEST_DIR/empty_arguments.log"
+    init_logger --quiet --no-color --format "[%m]" --log "$log_file" --no-init-message 2>/dev/null
+
+    log_info a "" b
+    log_info "" ""
+
+    assert_equals "[a  b]
+[ ]" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: a message with arguments is cut and sanitized as one message (Issue #193)
+test_level_functions_sanitize_joined_message() {
+    start_test "The joined message is sanitized and truncated as one message"
+
+    local log_file="$TEST_DIR/joined_sanitize.log"
+    init_logger --quiet --no-color --format "%m" --max-line-length 20 --log "$log_file" \
+        --no-init-message 2>/dev/null
+
+    # The newline becomes a space, and the cut is made on the whole text of 28 characters
+    log_info "line1
+line2" "abcdefghij" "klmnop"
+    log_info short words
+
+    assert_equals "line1 ...[truncated]
+short words" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
+# Test: _log_message keeps the form that earlier versions had (Issue #193)
+test_internal_log_message_unchanged() {
+    start_test "_log_message still takes the message as its third argument"
+
+    local log_file="$TEST_DIR/internal.log"
+    init_logger --quiet --no-color --format "%l|%m" --log "$log_file" --no-init-message 2>/dev/null
+
+    _log_message INFO 6 "via internal"
+    _log_message WARN "$LOG_LEVEL_WARN" "not in the file" "true"
+
+    assert_equals "INFO|via internal" "$(cat "$log_file")" || return
+
+    pass_test
+}
+
 # Run all tests
 test_log_level_constants
 test_fatal_alias
@@ -261,3 +445,14 @@ test_log_level_in_output
 test_verbose_enables_debug
 test_get_syslog_priority
 test_log_init_function
+test_init_invalid_level_warns
+test_init_invalid_stderr_level_warns
+test_set_log_level_invalid_warns
+test_invalid_level_warning_is_sanitized
+test_valid_levels_print_no_warning
+test_level_functions_log_all_arguments
+test_level_functions_single_argument_unchanged
+test_level_functions_join_with_space_whatever_ifs
+test_level_functions_keep_empty_arguments
+test_level_functions_sanitize_joined_message
+test_internal_log_message_unchanged

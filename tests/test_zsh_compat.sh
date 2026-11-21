@@ -215,7 +215,7 @@ echo done" 2>&1)
     pass_test
 }
 
-# Test: _log_message has the re-entrancy guard, and a nested call runs in another process
+# Test: _log_words has the re-entrancy guard, and a nested call runs in another process
 # Run in zsh and in sh emulation, where the zsh/parameter module is not loaded unless the
 # library loads it. The tests of the nested call's output pass with or without the guard, so
 # this checks the guard itself: the busy flag is set inside a normal call, and a call made

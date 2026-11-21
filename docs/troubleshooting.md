@@ -51,7 +51,7 @@ This guide helps you diagnose and resolve common issues with bash-logger.
   * ["command not found: init_logger"](#command-not-found-init_logger)
   * ["permission denied" when writing log file](#permission-denied-when-writing-log-file)
   * ["invalid log level"](#invalid-log-level)
-  * ["requires a value"](#requires-a-value)
+  * ["requires a value" and "requires a non-empty value"](#requires-a-value-and-requires-a-non-empty-value)
   * ["Configuration file not found" / "Configuration file not readable"](#configuration-file-not-found--configuration-file-not-readable)
   * ["Cannot create log directory" / "Cannot create log file"](#cannot-create-log-directory--cannot-create-log-file)
   * ["Log file path is a symbolic link"](#log-file-path-is-a-symbolic-link)
@@ -1055,7 +1055,13 @@ mkdir -p "$HOME/logs"
 
 ### "invalid log level"
 
-**Cause:** Unrecognized log level name
+```text
+Warning: Invalid log level 'TRACE' for --level, using INFO
+  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)
+```
+
+**Cause:** Unrecognized log level name. The level falls back to INFO and the call returns 0, so a typo such as `WARNNING` is reported only by this warning.
+`--level`, `--stderr-level`, `set_log_level` and the configuration file keys all print it.
 
 **Solution:**
 
@@ -1067,16 +1073,18 @@ init_logger --level ERROR   # Correct
 # Not: init_logger --level TRACE
 ```
 
-### "requires a value"
+### "requires a value" and "requires a non-empty value"
 
 ```text
 Error: --format requires a value
+Error: --format requires a non-empty value
 ```
 
-**Cause:** An option that takes a value was the last argument, or its value was missing. This applies to `--config`, `--level`, `--format`, `--log`, `--name`, `--tag` and `--stderr-level`.
-`init_logger` returns 1. In 2.x under bash, this looped forever.
+**Cause:** An option that takes a value was the last argument, or its value was missing (`requires a value`), or its value was an empty string (`requires a non-empty value`).
+The first form applies to every option that takes a value. The second applies to `--name`, `--level`, `--stderr-level`, `--format`, `--tag`, `--facility`, `--max-line-length` and
+`--max-journal-length`. `init_logger` returns 1 and the option changes nothing. In 2.x under bash, a missing value looped forever.
 
-The usual cause is an unquoted variable that is empty, because the shell then drops it from the argument list.
+The usual cause is a variable that is empty. Unquoted, the shell drops it from the argument list (a missing value). Quoted, it is passed as an empty string.
 
 **Solution:**
 
@@ -1219,7 +1227,7 @@ log_info "Test message"
 
 1. **Check that your shell is supported, and its version:**
 
-   `logging.sh` runs in bash 3.2 or later, bash `--posix`, zsh, dash and busybox ash. See [Shell Compatibility](shell-compatibility.md#supported-shells) for the list.
+   `logging.sh` runs in bash 3.2 or later, bash `--posix`, zsh, dash, busybox ash and mksh. See [Shell Compatibility](shell-compatibility.md#supported-shells) for the list.
    Find the version of the shell that runs your script:
 
 ```bash

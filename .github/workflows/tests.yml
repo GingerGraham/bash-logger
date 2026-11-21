@@ -28,16 +28,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install zsh, dash and busybox
-        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
+      # posh and ksh (ksh93) are not supported. They are installed so that
+      # test_unsupported_shells checks on every pull request that logging.sh refuses to load.
+      - name: Install zsh, dash, busybox, mksh, posh and ksh
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox mksh posh ksh
 
       # TEST_SHELLS drives the cross-shell suites (test_shell_compat, test_validator_equivalence,
-      # test_posix_compat). TEST_REQUIRE_SHELLS makes a missing shell fail instead of skip.
+      # test_sanitize_equivalence, test_posix_compat, test_source_guard). TEST_REQUIRE_SHELLS
+      # makes a missing shell fail instead of skip.
       - name: Run tests
         env:
           TEST_PARALLEL_JOBS: 4
-          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
-          TEST_REQUIRE_SHELLS: zsh dash busybox
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh,mksh
+          TEST_REQUIRE_SHELLS: zsh dash busybox mksh posh ksh
         run: |
           cd tests
           ./run_tests.sh
@@ -153,13 +156,16 @@ jobs:
           zsh --version
           busybox | head -1
 
-      # Containers run as root, and the permission tests fail as root
+      # Containers run as root, and the permission tests fail as root. The limit of 13 skips
+      # includes the two tests in test_unsupported_shells, which skip because Alpine has no
+      # posh and no ksh93, and the pipefail test of test_source_guard in dash, which has no
+      # pipefail option.
       - name: Run tests as a non-root user
         run: |
           adduser -D tester
           chown -R tester "$GITHUB_WORKSPACE"
           su tester -s /bin/sh -c 'cd tests && umask 022 &&
-            TEST_MAX_SKIPPED=10 TEST_PARALLEL_JOBS=4 \
+            TEST_MAX_SKIPPED=13 TEST_PARALLEL_JOBS=4 \
             TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
             TEST_REQUIRE_SHELLS="zsh dash busybox" bash ./run_tests.sh'
 

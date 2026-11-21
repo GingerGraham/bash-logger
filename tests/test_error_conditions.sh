@@ -305,6 +305,128 @@ test_init_invalid_max_journal_length() {
     pass_test
 }
 
+# Test: init_logger rejects an empty value for every option in the table of Issue #189
+test_init_empty_option_value_is_error() {
+    start_test "init_logger returns 1 for an empty option value"
+
+    local option=""
+    for option in --facility --max-line-length --max-journal-length --tag --level \
+        --stderr-level --name --format; do
+        init_logger --quiet "$option" "" 2>"$TEST_STDERR"
+        local exit_code=$?
+
+        assert_equals 1 "$exit_code" "$option with an empty value should return 1" || return
+        assert_file_contains "$TEST_STDERR" "Error: $option requires a non-empty value" || return
+    done
+
+    pass_test
+}
+
+# Test: a short option gets the same answer as its long form (Issue #189)
+test_init_empty_short_option_value_is_error() {
+    start_test "init_logger returns 1 for an empty value on a short option"
+
+    local option=""
+    for option in -F -t -d -e -n -f; do
+        init_logger --quiet "$option" "" 2>"$TEST_STDERR"
+        local exit_code=$?
+
+        assert_equals 1 "$exit_code" "$option with an empty value should return 1" || return
+        assert_file_contains "$TEST_STDERR" "Error: $option requires a non-empty value" || return
+    done
+
+    pass_test
+}
+
+# Test: an empty value changes nothing (Issue #189)
+test_init_empty_option_value_keeps_settings() {
+    start_test "init_logger keeps the current settings after an empty option value"
+
+    init_logger --quiet --facility local3 --tag mytag --level DEBUG --stderr-level WARN \
+        --max-line-length 500 --max-journal-length 600 --format "%l %m"
+    init_logger --quiet --facility "" 2>/dev/null
+    init_logger --quiet --tag "" 2>/dev/null
+    init_logger --quiet --level "" 2>/dev/null
+    init_logger --quiet --stderr-level "" 2>/dev/null
+    init_logger --quiet --max-line-length "" 2>/dev/null
+    init_logger --quiet --max-journal-length "" 2>/dev/null
+    init_logger --quiet --format "" 2>/dev/null
+
+    assert_equals "local3" "$SYSLOG_FACILITY" || return
+    assert_equals "mytag" "$JOURNAL_TAG" || return
+    assert_equals "$LOG_LEVEL_DEBUG" "$CURRENT_LOG_LEVEL" || return
+    assert_equals "$LOG_LEVEL_WARN" "$LOG_STDERR_LEVEL" || return
+    assert_equals "500" "$LOG_MAX_LINE_LENGTH" || return
+    assert_equals "600" "$LOG_MAX_JOURNAL_LENGTH" || return
+    assert_equals "%l %m" "$LOG_FORMAT" || return
+
+    pass_test
+}
+
+# Test: a missing value and an empty value are both errors, an invalid one is a warning
+test_init_missing_empty_and_invalid_values() {
+    start_test "init_logger separates a missing, an empty and an invalid value"
+
+    init_logger --quiet --facility 2>"$TEST_STDERR"
+    assert_equals 1 "$?" "Missing value should return 1" || return
+    assert_file_contains "$TEST_STDERR" "Error: --facility requires a value" || return
+
+    init_logger --quiet --facility "" 2>"$TEST_STDERR"
+    assert_equals 1 "$?" "Empty value should return 1" || return
+    assert_file_contains "$TEST_STDERR" "Error: --facility requires a non-empty value" || return
+
+    init_logger --quiet --facility bogus 2>"$TEST_STDERR"
+    assert_equals 0 "$?" "Invalid value should warn and return 0" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid syslog facility 'bogus'" || return
+
+    pass_test
+}
+
+# Test: options that accept an empty value still do (Issue #189)
+test_init_empty_log_file_is_accepted() {
+    start_test "init_logger --log with an empty value still means no log file"
+
+    init_logger --quiet --log "" 2>"$TEST_STDERR"
+
+    assert_equals 0 "$?" "Empty --log should return 0" || return
+    assert_equals "" "$LOG_FILE" || return
+
+    pass_test
+}
+
+# Test: --tag, set_journal_tag and the config file apply the same tag rules (Issue #194)
+test_journal_tag_rules_are_shared() {
+    start_test "--tag, set_journal_tag and the config file reject the same tags"
+
+    local escape_char
+    escape_char=$(printf '\033')
+    local long_tag
+    long_tag=$(printf 'a%.0s' $(seq 1 65))
+    local config_file="$TEST_DIR/tag_rules.conf"
+    local tag
+    for tag in "bad;tag" "bad${escape_char}tag" "$long_tag"; do
+        init_logger --quiet --tag good 2>/dev/null
+        init_logger --quiet --tag "$tag" 2>/dev/null
+        assert_equals "good" "$JOURNAL_TAG" "--tag keeps the tag after a rejected value" || return
+
+        set_journal_tag "$tag" 2>/dev/null
+        assert_equals 1 "$?" "set_journal_tag returns 1 for a rejected value" || return
+        assert_equals "good" "$JOURNAL_TAG" "set_journal_tag keeps the tag" || return
+
+        # The parser repairs a rejected tag. Its warning names the line, the others do not.
+        printf '[logging]\ntag = %s\n' "$tag" > "$config_file"
+        init_logger --quiet --config "$config_file" 2>"$TEST_STDERR"
+        assert_not_equals "$tag" "$JOURNAL_TAG" "the config file does not keep the tag as written" || return
+        assert_file_contains "$TEST_STDERR" "at line 2" || return
+    done
+
+    init_logger --quiet --tag "bad;tag" 2>"$TEST_STDERR"
+    assert_file_contains "$TEST_STDERR" "Warning: Journal tag contains shell metacharacters" || return
+    assert_file_not_contains "$TEST_STDERR" "at line" "No line number outside the config file" || return
+
+    pass_test
+}
+
 # Test: Log file write failure on initialization
 test_log_file_write_failure_on_init() {
     start_test "init_logger detects write failures"
@@ -434,6 +556,12 @@ test_init_missing_max_line_length
 test_init_invalid_max_line_length
 test_init_missing_max_journal_length
 test_init_invalid_max_journal_length
+test_init_empty_option_value_is_error
+test_init_empty_short_option_value_is_error
+test_init_empty_option_value_keeps_settings
+test_init_missing_empty_and_invalid_values
+test_init_empty_log_file_is_accepted
+test_journal_tag_rules_are_shared
 test_log_file_write_failure_on_init
 test_log_file_unwritable_during_runtime
 test_config_journal_no_logger
