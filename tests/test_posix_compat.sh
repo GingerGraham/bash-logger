@@ -1622,12 +1622,55 @@ test_run_with_timeout_stops_late_descendants() {
     pass_test
 }
 
+test_run_with_timeout_signals_command_last() {
+    start_test "run_with_timeout signals the descendants of a command before the command itself"
+
+    # The caller stops the watchdog as soon as the command has exited. A watchdog that signalled
+    # the command first could be stopped before it reached a descendant, which then kept the
+    # caller's command substitution open until it ended on its own. Under load this made the
+    # tests above fail with "Took 30s to stop" about once in every hundred runs, so the order of
+    # the signals is checked here directly. The kill function records each call, and the
+    # watchdog subshell inherits it.
+    local kill_log="$TEST_DIR/kill_calls.log"
+    local pid_file="$TEST_DIR/command.pid"
+    : > "$kill_log"
+
+    kill() {
+        printf '%s\n' "$*" >> "$kill_log"
+        builtin kill "$@"
+    }
+    local output
+    output=$(run_with_timeout 1 bash -c "echo \$\$ > '$pid_file'; sleep 30; true" 2>/dev/null)
+    unset -f kill
+
+    local command_pid
+    command_pid=$(cat "$pid_file" 2>/dev/null)
+    assert_not_equals "" "$command_pid" "The command recorded its PID" || return
+
+    local first_term_call
+    first_term_call=$(grep -m 1 -e '-TERM' "$kill_log")
+    assert_not_equals "" "$first_term_call" "The watchdog sent TERM" || return
+    assert_not_contains "$first_term_call" "$command_pid" "The first TERM call names a descendant only" || return
+    # The line with the command alone must come after the line with its descendant
+    local descendant_line command_line
+    descendant_line=$(grep -n -m 1 -e '-TERM' "$kill_log" | cut -d: -f1)
+    command_line=$(grep -n -m 1 -x -e "-TERM $command_pid" "$kill_log" | cut -d: -f1)
+    assert_not_equals "" "$command_line" "The command is signalled in its own call" || return
+    if [[ "$descendant_line" -ge "$command_line" ]]; then
+        fail_test "TERM reached the command (call $command_line) before its descendant (call $descendant_line)"
+        return
+    fi
+
+    pass_test
+}
+
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
 test_posix_busybox_utf8_byte_length
 test_run_with_timeout_stops_process_tree
 test_run_with_timeout_stops_late_descendants
+test_run_with_timeout_signals_command_last
 test_posix_busybox_target_must_be_a_plain_file
 test_posix_is_readonly_path_matches_bash_version
 while IFS= read -r posix_shell; do

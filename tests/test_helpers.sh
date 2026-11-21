@@ -546,15 +546,22 @@ run_with_timeout() {
     # then and may have started more children since the first list (for example when it had
     # not reached its long-running child yet on a loaded machine), so the list is made again
     # before KILL.
+    # The command itself is signalled last, in a separate call. The caller's wait ends as soon
+    # as the command has exited, and the caller then stops this watchdog. If the command were
+    # signalled first, the watchdog could be stopped before it had signalled the descendants,
+    # and one of them would keep the caller's command substitution open until it ended on its
+    # own (a sleep of 30 seconds took 30 seconds to stop).
     (
         sleep "$seconds" || exit 0
-        command_tree="$command_pid $(list_descendant_pids "$command_pid")"
+        descendants=$(list_descendant_pids "$command_pid")
         # shellcheck disable=SC2086  # word splitting of the PID list is intended
-        kill -TERM $command_tree
+        [ -z "$descendants" ] || kill -TERM $descendants
+        kill -TERM "$command_pid"
         sleep 2
-        command_tree="$command_tree $(list_descendant_pids "$command_pid")"
+        descendants="$descendants $(list_descendant_pids "$command_pid")"
         # shellcheck disable=SC2086  # word splitting of the PID list is intended
-        kill -KILL $command_tree
+        kill -KILL $descendants
+        kill -KILL "$command_pid"
     ) >/dev/null 2>&1 &
     local watchdog_pid=$!
     wait "$command_pid"
