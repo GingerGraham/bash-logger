@@ -673,7 +673,7 @@ _strip_trailing_newlines() {
 # Guard against re-initialization when sourced multiple times
 # Use readonly status instead of emptiness to avoid environment bypass
 if ! _is_readonly BASH_LOGGER_VERSION; then
-    _logger_readonly BASH_LOGGER_VERSION="3.1.0"
+    _logger_readonly BASH_LOGGER_VERSION="3.1.1"
 
     # Unset potentially malicious environment variables before setting internal constants
     # Only unset if not already readonly (which would indicate re-sourcing)
