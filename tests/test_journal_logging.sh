@@ -67,6 +67,30 @@ test_log_to_journal_forces_write_when_journal_disabled() {
 }
 
 # ---------------------------------------------------------------------------
+# Test: log_to_journal joins all its words with a space, whatever IFS is (Issue #193)
+# ---------------------------------------------------------------------------
+test_log_to_journal_joins_words_with_space() {
+    start_test "log_to_journal joins its words with a space whatever IFS is"
+
+    _create_stub_logger "$TEST_DIR"
+
+    bash -c "
+        source '$PROJECT_ROOT/logging.sh'
+        LOGGER_PATH='$STUB_LOGGER'; readonly LOGGER_PATH
+        _find_and_validate_logger() { return 0; }
+        check_logger_available() { return 0; }
+        init_logger --no-color --quiet
+        IFS=:
+        log_to_journal INFO joined words here
+    " >/dev/null 2>&1
+
+    assert_file_contains "$STUB_CAPTURE" "joined words here" \
+        "The stub logger should have captured the words joined with spaces" || return
+
+    pass_test
+}
+
+# ---------------------------------------------------------------------------
 # Test 2: log_to_journal with USE_JOURNAL=true — journal written exactly once
 # ---------------------------------------------------------------------------
 test_log_to_journal_no_double_dispatch_when_journal_enabled() {
@@ -596,6 +620,7 @@ test_write_to_journal_passes_double_dash_before_message() {
 test_journal_option
 test_no_journal_via_runtime
 test_log_to_journal_forces_write_when_journal_disabled
+test_log_to_journal_joins_words_with_space
 test_log_to_journal_no_double_dispatch_when_journal_enabled
 test_log_to_journal_uses_configured_syslog_facility
 test_log_to_journal_invalid_level_returns_error

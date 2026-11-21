@@ -189,7 +189,9 @@ fi
 
 ## Logging Functions
 
-All logging functions accept a single string parameter: the message to log.
+All logging functions take the message to log. Quote it, as in `log_info "Processing $file"`. If you pass several arguments, all of them are logged, joined with one space (`log_info Processing $file`
+logs `Processing` and the words of the file name). The separator is a space whatever `IFS` is. Earlier versions logged only the first argument. The same applies to the message of
+`log_to_journal`.
 
 ### log_debug
 
@@ -594,7 +596,7 @@ log_to_journal LEVEL MESSAGE
 * `LEVEL` - Log level name: `DEBUG`, `INFO`, `NOTICE`, `WARN`, `ERROR`, `CRITICAL`, `ALERT`,
   `EMERGENCY` (aliases `WARNING`, `ERR`, `CRIT`, `EMERG`, `FATAL` are also accepted), or a
   numeric syslog level `0`–7.
-* `MESSAGE` - The message to send to the journal.
+* `MESSAGE` - The message to send to the journal. Several arguments are joined with a space, as for the other logging functions.
 
 **Returns:**
 

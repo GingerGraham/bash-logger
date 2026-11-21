@@ -363,6 +363,33 @@
       ],
       "reason": "The read-only error for a preset constant names _logger_readonly as its location",
       "guide": "#internal-names"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:multi-args",
+      "outputs": [
+        "stdout"
+      ],
+      "reason": "A level function logs all its arguments, joined with a space; 2.x logged only the first",
+      "guide": "#changes-in-bash-and-zsh"
+    },
+    {
+      "shells": [
+        "bash",
+        "posix",
+        "zsh"
+      ],
+      "case": "x:no-args-u",
+      "outputs": [
+        "stdout",
+        "stderr"
+      ],
+      "reason": "A level function called with no argument under set -u logs an empty message; 2.x failed with an unbound variable error",
+      "guide": "#changes-in-bash-and-zsh"
     }
   ]
 }

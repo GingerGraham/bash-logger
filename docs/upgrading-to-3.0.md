@@ -126,6 +126,14 @@ These also come from the security review of 3.0 and apply in every shell.
   `log_to_journal info` returned an error.
 * **No shell errors when `IFS` contains digits.** 2.x printed `return: : numeric argument
   required` for messages in bash when `IFS` contained digits.
+* **A level function logs all its arguments.** `log_info Processing $file` used to log only
+  `Processing`, because the level functions (`log_debug` to `log_emergency`, `log_fatal`,
+  `log_init` and `log_sensitive`) passed only their first argument on. They now join all their
+  arguments with one space, as `log_to_journal` always did, so the message is longer. A call with
+  one argument logs the same as before. The separator is a space whatever `IFS` is, and
+  `log_to_journal` uses it too. Quote the message, or pass one word, if you relied on the extra
+  arguments being dropped. A level function called with no argument under `set -u` now logs an
+  empty message, where 2.x failed with an unbound variable error.
 * **`init_logger` no longer sets `LOG_DIR`.** With `--log`, 2.x and 3.0.0 to 3.0.3 stored the
   directory of the log file in a global `LOG_DIR`, which replaced a `LOG_DIR` of your own. The
   library now keeps it in a local variable. A script that read `LOG_DIR` after `init_logger` to

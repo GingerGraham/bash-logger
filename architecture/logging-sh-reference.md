@@ -402,7 +402,9 @@ These came up while mapping the code. They are candidates for review, not confir
 1. **`init_logger` leaked `LOG_DIR` (fixed).** The directory of the log file is now held in a local variable, so a script's own `LOG_DIR` is left alone.
 2. **Invalid level names were silently INFO (fixed).** `init_logger --level`, `--stderr-level` and `set_log_level` now print the warning the config parser prints, and still use INFO.
    `set_log_level` still returns 0, because making it return 1 would break scripts running under `set -e`.
-3. **Extra arguments to the level functions are dropped (checked).** `log_info first second` logs `first`. `log_to_journal` uses `$*`, so the two behave differently.
+3. **Extra arguments to the level functions were dropped (fixed).** `log_info first second` now logs `first second`, joined with a space whatever `IFS` is, as `log_to_journal` does. The join is
+   made in `_log_plain` (the nine plain level functions) and `_log_words` (`log_init`, `log_sensitive`, `log_to_journal`), which the zsh guard wraps. `_log_emit` writes the message. `_log_message`
+   keeps its earlier form and calls `_log_words`.
 4. **`log_to_journal` writes to every destination (comment fixed).** It passes `force_journal=true` but not `skip_file`, so the message also reaches the console and the file. The comment above
    the function now says so.
 5. **Option value checks differed (fixed).** An empty value for `--name`, `--level`, `--stderr-level`, `--format`, `--tag`, `-F`, `--max-line-length` or `--max-journal-length` is now an

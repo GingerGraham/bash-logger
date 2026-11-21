@@ -310,7 +310,7 @@ if [ -n "$_LOGGER_SHELL_FAMILY" ]; then
 fi
 
 # Result variables of the *_into helpers. They start empty so that a value from the
-# environment is never read, and _log_message restores them after each message.
+# environment is never read, and _log_emit restores them after each message.
 _LOGGER_TEXT=""
 _LOGGER_TIMESTAMP=""
 _LOGGER_REPLACED=""
@@ -321,9 +321,9 @@ _LOGGER_COLOR=""
 _LOGGER_PRIORITY=""
 _LOGGER_FORMAT_PROBLEM=""
 
-# 1 while _log_message is running, 0 otherwise (internal). Only zsh reads it, to keep a trap
-# handler that logs out of a log call that it interrupted. Set on every source, so a value
-# from the environment is not used.
+# 1 while _log_plain or _log_words is running, 0 otherwise (internal). Only zsh reads it, to
+# keep a trap handler that logs out of a log call that it interrupted. Set on every source, so a
+# value from the environment is not used.
 _LOGGER_BUSY="0"
 
 # Result variable of _find_caller_script. Set here so that zsh with warn_create_global does
@@ -2856,15 +2856,10 @@ _run_log_call_isolated() {
     return 0
 }
 
-# Function to log messages with different severity levels (internal)
-_log_message() {
-    # Skip logging if message level is more verbose than current log level
-    # With syslog-style levels, HIGHER values are LESS severe (more verbose)
-    # force_show=true ($7) bypasses this filter (used by log_init to always show)
-    if [ "${7:-false}" != "true" ] && [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
-        return 0
-    fi
-
+# Write one message, and leave the shell's result variables as they were (internal)
+# Usage: _log_emit LEVEL_NAME LEVEL_VALUE SKIP_FILE SKIP_JOURNAL FORCE_JOURNAL MESSAGE
+# Called by _log_plain and _log_words, which are the two functions the zsh guard below wraps.
+_log_emit() {
     # The *_into helpers return results in global variables. Restoring them afterwards means:
     #   * a trap handler that logs while another message is in progress cannot replace it
     #   * no message text, including log_sensitive text, stays in the shell's variables
@@ -2878,7 +2873,7 @@ _log_message() {
     local saved_priority="$_LOGGER_PRIORITY"
     local write_status=0
 
-    _write_log_message "$@" || write_status=$?
+    _write_log_message "$1" "$2" "$6" "$3" "$4" "$5" || write_status=$?
 
     _LOGGER_TEXT="$saved_text"
     _LOGGER_TIMESTAMP="$saved_timestamp"
@@ -2891,7 +2886,77 @@ _log_message() {
     return "$write_status"
 }
 
-# zsh only: guard _log_message against a trap handler that logs while a log call is running
+# Log the words of a call as one message, to the console, the log file and the journal
+# (internal)
+# Usage: _log_plain LEVEL_NAME LEVEL_VALUE [WORD...]
+# The level functions that have no special routing call this with their arguments as they
+# are. The message is all the words joined with one space, whatever IFS is, which "$*" would
+# not give. The join is made here and not in the level functions for two reasons. A message
+# that the level filter removes costs nothing. And the zsh guard below wraps this function, so
+# the code that joins runs where a trap handler cannot break into it, as it could in a level
+# function. It has the same arguments as the call it replaced, so a filtered message costs the
+# same as before: each extra argument was measured at under a microsecond in bash.
+_log_plain() {
+    # Skip logging if message level is more verbose than current log level
+    # With syslog-style levels, HIGHER values are LESS severe (more verbose)
+    if [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
+        return 0
+    fi
+
+    local level_name="$1"
+    local level_value="$2"
+    local message="${3:-}"
+    local message_word=""
+    if [ "$#" -gt 3 ]; then
+        shift 3
+        for message_word in "$@"; do
+            message="${message} ${message_word}"
+        done
+    fi
+
+    _log_emit "$level_name" "$level_value" "false" "false" "false" "$message"
+}
+
+# Log the words of a call as one message, with its own routing (internal)
+# Usage: _log_words LEVEL_NAME LEVEL_VALUE SKIP_FILE SKIP_JOURNAL FORCE_JOURNAL FORCE_SHOW
+#                   [WORD...]
+# For log_init, log_sensitive, log_to_journal and _log_message, which need a flag. The words
+# are joined as in _log_plain. force_show=true bypasses the level filter (used by log_init to
+# always show).
+_log_words() {
+    if [ "${6:-false}" != "true" ] && [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
+        return 0
+    fi
+
+    local level_name="$1"
+    local level_value="$2"
+    local skip_file="$3"
+    local skip_journal="$4"
+    local force_journal="$5"
+    shift 6
+    local message="${1:-}"
+    local message_word=""
+    if [ "$#" -gt 1 ]; then
+        shift
+        for message_word in "$@"; do
+            message="${message} ${message_word}"
+        done
+    fi
+
+    _log_emit "$level_name" "$level_value" "$skip_file" "$skip_journal" "$force_journal" "$message"
+}
+
+# Log one message (internal)
+# Usage: _log_message LEVEL_NAME LEVEL_VALUE MESSAGE [SKIP_FILE [SKIP_JOURNAL [FORCE_JOURNAL
+#                     [FORCE_SHOW]]]]
+# The form that 2.x and 3.0 had, kept for scripts that call it. The library itself calls
+# _log_words, which takes the flags first and the message as any number of words.
+_log_message() {
+    _log_words "${1:-}" "${2:-}" "${4:-false}" "${5:-false}" "${6:-false}" "${7:-false}" "${3:-}"
+}
+
+# zsh only: guard _log_plain and _log_words against a trap handler that logs while a log call is
+# running
 #
 # zsh 5.9 can crash when a trap handler runs while the interrupted code is inside zsh
 # internals that are not re-entrant, which include "[" and pattern matching. A handler that
@@ -2899,7 +2964,7 @@ _log_message() {
 # is running is written in a subshell, with its own copy of the shell's memory (see "Known
 # limitation: zsh signal handlers" in docs/shell-compatibility.md).
 #
-# The guard is added to the function when this file is sourced, so no other shell pays for
+# The guard is added to the two functions when this file is sourced, so no other shell pays for
 # it, and zsh pays for no extra function call. It is put round the original body:
 #   * the first command is a "case", because "[" is one of the triggers
 #   * the flag is set before the body runs its level filter, which uses "["
@@ -2909,27 +2974,29 @@ _log_message() {
 # "functions" is only the table of functions once the zsh/parameter module is loaded. zsh
 # loads it by itself, except when it starts in sh or ksh emulation (zsh --emulate sh, or run
 # under the name sh). There "functions" is an ordinary array, the assignment below would not
-# change _log_message, and the guard would be missing without any message. So the module is
+# change those functions, and the guard would be missing without any message. So the module is
 # loaded first, and the guard is skipped only if that fails.
 if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ] && zmodload zsh/parameter 2>/dev/null; then
-    _LOGGER_GUARD_BEFORE='case "${_LOGGER_BUSY:-0}" in
+    _LOGGER_GUARD_AFTER='
+} always {
+    _LOGGER_BUSY="0"
+}'
+    for _LOGGER_GUARDED in _log_plain _log_words; do
+        _LOGGER_GUARD_BEFORE='case "${_LOGGER_BUSY:-0}" in
     1)
-        _run_log_call_isolated _log_message "$@"
+        _run_log_call_isolated '"$_LOGGER_GUARDED"' "$@"
         return
         ;;
 esac
 _LOGGER_BUSY="1"
 {
 '
-    _LOGGER_GUARD_AFTER='
-} always {
-    _LOGGER_BUSY="0"
-}'
-    # "functions" is a zsh parameter that holds the source of every function, and the shell
-    # reads a new value as the function's body. It is only reached in zsh.
-    # shellcheck disable=SC2154,SC3054
-    functions[_log_message]="${_LOGGER_GUARD_BEFORE}${functions[_log_message]}${_LOGGER_GUARD_AFTER}"
-    unset _LOGGER_GUARD_BEFORE _LOGGER_GUARD_AFTER
+        # "functions" is a zsh parameter that holds the source of every function, and the shell
+        # reads a new value as the function's body. It is only reached in zsh.
+        # shellcheck disable=SC2154,SC3054
+        functions[$_LOGGER_GUARDED]="${_LOGGER_GUARD_BEFORE}${functions[$_LOGGER_GUARDED]}${_LOGGER_GUARD_AFTER}"
+    done
+    unset _LOGGER_GUARD_BEFORE _LOGGER_GUARD_AFTER _LOGGER_GUARDED
 fi
 
 # Write one message to the console, log file and journal (internal)
@@ -3008,49 +3075,49 @@ _write_log_message() {
 
 # Helper functions for different log levels
 log_debug() {
-    _log_message "DEBUG" "$LOG_LEVEL_DEBUG" "$1"
+    _log_plain "DEBUG" "$LOG_LEVEL_DEBUG" "$@"
 }
 
 log_info() {
-    _log_message "INFO" "$LOG_LEVEL_INFO" "$1"
+    _log_plain "INFO" "$LOG_LEVEL_INFO" "$@"
 }
 
 log_notice() {
-    _log_message "NOTICE" "$LOG_LEVEL_NOTICE" "$1"
+    _log_plain "NOTICE" "$LOG_LEVEL_NOTICE" "$@"
 }
 
 log_warn() {
-    _log_message "WARN" "$LOG_LEVEL_WARN" "$1"
+    _log_plain "WARN" "$LOG_LEVEL_WARN" "$@"
 }
 
 log_error() {
-    _log_message "ERROR" "$LOG_LEVEL_ERROR" "$1"
+    _log_plain "ERROR" "$LOG_LEVEL_ERROR" "$@"
 }
 
 log_critical() {
-    _log_message "CRITICAL" "$LOG_LEVEL_CRITICAL" "$1"
+    _log_plain "CRITICAL" "$LOG_LEVEL_CRITICAL" "$@"
 }
 
 log_alert() {
-    _log_message "ALERT" "$LOG_LEVEL_ALERT" "$1"
+    _log_plain "ALERT" "$LOG_LEVEL_ALERT" "$@"
 }
 
 log_emergency() {
-    _log_message "EMERGENCY" "$LOG_LEVEL_EMERGENCY" "$1"
+    _log_plain "EMERGENCY" "$LOG_LEVEL_EMERGENCY" "$@"
 }
 
 # Alias for backward compatibility
 log_fatal() {
-    _log_message "FATAL" "$LOG_LEVEL_EMERGENCY" "$1"
+    _log_plain "FATAL" "$LOG_LEVEL_EMERGENCY" "$@"
 }
 
 log_init() {
-    _log_message "INIT" "$LOG_LEVEL_INIT" "$1" "false" "false" "false" "true"
+    _log_words "INIT" "$LOG_LEVEL_INIT" "false" "false" "false" "true" "$@"
 }
 
 # Function for sensitive logging - console only, never to file or journal
 log_sensitive() {
-    _log_message "SENSITIVE" "$LOG_LEVEL_INFO" "$1" "true" "true"
+    _log_words "SENSITIVE" "$LOG_LEVEL_INFO" "true" "true" "false" "false" "$@"
 }
 
 # Log a single message through the normal routing (console and log file, as for any other
@@ -3068,7 +3135,7 @@ log_sensitive() {
 #   0 - Success
 #   1 - Invalid level or logger not available
 log_to_journal() {
-    # As in _log_message, a call made while a log call is running is isolated, and the check
+    # As in _log_words, a call made while a log call is running is isolated, and the check
     # comes before the "[" tests and the tr below
     case "${_LOGGER_SHELL_FAMILY}:${_LOGGER_BUSY:-0}" in
         zsh:1)
@@ -3085,9 +3152,8 @@ log_to_journal() {
     local level_name=""
     level_name="$(printf '%s' "$1" | LC_ALL=C tr '[:lower:]' '[:upper:]')"
     shift
-    local message="$*"
 
-    # Validate and normalise the level name to the canonical form used by _log_message
+    # Validate and normalise the level name to the canonical form used by _log_words
     local canonical_level=""
     case "${level_name}" in
         DEBUG)                  canonical_level="DEBUG" ;;
@@ -3141,7 +3207,7 @@ log_to_journal() {
         return 1
     fi
 
-    _log_message "$canonical_level" "$level_value" "$message" "false" "false" "true"
+    _log_words "$canonical_level" "$level_value" "false" "false" "true" "false" "$@"
 }
 
 # SCRIPT_NAME is the one setting that survives sourcing (see the top of this file), and
