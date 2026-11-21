@@ -1227,7 +1227,7 @@ log_info "Test message"
 
 1. **Check that your shell is supported, and its version:**
 
-   `logging.sh` runs in bash 3.2 or later, bash `--posix`, zsh, dash and busybox ash. See [Shell Compatibility](shell-compatibility.md#supported-shells) for the list.
+   `logging.sh` runs in bash 3.2 or later, bash `--posix`, zsh, dash, busybox ash and mksh. See [Shell Compatibility](shell-compatibility.md#supported-shells) for the list.
    Find the version of the shell that runs your script:
 
 ```bash

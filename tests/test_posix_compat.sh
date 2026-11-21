@@ -1019,13 +1019,16 @@ test_posix_utc_from_epoch() {
 
     require_shell "${shell_command%% *}" || return 0
 
-    # Includes leap days, century years with and without a leap day, and year ends
+    # Includes leap days, century years with and without a leap day, and year ends. The list
+    # is run with the shell's own arithmetic and, where that is 64-bit, again with the 32-bit
+    # method (Issue #197), which must give the same dates. mksh has 32-bit arithmetic.
     local output
     output=$(run_snippet_in_shell "$shell_command" C '
 check() {
     _utc_timestamp_from_epoch "$1"
     printf "%s %s\n" "$1" "$_LOGGER_TIMESTAMP"
 }
+all_epochs() {
 check 0
 check 59
 check 86399
@@ -1041,8 +1044,15 @@ check 4107542399
 check 4107542400
 check 4102444800
 check 32503680000
+}
+echo "native=$_LOGGER_ARITH_32BIT"
+all_epochs
+if [ "$_LOGGER_ARITH_32BIT" = false ]; then
+    _LOGGER_ARITH_32BIT=true
+    all_epochs
+fi
 ' 2>&1)
-    assert_equals "0 1970-01-01 00:00:00
+    local expected_dates="0 1970-01-01 00:00:00
 59 1970-01-01 00:00:59
 86399 1970-01-01 23:59:59
 86400 1970-01-02 00:00:00
@@ -1056,7 +1066,18 @@ check 32503680000
 4107542399 2100-02-28 23:59:59
 4107542400 2100-03-01 00:00:00
 4102444800 2100-01-01 00:00:00
-32503680000 3000-01-01 00:00:00" "$output" || return
+32503680000 3000-01-01 00:00:00"
+    # A shell with 32-bit arithmetic runs the 32-bit method only, as the 64-bit one would
+    # overflow there. Any other shell also runs the 32-bit method, to check that it agrees.
+    local native_mode
+    native_mode=$(printf '%s\n' "$output" | sed -n 's/^native=//p')
+    local expected_output="native=$native_mode
+$expected_dates"
+    if [[ "$native_mode" == "false" ]]; then
+        expected_output="$expected_output
+$expected_dates"
+    fi
+    assert_equals "$expected_output" "$output" || return
 
     pass_test
 }
@@ -1143,10 +1164,11 @@ test_posix_long_names_and_trailing_newlines() {
 
     # 2.x-era loops copied the text once per character replaced or newline removed:
     # these inputs took about a minute in bash. The timeout is generous so that only
-    # that kind of growth fails.
+    # that kind of growth fails. The name stays below 128 KiB, the most that Linux passes in
+    # one argument: mksh has no printf builtin, so it runs /usr/bin/printf with the name.
     local output
     output=$(run_with_timeout 20 run_snippet_in_shell "$shell_command" C '
-big=$(awk "BEGIN { for (i = 0; i < 131072; i++) printf \"%s\", (i % 3 == 0) ? \" \" : \"a\" }")
+big=$(awk "BEGIN { for (i = 0; i < 100000; i++) printf \"%s\", (i % 3 == 0) ? \" \" : \"a\" }")
 init_logger --quiet --no-init-message --name "$big"
 printf "name=%s %s\n" "${#SCRIPT_NAME}" "${SCRIPT_NAME%"${SCRIPT_NAME#????}"}"
 set_script_name "$(printf "a b\\\\c")" >/dev/null
@@ -1178,10 +1200,10 @@ for case_spec in 'A\033[38:2:0:0:0mB|AB' 'A\033[1`B|AB' 'A\033[1;1;24;80$zB|AB' 
     'A\342\200\256BC\342\200\254D|ABCD' 'A\342\201\246B\342\201\251C|ABC' \
     '\303\251 \360\237\231\202|\303\251 \360\237\231\202' 'A\342\200\213B|A\342\200\213B'; do
     : > "$OUT"
-    log_info "$(printf "${case_spec%%|*}")"
-    printf "${case_spec#*|}\n" > "$OUT.expected"
+    log_info "$(printf "${case_spec%%"|"*}")"
+    printf "${case_spec#*"|"}\n" > "$OUT.expected"
     if ! cmp -s "$OUT" "$OUT.expected"; then
-        printf 'case %s gave:%s\n' "${case_spec%%|*}" "$(od -An -c "$OUT" | tr -s ' ' | tr -d '\n')"
+        printf 'case %s gave:%s\n' "${case_spec%%"|"*}" "$(od -An -c "$OUT" | tr -s ' ' | tr -d '\n')"
         failures=$((failures + 1))
     fi
 done
@@ -1664,6 +1686,37 @@ test_run_with_timeout_signals_command_last() {
     pass_test
 }
 
+test_posix_huge_length_limit() {
+    local shell_command="$1"
+    start_test "[$shell_command] a line limit too large for 32-bit arithmetic does not cut a message"
+
+    require_shell "${shell_command%% *}" || return 0
+
+    # LOG_MAX_LINE_LENGTH can be assigned directly, and any number of digits can be written.
+    # In a shell with 32-bit arithmetic (mksh) 999999999999999 would wrap to a number that is
+    # negative or small, and the message would be cut or the cap computed wrongly (Issue #197).
+    local snippet='
+init_logger --quiet --no-init-message --no-color --format "%m" --log "$log_file"
+message=$(awk "BEGIN { for (i = 0; i < 20000; i++) printf \"a\" }")
+for limit in 999999999999999 4294967296 99999999 123456789 0777777777777; do
+    LOG_MAX_LINE_LENGTH="$limit"
+    : > "$log_file"
+    log_info "$message"
+    printf "%s %s\n" "$limit" "$(wc -c < "$log_file" | tr -d " ")"
+done
+'
+    local output
+    output=$(run_snippet_in_shell "$shell_command" C "log_file='$TEST_DIR/huge_limit.log'
+$snippet" 2>/dev/null)
+    assert_equals "999999999999999 20001
+4294967296 20001
+99999999 20001
+123456789 20001
+0777777777777 20001" "$output" || return
+
+    pass_test
+}
+
 # Run all tests
 test_posix_executed_directly
 test_posix_lint_check
@@ -1710,6 +1763,7 @@ while IFS= read -r posix_shell; do
     test_posix_timestamp_builtin_and_fallback "$posix_shell"
     test_posix_timestamp_ignores_environment "$posix_shell"
     test_posix_max_length_options "$posix_shell"
+    test_posix_huge_length_limit "$posix_shell"
     test_posix_length_limits_match_config "$posix_shell"
     test_posix_config_bom "$posix_shell"
     test_posix_truncation_four_byte_character "$posix_shell"

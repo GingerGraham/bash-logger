@@ -713,7 +713,7 @@ run (see [Run All Tests](#run-all-tests)).
 Separate commands with commas when a command has flags:
 
 ```bash
-TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh,mksh" \
     ./tests/run_tests.sh test_shell_compat test_validator_equivalence \
     test_sanitize_equivalence test_posix_compat test_source_guard
 ```
@@ -988,12 +988,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install zsh, dash and busybox
-        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox
+      - name: Install zsh, dash, busybox and mksh
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox mksh
       - name: Run tests
         env:
-          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
-          TEST_REQUIRE_SHELLS: zsh dash busybox
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh,mksh
+          TEST_REQUIRE_SHELLS: zsh dash busybox mksh
         run: |
           cd tests
           ./run_tests.sh

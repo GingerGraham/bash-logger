@@ -6,7 +6,7 @@
 #
 # License: MIT License
 #
-# Supported shells: bash 3.2+ (including --posix), zsh, dash and busybox ash.
+# Supported shells: bash 3.2+ (including --posix), zsh, dash, busybox ash and mksh.
 # The code is POSIX sh plus "local" (Issue #143). Shell-specific code is used only
 # behind a check of the running shell; see docs/shell-compatibility.md.
 #
@@ -122,7 +122,7 @@ if [ -z "$_LOGGER_SHELL_FAMILY" ]; then
 
     if [ -n "$_logger_check_reason" ]; then
         printf '%s\n' "logging.sh: this shell cannot run bash-logger safely ($_logger_check_reason)." \
-            "  Supported shells: bash 3.2+, zsh, dash, busybox ash. See docs/shell-compatibility.md." >&2
+            "  Supported shells: bash 3.2+, zsh, dash, busybox ash, mksh. See docs/shell-compatibility.md." >&2
     fi
     _logger_check_failed="$_logger_check_reason"
     unset -f _logger_check_local
@@ -149,6 +149,16 @@ if [ "$_LOGGER_SHELL_FAMILY" = "bash" ]; then
     case "${BASH_VERSION:-}" in
         5.[1-9]*|[6-9].*) _LOGGER_BASH_HAS_ATTRS="true" ;;
     esac
+fi
+
+# "true" when the shell's arithmetic is 32-bit (internal). mksh and some builds of busybox ash
+# wrap at 2147483647, where bash, zsh and dash use 64 bits. It is found by testing for the
+# overflow and not from the shell's name, so every shell with 32-bit arithmetic is covered. Set
+# on every source, so an inherited value cannot stay. The arithmetic in the library keeps below
+# 2147483647 in every shell, except where this flag selects a different calculation.
+_LOGGER_ARITH_32BIT="false"
+if [ "$((2147483647 + 1))" -lt 0 ]; then
+    _LOGGER_ARITH_32BIT="true"
 fi
 
 # Returns 0 if the named variable is readonly in the current shell (internal).
@@ -525,8 +535,9 @@ _replace_unsafe_name_characters() {
 # Parse a non-negative integer the way bash arithmetic reads it (internal).
 # Sets _LOGGER_INTEGER and returns 0, or returns 1 if the value is not all digits.
 # A leading 0 means octal, as in bash, so 010 is 8 and 08 is invalid (returns 1).
-# Values with more than 15 significant digits are set to 999999999999999: large
-# enough for every range check here, and safe from overflow in every shell.
+# Values with more than 8 significant digits are set to 99999999 without being calculated: that
+# is above every limit checked here (the largest is 1048576), and four times it still fits in
+# the 32-bit arithmetic of mksh, which _cap_message_length_into relies on.
 _parse_shell_integer() {
     local digits="$1"
     case "$digits" in
@@ -540,8 +551,8 @@ _parse_shell_integer() {
                 *[89]*) return 1 ;;
             esac
             digits="${digits#"${digits%%[!0]*}"}"
-            if [ "${#digits}" -gt 15 ]; then
-                _LOGGER_INTEGER=999999999999999
+            if [ "${#digits}" -gt 8 ]; then
+                _LOGGER_INTEGER=99999999
                 return 0
             fi
             local digit=""
@@ -552,8 +563,8 @@ _parse_shell_integer() {
             done
             ;;
         *)
-            if [ "${#digits}" -gt 15 ]; then
-                value=999999999999999
+            if [ "${#digits}" -gt 8 ]; then
+                value=99999999
             else
                 value="$digits"
             fi
@@ -2057,8 +2068,26 @@ _current_timestamp_into() {
 # under set -e and in POSIX mode, and in zsh it only reaches localtime if exported.
 _utc_timestamp_from_epoch() {
     local epoch="$1"
-    local shifted_days="$((epoch / 86400 + 719468))"
-    local second_of_day="$((epoch % 86400))"
+    local days=0
+    local second_of_day=0
+    if [ "$_LOGGER_ARITH_32BIT" = "true" ]; then
+        # An epoch of 2147483648 (2038-01-19) or more does not fit in 32 bits. Divide the
+        # digits by 86400 one at a time, as on paper: the remainder stays below 86400, so
+        # nothing above 864009 is calculated, and the quotient is a number of days.
+        local remaining="$epoch"
+        local digit=""
+        while [ -n "$remaining" ]; do
+            digit="${remaining%"${remaining#?}"}"
+            remaining="${remaining#?}"
+            second_of_day=$((second_of_day * 10 + digit))
+            days=$((days * 10 + second_of_day / 86400))
+            second_of_day=$((second_of_day % 86400))
+        done
+    else
+        days=$((epoch / 86400))
+        second_of_day=$((epoch % 86400))
+    fi
+    local shifted_days="$((days + 719468))"
     local era="$((shifted_days / 146097))"
     local day_of_era="$((shifted_days - era * 146097))"
     local year_of_era="$(((day_of_era - day_of_era / 1460 + day_of_era / 36524 - day_of_era / 146096) / 365))"

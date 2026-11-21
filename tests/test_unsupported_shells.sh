@@ -51,7 +51,7 @@ _assert_shell_refuses_to_load() {
 
     assert_contains "$stdout" "source status=1" "$shell_name: . returns 1" || return 1
     assert_contains "$stderr" "logging.sh: this shell cannot run bash-logger safely ($reason)." "$shell_name: error message" || return 1
-    assert_contains "$stderr" "Supported shells: bash 3.2+, zsh, dash, busybox ash" "$shell_name: supported shells" || return 1
+    assert_contains "$stderr" "Supported shells: bash 3.2+, zsh, dash, busybox ash, mksh" "$shell_name: supported shells" || return 1
     assert_contains "$stderr" "docs/shell-compatibility.md" "$shell_name: documentation" || return 1
     assert_equals 1 "$(printf '%s\n' "$stderr" | grep -c 'cannot run bash-logger safely')" "$shell_name: one error" || return 1
     assert_file_not_exists "$log_file" "$shell_name: no log file written" || return 1

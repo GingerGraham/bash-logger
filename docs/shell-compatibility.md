@@ -1,7 +1,7 @@
 # Shell Compatibility
 
 `logging.sh` is written for **POSIX sh plus `local`**. The same file is sourced by bash, zsh,
-dash and busybox ash, so `/bin/sh` scripts on Debian, Ubuntu and Alpine can use it.
+dash, busybox ash and mksh, so `/bin/sh` scripts on Debian, Ubuntu and Alpine can use it.
 
 ## Table of Contents
 
@@ -21,6 +21,7 @@ dash and busybox ash, so `/bin/sh` scripts on Debian, Ubuntu and Alpine can use 
 | zsh                                | Supported                                          |
 | dash (Debian and Ubuntu `/bin/sh`) | Supported                                          |
 | busybox ash (Alpine `/bin/sh`)     | Supported                                          |
+| mksh (Android `/bin/sh`)           | Supported, with 32-bit arithmetic (see below)      |
 | posh                               | Not supported: refused at load time                |
 | ksh93                              | Not supported: refused at load time                |
 | yash                               | Not supported: fails to parse the file             |
@@ -72,6 +73,19 @@ older than macOS 12.3), is not used, because where the link ends cannot be check
 ## Documented Differences
 
 The library behaves the same in every supported shell, with these exceptions.
+
+### 32-bit arithmetic
+
+mksh calculates with 32-bit numbers, where bash, zsh and dash use 64 bits, and some builds of
+busybox ash do too. `$((2147483647 + 1))` is `-2147483648` there. The library finds out when it is
+sourced, by testing for the overflow, and sets `_LOGGER_ARITH_32BIT`. It does not look at the
+shell's name, so any shell with 32-bit arithmetic is covered. Two places depend on it:
+
+* A number with more than 8 digits is read as 99999999 without being calculated. It is above every
+  limit that is checked (the largest is 1048576), and four times it still fits in 32 bits.
+* `_utc_timestamp_from_epoch` divides the seconds by 86400 one digit at a time, so that an epoch of
+  2147483648 (2038-01-19) or more is not wrapped. Only bash and zsh call it, to make UTC timestamps
+  without starting `date`. Other shells use `date -u`.
 
 ### Script name detection
 
@@ -167,7 +181,7 @@ If a test fails, the file prints one error to stderr and stops sourcing:
 
 ```text
 logging.sh: this shell cannot run bash-logger safely (<reason>).
-  Supported shells: bash 3.2+, zsh, dash, busybox ash. See docs/shell-compatibility.md.
+  Supported shells: bash 3.2+, zsh, dash, busybox ash, mksh. See docs/shell-compatibility.md.
 ```
 
 `.` then returns 1, so a script that runs under `set -e` stops. A script that carries on has no
@@ -306,7 +320,7 @@ The original helpers (`_sanitize_log_message`, `_strip_ansi_codes`, `_truncate_l
 
 ## Testing Across Shells
 
-Four suites run `logging.sh` under every shell in `TEST_SHELLS`:
+Five suites run `logging.sh` under every shell in `TEST_SHELLS`:
 
 | Suite                           | What it checks                                                           |
 | ------------------------------- | ------------------------------------------------------------------------ |
@@ -314,21 +328,22 @@ Four suites run `logging.sh` under every shell in `TEST_SHELLS`:
 | `test_validator_equivalence.sh` | The validators match the golden results in `tests/compat/golden/`        |
 | `test_sanitize_equivalence.sh`  | Messages are logged exactly as 2.7.0 logged them (golden corpus)         |
 | `test_posix_compat.sh`          | The documented differences above, `set -eu`, and the color bytes         |
+| `test_source_guard.sh`          | Sourcing twice, the readonly constants and `_is_readonly`                |
 
 ```bash
-TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh" \
-TEST_REQUIRE_SHELLS="zsh dash busybox" \
+TEST_SHELLS="bash,bash --posix,zsh,dash,busybox sh,mksh" \
+TEST_REQUIRE_SHELLS="zsh dash busybox mksh" \
     ./tests/run_tests.sh test_shell_compat test_validator_equivalence \
-    test_sanitize_equivalence test_posix_compat
+    test_sanitize_equivalence test_posix_compat test_source_guard
 ```
 
 `TEST_SHELLS` defaults to `bash`. Separate commands with commas when a command has flags. CI runs
-all five shells and sets `TEST_REQUIRE_SHELLS`, so a missing shell fails instead of skipping.
+all six shells and sets `TEST_REQUIRE_SHELLS`, so a missing shell fails instead of skipping.
 
 On Fedora, install the shells with:
 
 ```bash
-sudo dnf install zsh dash busybox
+sudo dnf install zsh dash busybox mksh
 ```
 
 `scripts/check-posix-compat.sh` runs `shellcheck --shell=dash` on `logging.sh` and fails on any

@@ -30,8 +30,8 @@ jobs:
 
       # posh and ksh (ksh93) are not supported. They are installed so that
       # test_unsupported_shells checks on every pull request that logging.sh refuses to load.
-      - name: Install zsh, dash, busybox, posh and ksh
-        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox posh ksh
+      - name: Install zsh, dash, busybox, mksh, posh and ksh
+        run: sudo apt-get update && sudo apt-get install -y zsh dash busybox mksh posh ksh
 
       # TEST_SHELLS drives the cross-shell suites (test_shell_compat, test_validator_equivalence,
       # test_sanitize_equivalence, test_posix_compat, test_source_guard). TEST_REQUIRE_SHELLS
@@ -39,8 +39,8 @@ jobs:
       - name: Run tests
         env:
           TEST_PARALLEL_JOBS: 4
-          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh
-          TEST_REQUIRE_SHELLS: zsh dash busybox posh ksh
+          TEST_SHELLS: bash,bash --posix,zsh,dash,busybox sh,mksh
+          TEST_REQUIRE_SHELLS: zsh dash busybox mksh posh ksh
         run: |
           cd tests
           ./run_tests.sh

@@ -12,7 +12,7 @@
 ![Logo](assets/images/logo-640x320.png)
 
 A flexible, reusable logging module for shell scripts that provides standardized logging functionality with various configuration options.
-It runs in bash 3.2+, zsh, dash and busybox ash from one file.
+It runs in bash 3.2+, zsh, dash, busybox ash and mksh from one file.
 
 > [!NOTE]
 > **Upgrading from 2.x?** 3.0 is a major release with some behaviour changes. See [Upgrading to 3.0](docs/upgrading-to-3.0.md) before you update.
@@ -32,7 +32,7 @@ demos, and pipeline scripts - exists to support using that file.
 
 ## Features
 
-* Runs in bash 3.2+, bash `--posix`, zsh, dash and busybox ash from one file
+* Runs in bash 3.2+, bash `--posix`, zsh, dash, busybox ash and mksh from one file
 * Standard syslog log levels (DEBUG, INFO, WARN, ERROR, CRITICAL, etc.)
 * Console output with color-coding by severity
 * Configurable stdout/stderr output stream split
@@ -56,6 +56,7 @@ demos, and pipeline scripts - exists to support using that file.
   * zsh
   * dash (`/bin/sh` on Debian and Ubuntu)
   * busybox ash (`/bin/sh` on Alpine and other busybox-based images)
+  * mksh (`/bin/sh` on Android), with its 32-bit arithmetic handled
 * **Other shells**: not supported. At load time `logging.sh` checks that the shell can run the
   library safely and refuses to load, with an error on stderr and status 1, if it cannot (posh
   and ksh93 fail the check). A shell that passes the check is otherwise untested.
