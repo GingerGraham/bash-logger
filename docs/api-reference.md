@@ -661,7 +661,7 @@ set_log_level LEVEL
 
 **Parameters:**
 
-* `LEVEL` - Level name (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY) or numeric value (0-7)
+* `LEVEL` - Level name (DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY) or numeric value (0-7). An unrecognised value prints a warning and sets INFO.
 
 **Examples:**
 

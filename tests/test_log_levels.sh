@@ -247,6 +247,78 @@ test_log_init_function() {
     pass_test
 }
 
+# Test: --level falls back to INFO with a warning for an invalid name (Issue #192)
+test_init_invalid_level_warns() {
+    start_test "init_logger --level warns when an invalid name falls back to INFO"
+
+    init_logger --quiet --level DEBUG
+    init_logger --quiet --level WARNNING 2>"$TEST_STDERR"
+
+    assert_equals 0 "$?" "An invalid level should still return 0" || return
+    assert_equals "$LOG_LEVEL_INFO" "$CURRENT_LOG_LEVEL" "Fallback should be INFO" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level 'WARNNING' for --level, using INFO" || return
+    assert_file_contains "$TEST_STDERR" "Hint: Valid levels are: DEBUG, INFO" || return
+
+    pass_test
+}
+
+# Test: --stderr-level falls back to INFO with a warning for an invalid name (Issue #192)
+test_init_invalid_stderr_level_warns() {
+    start_test "init_logger --stderr-level warns when an invalid name falls back to INFO"
+
+    init_logger --quiet -e bogus 2>"$TEST_STDERR"
+
+    assert_equals 0 "$?" "An invalid level should still return 0" || return
+    assert_equals "$LOG_LEVEL_INFO" "$LOG_STDERR_LEVEL" "Fallback should be INFO" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level 'BOGUS' for -e, using INFO" || return
+
+    pass_test
+}
+
+# Test: set_log_level falls back to INFO with a warning for an invalid name (Issue #192)
+test_set_log_level_invalid_warns() {
+    start_test "set_log_level warns when an invalid name falls back to INFO"
+
+    init_logger --quiet --level DEBUG
+    set_log_level WARNNING 2>"$TEST_STDERR"
+
+    assert_equals 0 "$?" "An invalid level should still return 0" || return
+    assert_equals "$LOG_LEVEL_INFO" "$CURRENT_LOG_LEVEL" "Fallback should be INFO" || return
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level 'WARNNING' for set_log_level, using INFO" || return
+
+    pass_test
+}
+
+# Test: an escape sequence in a rejected level name cannot reach the terminal
+test_invalid_level_warning_is_sanitized() {
+    start_test "The invalid level warning does not pass control characters through"
+
+    local escape_char=""
+    escape_char=$(printf '\033')
+
+    set_log_level "bad${escape_char}[31mred" 2>"$TEST_STDERR" >/dev/null
+
+    assert_file_contains "$TEST_STDERR" "Warning: Invalid log level" || return
+    assert_file_not_contains "$TEST_STDERR" "$escape_char" || return
+
+    pass_test
+}
+
+# Test: valid names, aliases and numbers print no warning (Issue #192)
+test_valid_levels_print_no_warning() {
+    start_test "Valid level names and numbers print no warning"
+
+    local level_name=""
+    for level_name in DEBUG info Notice WARN warning ERR crit ALERT fatal 0 7; do
+        init_logger --quiet --level "$level_name" --stderr-level "$level_name" 2>"$TEST_STDERR"
+        assert_file_not_contains "$TEST_STDERR" "Invalid log level" "$level_name via init_logger" || return
+        set_log_level "$level_name" 2>"$TEST_STDERR" >/dev/null
+        assert_file_not_contains "$TEST_STDERR" "Invalid log level" "$level_name via set_log_level" || return
+    done
+
+    pass_test
+}
+
 # Run all tests
 test_log_level_constants
 test_fatal_alias
@@ -261,3 +333,8 @@ test_log_level_in_output
 test_verbose_enables_debug
 test_get_syslog_priority
 test_log_init_function
+test_init_invalid_level_warns
+test_init_invalid_stderr_level_warns
+test_set_log_level_invalid_warns
+test_invalid_level_warning_is_sanitized
+test_valid_levels_print_no_warning

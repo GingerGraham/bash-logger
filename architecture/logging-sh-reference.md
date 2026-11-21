@@ -182,7 +182,7 @@ Section 8 has the full call graph. Appendix A lists every function with its call
 
 | Function                                       | Role                                                                                                                   |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `_get_log_level_value`                         | Name, alias or digit to 0-7. Unknown input becomes INFO; a warning is printed only when a config line number is given. |
+| `_get_log_level_value`                         | Name, alias or digit to 0-7. Unknown input becomes INFO, with a warning when `$2` (line) or `$3` (source) is given.    |
 | `_get_log_level_name`                          | 0-7 to name; anything else gives UNKNOWN.                                                                              |
 | `_get_log_level_color_into`                    | Sets `_LOGGER_COLOR` for a label, INIT and SENSITIVE included.                                                         |
 | `_get_syslog_priority_into`                    | Sets `_LOGGER_PRIORITY` (debug, info, notice, warning, err, crit, alert, emerg).                                       |
@@ -400,8 +400,8 @@ The graph is dense. Appendix A has the same information as a table.
 These came up while mapping the code. They are candidates for review, not confirmed defects, except where marked as checked.
 
 1. **`init_logger` leaked `LOG_DIR` (fixed).** The directory of the log file is now held in a local variable, so a script's own `LOG_DIR` is left alone.
-2. **Invalid level names are silently INFO (checked).** `set_log_level bogus` returns 0 and sets INFO. `init_logger -d bogus` behaves the same. A config file `level = bogus` warns.
-   Every other setter rejects invalid input.
+2. **Invalid level names were silently INFO (fixed).** `init_logger --level`, `--stderr-level` and `set_log_level` now print the warning the config parser prints, and still use INFO.
+   `set_log_level` still returns 0, because making it return 1 would break scripts running under `set -e`.
 3. **Extra arguments to the level functions are dropped (checked).** `log_info first second` logs `first`. `log_to_journal` uses `$*`, so the two behave differently.
 4. **`log_to_journal` writes to every destination.** It passes `force_journal=true` but not `skip_file`, so the message also reaches the console and the file. The comment "Log a
    single message directly to the system journal" could suggest journal only.

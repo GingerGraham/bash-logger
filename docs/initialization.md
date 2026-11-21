@@ -332,7 +332,15 @@ init_logger --facility "$FACILITY"  # Returns 1: --facility requires a non-empty
 
 ```bash
 # Valid: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY, 0-7
-init_logger --level INVALID  # Uses default (INFO)
+init_logger --level INVALID  # Uses default (INFO), with a warning
+```
+
+An unrecognised level name falls back to INFO and prints a warning to stderr. `--level`, `--stderr-level`, `set_log_level` and the `level` and `stderr_level` configuration keys
+all behave this way. The return code stays 0.
+
+```text
+Warning: Invalid log level 'TRACE' for --level, using INFO
+  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)
 ```
 
 ## Initialization Best Practices

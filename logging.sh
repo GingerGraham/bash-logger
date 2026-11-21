@@ -1457,11 +1457,17 @@ _parse_config_file() {
 }
 
 # Convert log level name to numeric value (internal)
+# An input that is not a level falls back to INFO. The fallback prints a warning when the
+# caller says where the value came from, and is silent otherwise:
+#   $2  the config file line number, for "at line N"
+#   $3  the option or function that was given the value, for "for --level"
+# A caller with neither (log_to_journal, which checks its level first) gets no warning.
 _get_log_level_value() {
     local level_name=""
     # LC_ALL=C keeps the mapping ASCII-only: in a Turkish locale 'i' does not map to 'I'
     level_name="$(printf '%s' "$1" | LC_ALL=C tr '[:lower:]' '[:upper:]')"
     local line_num="${2:-}"
+    local source_name="${3:-}"
     case "${level_name}" in
         "DEBUG")
             printf '%s\n' "$LOG_LEVEL_DEBUG"
@@ -1492,9 +1498,15 @@ _get_log_level_value() {
             printf '%s\n' "$level_name"
             ;;
         *)
-            # Warn if line number provided (config file context)
+            # Warn when the caller says where the value came from. A value from a script
+            # (an option or set_log_level argument) is sanitized before it is printed,
+            # so a control character in it cannot reach the terminal.
             if [ -n "$line_num" ]; then
                 printf '%s\n' "Warning: Invalid log level '$level_name' at line $line_num, using INFO" >&2
+                printf '%s\n' "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
+            elif [ -n "$source_name" ]; then
+                _sanitize_config_notice_into "$level_name"
+                printf '%s\n' "Warning: Invalid log level '$_LOGGER_TEXT' for $source_name, using INFO" >&2
                 printf '%s\n' "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
             fi
             # Default to INFO if invalid
@@ -2171,7 +2183,7 @@ init_logger() {
             -d|--level)
                 _require_nonempty_option_value "$@" || return 1
                 local level_value=""
-                level_value=$(_get_log_level_value "$2")
+                level_value=$(_get_log_level_value "$2" "" "$1")
                 CURRENT_LOG_LEVEL=$level_value
                 # If both --verbose and --level are specified, --level takes precedence
                 shift 2
@@ -2235,7 +2247,7 @@ init_logger() {
             -e|--stderr-level)
                 _require_nonempty_option_value "$@" || return 1
                 local stderr_level_value=""
-                stderr_level_value=$(_get_log_level_value "$2")
+                stderr_level_value=$(_get_log_level_value "$2" "" "$1")
                 LOG_STDERR_LEVEL=$stderr_level_value
                 shift 2
                 ;;
@@ -2444,7 +2456,7 @@ set_log_level() {
     local level="$1"
     local old_level=""
     old_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
-    CURRENT_LOG_LEVEL=$(_get_log_level_value "$level")
+    CURRENT_LOG_LEVEL=$(_get_log_level_value "$level" "" "set_log_level")
     local new_level=""
     new_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
 

@@ -1055,7 +1055,13 @@ mkdir -p "$HOME/logs"
 
 ### "invalid log level"
 
-**Cause:** Unrecognized log level name
+```text
+Warning: Invalid log level 'TRACE' for --level, using INFO
+  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)
+```
+
+**Cause:** Unrecognized log level name. The level falls back to INFO and the call returns 0, so a typo such as `WARNNING` is reported only by this warning.
+`--level`, `--stderr-level`, `set_log_level` and the configuration file keys all print it.
 
 **Solution:**
 
