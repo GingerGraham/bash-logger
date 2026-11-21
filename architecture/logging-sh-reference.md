@@ -182,7 +182,7 @@ Section 8 has the full call graph. Appendix A lists every function with its call
 
 | Function                                       | Role                                                                                                                   |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `_get_log_level_value`                         | Name, alias or digit to 0-7. Unknown input becomes INFO; a warning is printed only when a config line number is given. |
+| `_get_log_level_value`                         | Name, alias or digit to 0-7. Unknown input becomes INFO, with a warning when `$2` (line) or `$3` (source) is given.    |
 | `_get_log_level_name`                          | 0-7 to name; anything else gives UNKNOWN.                                                                              |
 | `_get_log_level_color_into`                    | Sets `_LOGGER_COLOR` for a label, INIT and SENSITIVE included.                                                         |
 | `_get_syslog_priority_into`                    | Sets `_LOGGER_PRIORITY` (debug, info, notice, warning, err, crit, alert, emerg).                                       |
@@ -384,7 +384,6 @@ Some design choices exist so the code can be tested:
 | `_LOGGER_DISCOVERY_DONE`                                                | `_find_and_validate_logger`              | `log_to_journal`                                            |                                                                   |
 | `LOGGER_PATH`                                                           | `_find_and_validate_logger`              | `_write_to_journal`, `log_to_journal`                       | Readonly once validated                                           |
 | `LOGGER_FILE_ERROR_REPORTED`, `LOGGER_JOURNAL_ERROR_REPORTED`           | sinks                                    | sinks                                                       | One-shot flags                                                    |
-| `LOG_DIR`                                                               | `init_logger`                            | `init_logger`                                               | Not declared `local` (see 9)                                      |
 | Settings in table 3.4                                                   | defaults, `init_logger`, config, setters | pipeline                                                    |                                                                   |
 
 ## 8. Full call graph
@@ -400,18 +399,19 @@ The graph is dense. Appendix A has the same information as a table.
 
 These came up while mapping the code. They are candidates for review, not confirmed defects, except where marked as checked.
 
-1. **`init_logger` leaks `LOG_DIR` (checked).** `LOG_DIR=$(dirname "$LOG_FILE")` at line 2293 is not `local`. A script with its own `LOG_DIR` gets it overwritten:
-   `LOG_DIR=/srv/app/logs; init_logger --log /tmp/lgt/x.log` leaves `LOG_DIR=/tmp/lgt`.
-2. **Invalid level names are silently INFO (checked).** `set_log_level bogus` returns 0 and sets INFO. `init_logger -d bogus` behaves the same. A config file `level = bogus` warns.
-   Every other setter rejects invalid input.
-3. **Extra arguments to the level functions are dropped (checked).** `log_info first second` logs `first`. `log_to_journal` uses `$*`, so the two behave differently.
-4. **`log_to_journal` writes to every destination.** It passes `force_journal=true` but not `skip_file`, so the message also reaches the console and the file. The comment "Log a
-   single message directly to the system journal" could suggest journal only.
-5. **Option value checks differ.** `-F`, `--max-line-length` and `--max-journal-length` test `${2:-}`, so an explicit empty value is an error. Other options use
-   `_require_option_value`, which only checks that an argument exists.
+1. **`init_logger` leaked `LOG_DIR` (fixed).** The directory of the log file is now held in a local variable, so a script's own `LOG_DIR` is left alone.
+2. **Invalid level names were silently INFO (fixed).** `init_logger --level`, `--stderr-level` and `set_log_level` now print the warning the config parser prints, and still use INFO.
+   `set_log_level` still returns 0, because making it return 1 would break scripts running under `set -e`.
+3. **Extra arguments to the level functions were dropped (fixed).** `log_info first second` now logs `first second`, joined with a space whatever `IFS` is, as `log_to_journal` does. The join is
+   made in `_log_plain` (the nine plain level functions) and `_log_words` (`log_init`, `log_sensitive`, `log_to_journal`), which the zsh guard wraps. `_log_emit` writes the message. `_log_message`
+   keeps its earlier form and calls `_log_words`.
+4. **`log_to_journal` writes to every destination (comment fixed).** It passes `force_journal=true` but not `skip_file`, so the message also reaches the console and the file. The comment above
+   the function now says so.
+5. **Option value checks differed (fixed).** An empty value for `--name`, `--level`, `--stderr-level`, `--format`, `--tag`, `-F`, `--max-line-length` or `--max-journal-length` is now an
+   error for every one of them, through `_require_nonempty_option_value`.
 6. **`docs/api-reference.md` lists 11 internal functions.** There are 66. Linking this document from there would close the gap.
-7. **Config key naming.** `journal-max-line-length` is the only alias that does not follow the `max_journal_length` pattern.
-8. **Two journal tag validators.** `_validate_config_journal_tag` and `_validate_journal_tag` differ only in message wording and the config line number.
+7. **Config key naming (fixed).** `journal-max-length` is now accepted as well. `journal-max-line-length` still works, and is not documented.
+8. **Two journal tag validators (fixed).** `_validate_journal_tag` takes an optional context and a `repair` flag, and the config parser calls it too. `_validate_config_journal_tag` is gone.
 
 ## Appendix A. Function index
 

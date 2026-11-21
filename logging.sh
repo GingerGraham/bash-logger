@@ -6,7 +6,7 @@
 #
 # License: MIT License
 #
-# Supported shells: bash 3.2+ (including --posix), zsh, dash and busybox ash.
+# Supported shells: bash 3.2+ (including --posix), zsh, dash, busybox ash and mksh.
 # The code is POSIX sh plus "local" (Issue #143). Shell-specific code is used only
 # behind a check of the running shell; see docs/shell-compatibility.md.
 #
@@ -76,6 +76,69 @@ elif [ -n "${ZSH_VERSION:-}" ] && [ "$(command -v emulate 2>/dev/null)" = "emula
     _LOGGER_SHELL_FAMILY="zsh"
 fi
 
+# Self-check for any shell that is not bash or zsh (internal). The portable code below is
+# written and tested for dash and busybox ash. Another shell is not checked to run it, and
+# some run it wrongly: posh loads it but does not remove a suffix or prefix when the pattern
+# is a quoted variable, so a newline in a message is never replaced and a second, forged log
+# line is written. ksh93 has no `local`, so a function changes the caller's variables.
+# The check covers the two primitives the sanitizing path depends on. If either fails, the
+# file prints one error to stderr and stops sourcing, before any function is defined, so a
+# script that carries on after a failed `.` finds no log functions. The caller gets status 1
+# from `.`, which stops a script that runs under `set -e`.
+# It runs only in the shells where it can fail, and uses no command substitution and no
+# external command, so it costs nothing measurable. No variable skips it: an override
+# would let the environment turn the protection off.
+if [ -z "$_LOGGER_SHELL_FAMILY" ]; then
+    _logger_check_local() {
+        local _logger_check_var=""
+        _logger_check_var="inner"
+    }
+    _logger_check_var="outer"
+    _logger_check_newline='
+'
+    # A literal tab: POSIX sh cannot write one without a command substitution
+    _logger_check_tab='	'
+    _logger_check_reason=""
+
+    # stderr is discarded because a shell without `local` prints "local: not found". The
+    # call is the left side of an || list so that set -e does not end the shell inside the
+    # function (ksh93 does), which would skip the message below.
+    _logger_check_local 2>/dev/null || :
+    if [ "$_logger_check_var" != "outer" ]; then
+        _logger_check_reason="'local' does not keep a variable local to a function"
+    else
+        # Each separator is used as a quoted variable in all four removal forms
+        for _logger_check_separator in "$_logger_check_newline" "$_logger_check_tab"; do
+            _logger_check_text="a${_logger_check_separator}b${_logger_check_separator}c"
+            if [ "${_logger_check_text%%"$_logger_check_separator"*}" != "a" ] ||
+                [ "${_logger_check_text%"$_logger_check_separator"*}" != "a${_logger_check_separator}b" ] ||
+                [ "${_logger_check_text#*"$_logger_check_separator"}" != "b${_logger_check_separator}c" ] ||
+                [ "${_logger_check_text##*"$_logger_check_separator"}" != "c" ]; then
+                _logger_check_reason="a parameter expansion with a quoted pattern does not remove text"
+                break
+            fi
+        done
+    fi
+
+    if [ -n "$_logger_check_reason" ]; then
+        printf '%s\n' "logging.sh: this shell cannot run bash-logger safely ($_logger_check_reason)." \
+            "  Supported shells: bash 3.2+, zsh, dash, busybox ash, mksh. See docs/shell-compatibility.md." >&2
+    fi
+    _logger_check_failed="$_logger_check_reason"
+    unset -f _logger_check_local
+    unset _logger_check_var _logger_check_newline _logger_check_tab _logger_check_reason \
+        _logger_check_separator _logger_check_text
+    if [ -n "$_logger_check_failed" ]; then
+        unset _logger_check_failed
+        # return ends a sourced file. It fails when the file is run directly, and exit then
+        # ends the shell. They are two commands and not "return 1 || exit 1" because ksh93
+        # does not apply set -e to a failure that comes out of an || list.
+        return 1 2>/dev/null
+        exit 1
+    fi
+    unset _logger_check_failed
+fi
+
 # ${name@a} gives the attributes of a variable (internal). bash 4.4 added it, but bash 4.4
 # gave a different answer from the later versions in the readonly tests, so it is used from
 # bash 5.1, the oldest version that has been checked against them. Older bash uses the
@@ -86,6 +149,16 @@ if [ "$_LOGGER_SHELL_FAMILY" = "bash" ]; then
     case "${BASH_VERSION:-}" in
         5.[1-9]*|[6-9].*) _LOGGER_BASH_HAS_ATTRS="true" ;;
     esac
+fi
+
+# "true" when the shell's arithmetic is 32-bit (internal). mksh and some builds of busybox ash
+# wrap at 2147483647, where bash, zsh and dash use 64 bits. It is found by testing for the
+# overflow and not from the shell's name, so every shell with 32-bit arithmetic is covered. Set
+# on every source, so an inherited value cannot stay. The arithmetic in the library keeps below
+# 2147483647 in every shell, except where this flag selects a different calculation.
+_LOGGER_ARITH_32BIT="false"
+if [ "$((2147483647 + 1))" -lt 0 ]; then
+    _LOGGER_ARITH_32BIT="true"
 fi
 
 # Returns 0 if the named variable is readonly in the current shell (internal).
@@ -247,7 +320,7 @@ if [ -n "$_LOGGER_SHELL_FAMILY" ]; then
 fi
 
 # Result variables of the *_into helpers. They start empty so that a value from the
-# environment is never read, and _log_message restores them after each message.
+# environment is never read, and _log_emit restores them after each message.
 _LOGGER_TEXT=""
 _LOGGER_TIMESTAMP=""
 _LOGGER_REPLACED=""
@@ -256,10 +329,11 @@ _LOGGER_INTEGER=""
 _LOGGER_TEXT_LENGTH=""
 _LOGGER_COLOR=""
 _LOGGER_PRIORITY=""
+_LOGGER_FORMAT_PROBLEM=""
 
-# 1 while _log_message is running, 0 otherwise (internal). Only zsh reads it, to keep a trap
-# handler that logs out of a log call that it interrupted. Set on every source, so a value
-# from the environment is not used.
+# 1 while _log_plain or _log_words is running, 0 otherwise (internal). Only zsh reads it, to
+# keep a trap handler that logs out of a log call that it interrupted. Set on every source, so a
+# value from the environment is not used.
 _LOGGER_BUSY="0"
 
 # Result variable of _find_caller_script. Set here so that zsh with warn_create_global does
@@ -461,8 +535,9 @@ _replace_unsafe_name_characters() {
 # Parse a non-negative integer the way bash arithmetic reads it (internal).
 # Sets _LOGGER_INTEGER and returns 0, or returns 1 if the value is not all digits.
 # A leading 0 means octal, as in bash, so 010 is 8 and 08 is invalid (returns 1).
-# Values with more than 15 significant digits are set to 999999999999999: large
-# enough for every range check here, and safe from overflow in every shell.
+# Values with more than 8 significant digits are set to 99999999 without being calculated: that
+# is above every limit checked here (the largest is 1048576), and four times it still fits in
+# the 32-bit arithmetic of mksh, which _cap_message_length_into relies on.
 _parse_shell_integer() {
     local digits="$1"
     case "$digits" in
@@ -476,8 +551,8 @@ _parse_shell_integer() {
                 *[89]*) return 1 ;;
             esac
             digits="${digits#"${digits%%[!0]*}"}"
-            if [ "${#digits}" -gt 15 ]; then
-                _LOGGER_INTEGER=999999999999999
+            if [ "${#digits}" -gt 8 ]; then
+                _LOGGER_INTEGER=99999999
                 return 0
             fi
             local digit=""
@@ -488,8 +563,8 @@ _parse_shell_integer() {
             done
             ;;
         *)
-            if [ "${#digits}" -gt 15 ]; then
-                value=999999999999999
+            if [ "${#digits}" -gt 8 ]; then
+                value=99999999
             else
                 value="$digits"
             fi
@@ -1021,12 +1096,50 @@ _validate_config_file_path() {
     return 0
 }
 
+# Check that a log format can show a message (internal). Sets _LOGGER_FORMAT_PROBLEM.
+# A format needs a %m token. An empty format writes a blank line for every message, and a
+# format with no %m (such as "%d [%l]") loses the text of every message in the same way.
+# All three routes (the --format option, set_log_format and the config file key) use this
+# one check, so they accept the same formats. The scan follows _format_log_message_into: a
+# token is the character after a %, so "%%m" is a literal "%" followed by "m", not a %m.
+# Returns 0 for a usable format. Otherwise returns 1 with _LOGGER_FORMAT_PROBLEM set to
+# a phrase that completes "the format ...". The format itself is never part of it.
+_validate_log_format() {
+    local remaining="$1"
+    local token=""
+    _LOGGER_FORMAT_PROBLEM=""
+    if [ -z "$remaining" ]; then
+        _LOGGER_FORMAT_PROBLEM="is empty"
+        return 1
+    fi
+    while :; do
+        case "$remaining" in
+            *%*) ;;
+            *) break ;;
+        esac
+        remaining="${remaining#*\%}"
+        token="${remaining%"${remaining#?}"}"
+        if [ "$token" = "m" ]; then
+            return 0
+        fi
+        remaining="${remaining#?}"
+    done
+    _LOGGER_FORMAT_PROBLEM="has no %m placeholder, so the text of every message would be lost"
+    return 1
+}
+
 # Validate format string from configuration (internal)
 # Checks for excessively long format strings and dangerous patterns
 # Returns 0 if valid, 1 otherwise
 _validate_config_format() {
     local format="$1"
     local line_num="$2"
+
+    # An empty format, or one with no %m, would write lines with no message text
+    if ! _validate_log_format "$format"; then
+        printf '%s\n' "Warning: Configuration format at line $line_num $_LOGGER_FORMAT_PROBLEM and is rejected" >&2
+        return 1
+    fi
 
     # Check for control characters (except standard format specifiers)
     # Allow normal format variables like %d, %l, %s, %m, %z
@@ -1052,62 +1165,51 @@ _validate_config_format() {
     return 0
 }
 
-# Validate journal tag from configuration (internal)
-# Checks for reasonable length and dangerous characters
+# Validate a journal tag (internal)
+# The --tag option, set_journal_tag and the config file all use this one check, so they apply
+# the same rules: not empty, at most 64 characters, no control characters, no shell
+# metacharacters. Arguments:
+#   $1  the tag
+#   $2  where the tag came from, added to the messages after the text they name, with a
+#       leading space (for example " at line 12"); empty for a script's own argument
+#   $3  "repair" when the caller repairs a rejected tag instead of dropping it, as the config
+#       parser does. The messages then say so.
 # Returns 0 if valid, 1 otherwise
-_validate_config_journal_tag() {
+_validate_journal_tag() {
     local tag="$1"
-    local key="$2"
-    local line_num="$3"
+    local context="${2:-}"
+    local repair="${3:-}"
     local max_tag_length=64
 
     # Handle empty tag explicitly to preserve single-warning behavior
     if [ -z "$tag" ]; then
-        printf '%s\n' "Warning: Empty journal tag at line $line_num" >&2
+        printf '%s\n' "Warning: Empty journal tag$context" >&2
         return 1
     fi
 
-    if ! _validate_string "$tag" "$max_tag_length" "journal tag at line $line_num" "false" "true"; then
-        _count_characters "$tag"
-        if [ "$_LOGGER_CHARACTER_COUNT" -gt "$max_tag_length" ]; then
-            printf '%s\n' "  Hint: Truncating to maximum length" >&2
+    if ! _validate_string "$tag" "$max_tag_length" "journal tag$context" "false" "true"; then
+        if [ -n "$repair" ]; then
+            _count_characters "$tag"
+            if [ "$_LOGGER_CHARACTER_COUNT" -gt "$max_tag_length" ]; then
+                printf '%s\n' "  Hint: Truncating to maximum length" >&2
+            fi
         fi
         return 1
     fi
 
     # Check for shell metacharacters that could cause issues
     if _contains_shell_metacharacters "$tag"; then
-        printf '%s\n' "Warning: Journal tag at line $line_num contains shell metacharacters (will be sanitized)" >&2
+        if [ -n "$repair" ]; then
+            printf '%s\n' "Warning: Journal tag$context contains shell metacharacters (will be sanitized)" >&2
+        else
+            printf '%s\n' "Warning: Journal tag$context contains shell metacharacters" >&2
+        fi
         return 1
     fi
 
     return 0
 }
 
-# Validate journal tag value (internal)
-# Checks for reasonable length and dangerous characters
-# Returns 0 if valid, 1 otherwise
-_validate_journal_tag() {
-    local tag="$1"
-    local max_tag_length=64
-
-    if [ -z "$tag" ]; then
-        printf '%s\n' "Warning: Empty journal tag" >&2
-        return 1
-    fi
-
-    if ! _validate_string "$tag" "$max_tag_length" "journal tag" "false" "true"; then
-        return 1
-    fi
-
-    # Check for shell metacharacters that could cause issues
-    if _contains_shell_metacharacters "$tag"; then
-        printf '%s\n' "Warning: Journal tag contains shell metacharacters" >&2
-        return 1
-    fi
-
-    return 0
-}
 
 # Print the argument in lowercase (internal).
 # Portable replacement for ${var,,}, which bash 3.2 and zsh do not support.
@@ -1297,7 +1399,7 @@ _parse_config_file() {
                 esac
                 ;;
             tag|journal_tag)
-                if _validate_config_journal_tag "$value" "$key" "$line_num"; then
+                if _validate_journal_tag "$value" " at line $line_num" "repair"; then
                     JOURNAL_TAG="$value"
                 else
                     # Truncate or sanitize if validation failed
@@ -1421,7 +1523,7 @@ _parse_config_file() {
                     LOG_MAX_LINE_LENGTH="$value"
                 fi
                 ;;
-            max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
+            max_journal_length|max-journal-length|journal_max_length|journal-max-length|journal-max-line-length)
                 # The value is stored as written
                 if _validate_length_limit "$value" "max_journal_length" " at line $line_num" \
                     "$LOG_MAX_JOURNAL_LENGTH"; then
@@ -1457,11 +1559,17 @@ _parse_config_file() {
 }
 
 # Convert log level name to numeric value (internal)
+# An input that is not a level falls back to INFO. The fallback prints a warning when the
+# caller says where the value came from, and is silent otherwise:
+#   $2  the config file line number, for "at line N"
+#   $3  the option or function that was given the value, for "for --level"
+# A caller with neither (log_to_journal, which checks its level first) gets no warning.
 _get_log_level_value() {
     local level_name=""
     # LC_ALL=C keeps the mapping ASCII-only: in a Turkish locale 'i' does not map to 'I'
     level_name="$(printf '%s' "$1" | LC_ALL=C tr '[:lower:]' '[:upper:]')"
     local line_num="${2:-}"
+    local source_name="${3:-}"
     case "${level_name}" in
         "DEBUG")
             printf '%s\n' "$LOG_LEVEL_DEBUG"
@@ -1492,9 +1600,15 @@ _get_log_level_value() {
             printf '%s\n' "$level_name"
             ;;
         *)
-            # Warn if line number provided (config file context)
+            # Warn when the caller says where the value came from. A value from a script
+            # (an option or set_log_level argument) is sanitized before it is printed,
+            # so a control character in it cannot reach the terminal.
             if [ -n "$line_num" ]; then
                 printf '%s\n' "Warning: Invalid log level '$level_name' at line $line_num, using INFO" >&2
+                printf '%s\n' "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
+            elif [ -n "$source_name" ]; then
+                _sanitize_config_notice_into "$level_name"
+                printf '%s\n' "Warning: Invalid log level '$_LOGGER_TEXT' for $source_name, using INFO" >&2
                 printf '%s\n' "  Hint: Valid levels are: DEBUG, INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT, EMERGENCY (or 0-7)" >&2
             fi
             # Default to INFO if invalid
@@ -1954,8 +2068,26 @@ _current_timestamp_into() {
 # under set -e and in POSIX mode, and in zsh it only reaches localtime if exported.
 _utc_timestamp_from_epoch() {
     local epoch="$1"
-    local shifted_days="$((epoch / 86400 + 719468))"
-    local second_of_day="$((epoch % 86400))"
+    local days=0
+    local second_of_day=0
+    if [ "$_LOGGER_ARITH_32BIT" = "true" ]; then
+        # An epoch of 2147483648 (2038-01-19) or more does not fit in 32 bits. Divide the
+        # digits by 86400 one at a time, as on paper: the remainder stays below 86400, so
+        # nothing above 864009 is calculated, and the quotient is a number of days.
+        local remaining="$epoch"
+        local digit=""
+        while [ -n "$remaining" ]; do
+            digit="${remaining%"${remaining#?}"}"
+            remaining="${remaining#?}"
+            second_of_day=$((second_of_day * 10 + digit))
+            days=$((days * 10 + second_of_day / 86400))
+            second_of_day=$((second_of_day % 86400))
+        done
+    else
+        days=$((epoch / 86400))
+        second_of_day=$((epoch % 86400))
+    fi
+    local shifted_days="$((days + 719468))"
     local era="$((shifted_days / 146097))"
     local day_of_era="$((shifted_days - era * 146097))"
     local year_of_era="$(((day_of_era - day_of_era / 1460 + day_of_era / 36524 - day_of_era / 146096) / 365))"
@@ -2098,6 +2230,20 @@ _require_option_value() {
     return 0
 }
 
+# Check that an init_logger option has a non-empty value after it (internal).
+# Usage: _require_nonempty_option_value "$@"   (with the option as $1)
+# A missing value and an empty value are both errors, so a script that passes an unset
+# variable (init_logger --facility "$FACILITY") gets the same answer from every option.
+# Options that accept an empty value do not use this check.
+_require_nonempty_option_value() {
+    _require_option_value "$@" || return 1
+    if [ -z "$2" ]; then
+        printf '%s\n' "Error: $1 requires a non-empty value" >&2
+        return 1
+    fi
+    return 0
+}
+
 # Function to initialize logger with custom settings
 init_logger() {
     # Get the calling script's name (can be overridden with -n|--name option)
@@ -2155,16 +2301,22 @@ init_logger() {
                 shift
                 ;;
             -d|--level)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 local level_value=""
-                level_value=$(_get_log_level_value "$2")
+                level_value=$(_get_log_level_value "$2" "" "$1")
                 CURRENT_LOG_LEVEL=$level_value
                 # If both --verbose and --level are specified, --level takes precedence
                 shift 2
                 ;;
             -f|--format)
-                _require_option_value "$@" || return 1
-                LOG_FORMAT="$2"
+                _require_nonempty_option_value "$@" || return 1
+                # A format with no %m is rejected, and the current format is kept
+                if _validate_log_format "$2"; then
+                    LOG_FORMAT="$2"
+                else
+                    printf '%s\n' "Warning: Log format rejected: the format $_LOGGER_FORMAT_PROBLEM" >&2
+                    printf '%s\n' "  Hint: Keeping the current log format" >&2
+                fi
                 shift 2
                 ;;
             -j|--journal)
@@ -2181,7 +2333,7 @@ init_logger() {
                 shift 2
                 ;;
             -n|--name|--script-name)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 # Sanitize to prevent shell metacharacter injection
                 custom_script_name=$(_sanitize_script_name "$2")
                 shift 2
@@ -2191,7 +2343,7 @@ init_logger() {
                 shift
                 ;;
             -t|--tag)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 # Validated as in the config file and set_journal_tag
                 if _validate_journal_tag "$2"; then
                     JOURNAL_TAG="$2"
@@ -2201,10 +2353,7 @@ init_logger() {
                 shift 2
                 ;;
             -F|--facility)
-                if [ -z "${2:-}" ]; then
-                    printf '%s\n' "Error: --facility requires a value" >&2
-                    return 1
-                fi
+                _require_nonempty_option_value "$@" || return 1
                 if _validate_syslog_facility "$2"; then
                     SYSLOG_FACILITY="$(_to_lower "$2")"
                 else
@@ -2222,9 +2371,9 @@ init_logger() {
                 shift
                 ;;
             -e|--stderr-level)
-                _require_option_value "$@" || return 1
+                _require_nonempty_option_value "$@" || return 1
                 local stderr_level_value=""
-                stderr_level_value=$(_get_log_level_value "$2")
+                stderr_level_value=$(_get_log_level_value "$2" "" "$1")
                 LOG_STDERR_LEVEL=$stderr_level_value
                 shift 2
                 ;;
@@ -2237,20 +2386,14 @@ init_logger() {
                 shift
                 ;;
             --max-line-length)
-                if [ -z "${2:-}" ]; then
-                    printf '%s\n' "Error: --max-line-length requires a value" >&2
-                    return 1
-                fi
+                _require_nonempty_option_value "$@" || return 1
                 if _validate_length_limit "$2" "max-line-length" "" "$LOG_MAX_LINE_LENGTH"; then
                     LOG_MAX_LINE_LENGTH="$2"
                 fi
                 shift 2
                 ;;
             --max-journal-length)
-                if [ -z "${2:-}" ]; then
-                    printf '%s\n' "Error: --max-journal-length requires a value" >&2
-                    return 1
-                fi
+                _require_nonempty_option_value "$@" || return 1
                 if _validate_length_limit "$2" "max-journal-length" "" "$LOG_MAX_JOURNAL_LENGTH"; then
                     LOG_MAX_JOURNAL_LENGTH="$2"
                 fi
@@ -2289,14 +2432,15 @@ init_logger() {
 
     # Validate log file path if specified
     if [ -n "$LOG_FILE" ]; then
-        # Get directory of log file
-        LOG_DIR=$(dirname "$LOG_FILE")
+        # Get directory of log file. A local, so the caller's own LOG_DIR is not overwritten
+        local log_dir=""
+        log_dir=$(dirname "$LOG_FILE")
 
         # Try to create directory if it doesn't exist. Directories and the file that the
         # library creates are readable only by their owner (umask 077, set in a subshell
         # so the caller's umask is unchanged). Existing ones keep their permissions.
-        if [ ! -d "$LOG_DIR" ]; then
-            (umask 077 && mkdir -p "$LOG_DIR") 2>/dev/null || {
+        if [ ! -d "$log_dir" ]; then
+            (umask 077 && mkdir -p "$log_dir") 2>/dev/null || {
                 printf '%s\n' "Error: Cannot create log directory" >&2
                 printf '%s\n' "  Hint: Check the --log argument (or LOG_FILE environment variable) and parent directory permissions" >&2
                 return 1
@@ -2438,7 +2582,7 @@ set_log_level() {
     local level="$1"
     local old_level=""
     old_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
-    CURRENT_LOG_LEVEL=$(_get_log_level_value "$level")
+    CURRENT_LOG_LEVEL=$(_get_log_level_value "$level" "" "set_log_level")
     local new_level=""
     new_level=$(_get_log_level_name "$CURRENT_LOG_LEVEL")
 
@@ -2464,6 +2608,11 @@ set_timezone_utc() {
 
 # Function to change log format
 set_log_format() {
+    if ! _validate_log_format "$1"; then
+        printf '%s\n' "Error: set_log_format: the format $_LOGGER_FORMAT_PROBLEM" >&2
+        printf '%s\n' "  Hint: Keeping the current log format. A format needs a %m placeholder" >&2
+        return 1
+    fi
     local old_format="$LOG_FORMAT"
     LOG_FORMAT="$1"
 
@@ -2736,15 +2885,10 @@ _run_log_call_isolated() {
     return 0
 }
 
-# Function to log messages with different severity levels (internal)
-_log_message() {
-    # Skip logging if message level is more verbose than current log level
-    # With syslog-style levels, HIGHER values are LESS severe (more verbose)
-    # force_show=true ($7) bypasses this filter (used by log_init to always show)
-    if [ "${7:-false}" != "true" ] && [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
-        return 0
-    fi
-
+# Write one message, and leave the shell's result variables as they were (internal)
+# Usage: _log_emit LEVEL_NAME LEVEL_VALUE SKIP_FILE SKIP_JOURNAL FORCE_JOURNAL MESSAGE
+# Called by _log_plain and _log_words, which are the two functions the zsh guard below wraps.
+_log_emit() {
     # The *_into helpers return results in global variables. Restoring them afterwards means:
     #   * a trap handler that logs while another message is in progress cannot replace it
     #   * no message text, including log_sensitive text, stays in the shell's variables
@@ -2758,7 +2902,7 @@ _log_message() {
     local saved_priority="$_LOGGER_PRIORITY"
     local write_status=0
 
-    _write_log_message "$@" || write_status=$?
+    _write_log_message "$1" "$2" "$6" "$3" "$4" "$5" || write_status=$?
 
     _LOGGER_TEXT="$saved_text"
     _LOGGER_TIMESTAMP="$saved_timestamp"
@@ -2771,7 +2915,77 @@ _log_message() {
     return "$write_status"
 }
 
-# zsh only: guard _log_message against a trap handler that logs while a log call is running
+# Log the words of a call as one message, to the console, the log file and the journal
+# (internal)
+# Usage: _log_plain LEVEL_NAME LEVEL_VALUE [WORD...]
+# The level functions that have no special routing call this with their arguments as they
+# are. The message is all the words joined with one space, whatever IFS is, which "$*" would
+# not give. The join is made here and not in the level functions for two reasons. A message
+# that the level filter removes costs nothing. And the zsh guard below wraps this function, so
+# the code that joins runs where a trap handler cannot break into it, as it could in a level
+# function. It has the same arguments as the call it replaced, so a filtered message costs the
+# same as before: each extra argument was measured at under a microsecond in bash.
+_log_plain() {
+    # Skip logging if message level is more verbose than current log level
+    # With syslog-style levels, HIGHER values are LESS severe (more verbose)
+    if [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
+        return 0
+    fi
+
+    local level_name="$1"
+    local level_value="$2"
+    local message="${3:-}"
+    local message_word=""
+    if [ "$#" -gt 3 ]; then
+        shift 3
+        for message_word in "$@"; do
+            message="${message} ${message_word}"
+        done
+    fi
+
+    _log_emit "$level_name" "$level_value" "false" "false" "false" "$message"
+}
+
+# Log the words of a call as one message, with its own routing (internal)
+# Usage: _log_words LEVEL_NAME LEVEL_VALUE SKIP_FILE SKIP_JOURNAL FORCE_JOURNAL FORCE_SHOW
+#                   [WORD...]
+# For log_init, log_sensitive, log_to_journal and _log_message, which need a flag. The words
+# are joined as in _log_plain. force_show=true bypasses the level filter (used by log_init to
+# always show).
+_log_words() {
+    if [ "${6:-false}" != "true" ] && [ "$2" -gt "$CURRENT_LOG_LEVEL" ] 2>/dev/null; then
+        return 0
+    fi
+
+    local level_name="$1"
+    local level_value="$2"
+    local skip_file="$3"
+    local skip_journal="$4"
+    local force_journal="$5"
+    shift 6
+    local message="${1:-}"
+    local message_word=""
+    if [ "$#" -gt 1 ]; then
+        shift
+        for message_word in "$@"; do
+            message="${message} ${message_word}"
+        done
+    fi
+
+    _log_emit "$level_name" "$level_value" "$skip_file" "$skip_journal" "$force_journal" "$message"
+}
+
+# Log one message (internal)
+# Usage: _log_message LEVEL_NAME LEVEL_VALUE MESSAGE [SKIP_FILE [SKIP_JOURNAL [FORCE_JOURNAL
+#                     [FORCE_SHOW]]]]
+# The form that 2.x and 3.0 had, kept for scripts that call it. The library itself calls
+# _log_words, which takes the flags first and the message as any number of words.
+_log_message() {
+    _log_words "${1:-}" "${2:-}" "${4:-false}" "${5:-false}" "${6:-false}" "${7:-false}" "${3:-}"
+}
+
+# zsh only: guard _log_plain and _log_words against a trap handler that logs while a log call is
+# running
 #
 # zsh 5.9 can crash when a trap handler runs while the interrupted code is inside zsh
 # internals that are not re-entrant, which include "[" and pattern matching. A handler that
@@ -2779,7 +2993,7 @@ _log_message() {
 # is running is written in a subshell, with its own copy of the shell's memory (see "Known
 # limitation: zsh signal handlers" in docs/shell-compatibility.md).
 #
-# The guard is added to the function when this file is sourced, so no other shell pays for
+# The guard is added to the two functions when this file is sourced, so no other shell pays for
 # it, and zsh pays for no extra function call. It is put round the original body:
 #   * the first command is a "case", because "[" is one of the triggers
 #   * the flag is set before the body runs its level filter, which uses "["
@@ -2789,27 +3003,29 @@ _log_message() {
 # "functions" is only the table of functions once the zsh/parameter module is loaded. zsh
 # loads it by itself, except when it starts in sh or ksh emulation (zsh --emulate sh, or run
 # under the name sh). There "functions" is an ordinary array, the assignment below would not
-# change _log_message, and the guard would be missing without any message. So the module is
+# change those functions, and the guard would be missing without any message. So the module is
 # loaded first, and the guard is skipped only if that fails.
 if [ "$_LOGGER_SHELL_FAMILY" = "zsh" ] && zmodload zsh/parameter 2>/dev/null; then
-    _LOGGER_GUARD_BEFORE='case "${_LOGGER_BUSY:-0}" in
+    _LOGGER_GUARD_AFTER='
+} always {
+    _LOGGER_BUSY="0"
+}'
+    for _LOGGER_GUARDED in _log_plain _log_words; do
+        _LOGGER_GUARD_BEFORE='case "${_LOGGER_BUSY:-0}" in
     1)
-        _run_log_call_isolated _log_message "$@"
+        _run_log_call_isolated '"$_LOGGER_GUARDED"' "$@"
         return
         ;;
 esac
 _LOGGER_BUSY="1"
 {
 '
-    _LOGGER_GUARD_AFTER='
-} always {
-    _LOGGER_BUSY="0"
-}'
-    # "functions" is a zsh parameter that holds the source of every function, and the shell
-    # reads a new value as the function's body. It is only reached in zsh.
-    # shellcheck disable=SC2154,SC3054
-    functions[_log_message]="${_LOGGER_GUARD_BEFORE}${functions[_log_message]}${_LOGGER_GUARD_AFTER}"
-    unset _LOGGER_GUARD_BEFORE _LOGGER_GUARD_AFTER
+        # "functions" is a zsh parameter that holds the source of every function, and the shell
+        # reads a new value as the function's body. It is only reached in zsh.
+        # shellcheck disable=SC2154,SC3054
+        functions[$_LOGGER_GUARDED]="${_LOGGER_GUARD_BEFORE}${functions[$_LOGGER_GUARDED]}${_LOGGER_GUARD_AFTER}"
+    done
+    unset _LOGGER_GUARD_BEFORE _LOGGER_GUARD_AFTER _LOGGER_GUARDED
 fi
 
 # Write one message to the console, log file and journal (internal)
@@ -2888,52 +3104,53 @@ _write_log_message() {
 
 # Helper functions for different log levels
 log_debug() {
-    _log_message "DEBUG" "$LOG_LEVEL_DEBUG" "$1"
+    _log_plain "DEBUG" "$LOG_LEVEL_DEBUG" "$@"
 }
 
 log_info() {
-    _log_message "INFO" "$LOG_LEVEL_INFO" "$1"
+    _log_plain "INFO" "$LOG_LEVEL_INFO" "$@"
 }
 
 log_notice() {
-    _log_message "NOTICE" "$LOG_LEVEL_NOTICE" "$1"
+    _log_plain "NOTICE" "$LOG_LEVEL_NOTICE" "$@"
 }
 
 log_warn() {
-    _log_message "WARN" "$LOG_LEVEL_WARN" "$1"
+    _log_plain "WARN" "$LOG_LEVEL_WARN" "$@"
 }
 
 log_error() {
-    _log_message "ERROR" "$LOG_LEVEL_ERROR" "$1"
+    _log_plain "ERROR" "$LOG_LEVEL_ERROR" "$@"
 }
 
 log_critical() {
-    _log_message "CRITICAL" "$LOG_LEVEL_CRITICAL" "$1"
+    _log_plain "CRITICAL" "$LOG_LEVEL_CRITICAL" "$@"
 }
 
 log_alert() {
-    _log_message "ALERT" "$LOG_LEVEL_ALERT" "$1"
+    _log_plain "ALERT" "$LOG_LEVEL_ALERT" "$@"
 }
 
 log_emergency() {
-    _log_message "EMERGENCY" "$LOG_LEVEL_EMERGENCY" "$1"
+    _log_plain "EMERGENCY" "$LOG_LEVEL_EMERGENCY" "$@"
 }
 
 # Alias for backward compatibility
 log_fatal() {
-    _log_message "FATAL" "$LOG_LEVEL_EMERGENCY" "$1"
+    _log_plain "FATAL" "$LOG_LEVEL_EMERGENCY" "$@"
 }
 
 log_init() {
-    _log_message "INIT" "$LOG_LEVEL_INIT" "$1" "false" "false" "false" "true"
+    _log_words "INIT" "$LOG_LEVEL_INIT" "false" "false" "false" "true" "$@"
 }
 
 # Function for sensitive logging - console only, never to file or journal
 log_sensitive() {
-    _log_message "SENSITIVE" "$LOG_LEVEL_INFO" "$1" "true" "true"
+    _log_words "SENSITIVE" "$LOG_LEVEL_INFO" "true" "true" "false" "false" "$@"
 }
 
-# Log a single message directly to the system journal, regardless of USE_JOURNAL state.
+# Log a single message through the normal routing (console and log file, as for any other
+# level function) and also force it to the system journal, regardless of USE_JOURNAL state.
 # Respects the current log level, sanitization, and truncation rules.
 # If the logger command is not available, emits a warning to stderr.
 #
@@ -2947,7 +3164,7 @@ log_sensitive() {
 #   0 - Success
 #   1 - Invalid level or logger not available
 log_to_journal() {
-    # As in _log_message, a call made while a log call is running is isolated, and the check
+    # As in _log_words, a call made while a log call is running is isolated, and the check
     # comes before the "[" tests and the tr below
     case "${_LOGGER_SHELL_FAMILY}:${_LOGGER_BUSY:-0}" in
         zsh:1)
@@ -2964,9 +3181,8 @@ log_to_journal() {
     local level_name=""
     level_name="$(printf '%s' "$1" | LC_ALL=C tr '[:lower:]' '[:upper:]')"
     shift
-    local message="$*"
 
-    # Validate and normalise the level name to the canonical form used by _log_message
+    # Validate and normalise the level name to the canonical form used by _log_words
     local canonical_level=""
     case "${level_name}" in
         DEBUG)                  canonical_level="DEBUG" ;;
@@ -3020,7 +3236,7 @@ log_to_journal() {
         return 1
     fi
 
-    _log_message "$canonical_level" "$level_value" "$message" "false" "false" "true"
+    _log_words "$canonical_level" "$level_value" "false" "false" "true" "false" "$@"
 }
 
 # SCRIPT_NAME is the one setting that survives sourcing (see the top of this file), and

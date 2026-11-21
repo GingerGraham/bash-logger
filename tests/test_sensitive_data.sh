@@ -173,6 +173,26 @@ test_sensitive_flag_respected() {
     fi
 }
 
+# Test: log_sensitive with several arguments stays off the file (Issue #193)
+test_sensitive_multiple_arguments() {
+    start_test "log_sensitive with several arguments is console only"
+
+    local log_file="$TEST_TMP_DIR/sensitive_words.log"
+    local console_file="$TEST_TMP_DIR/sensitive_words.console"
+
+    init_logger -l "$log_file" --no-color --no-init-message > /dev/null 2>&1
+
+    log_sensitive password is hunter2 > "$console_file"
+    log_info "marker"
+
+    assert_file_contains "$console_file" "password is hunter2" "All words reach the console" || return
+    assert_file_not_contains "$log_file" "hunter2" "No word reaches the log file" || return
+    assert_file_not_contains "$log_file" "password" "No word reaches the log file" || return
+    assert_file_contains "$log_file" "marker" || return
+
+    pass_test
+}
+
 # Test: Sensitive data with ANSI codes
 test_sensitive_with_ansi_codes() {
     start_test "Sensitive data with ANSI codes is handled"
@@ -402,6 +422,7 @@ test_sensitive_to_console_interactive
 test_sensitive_redirect_detection # Known limitation, see test function for details
 test_sensitive_in_error_conditions
 test_sensitive_flag_respected
+test_sensitive_multiple_arguments
 test_sensitive_with_ansi_codes
 test_sensitive_with_newlines
 test_large_sensitive_data
