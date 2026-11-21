@@ -21,11 +21,17 @@ dash and busybox ash, so `/bin/sh` scripts on Debian, Ubuntu and Alpine can use 
 | zsh                                | Supported                                          |
 | dash (Debian and Ubuntu `/bin/sh`) | Supported                                          |
 | busybox ash (Alpine `/bin/sh`)     | Supported                                          |
-| ksh93                              | Not supported: no `local` in POSIX-style functions |
+| posh                               | Not supported: refused at load time                |
+| ksh93                              | Not supported: refused at load time                |
+| yash                               | Not supported: fails to parse the file             |
 | fish                               | Not supported: not a POSIX shell                   |
 
 Strict POSIX sh has no `local`. dash, busybox ash, FreeBSD `sh` and mksh all support it, so the
 library uses it.
+
+A shell that is not in the list is not tested. Where it cannot run the library safely, `logging.sh`
+refuses to load (see [Load-time self-check](#load-time-self-check)). yash cannot be checked this
+way, because it fails to parse the file before any check can run.
 
 ## Sourcing the Library
 
@@ -139,6 +145,42 @@ inherited from the environment does not change it.
 * timestamps without a process in bash 4.2+ and zsh (see [Timestamps](#timestamps))
 
 Each of these lines has a `shellcheck disable` directive with the reason above it.
+
+### Load-time self-check
+
+Every shell other than bash and zsh runs the portable code, which is written and tested for dash
+and busybox ash. A shell that cannot run it correctly must not write log lines, and some do. posh
+loads the file, but its `${text%%"$separator"*}` leaves the text unchanged when the pattern is a
+quoted variable followed by `*`. The code that replaces a newline in a message then never
+replaces it, and a message can write a second, forged log line. ksh93 has no `local`, so each
+function changes the variables of its caller.
+
+When `_LOGGER_SHELL_FAMILY` is empty, `logging.sh` runs a short check before it defines any
+function. It tests the two things the sanitizing code needs:
+
+* `local` keeps a variable local to its function, so the caller's variable is unchanged
+* `${text%%"$separator"*}`, `${text%"$separator"*}`, `${text#*"$separator"}` and
+  `${text##*"$separator"}` give the expected results, with a newline and with a tab as the
+  separator
+
+If a test fails, the file prints one error to stderr and stops sourcing:
+
+```text
+logging.sh: this shell cannot run bash-logger safely (<reason>).
+  Supported shells: bash 3.2+, zsh, dash, busybox ash. See docs/shell-compatibility.md.
+```
+
+`.` then returns 1, so a script that runs under `set -e` stops. A script that carries on has no
+log functions to call, because none was defined. Run directly, the file exits with status 1.
+
+The check uses no command substitution and no external command, and does not run in bash or zsh,
+so it costs nothing measurable. No environment variable skips it, because an override would let
+the environment turn the protection off.
+
+yash parses the whole file before it runs any of it, and rejects `${remaining:$offset:256}`
+(bash and zsh only, so it never runs there). It already fails closed, with a syntax error, so the
+check cannot help and yash is documented as not supported. Supporting it would mean moving the
+bash-only expansions into `eval` strings, as some already are.
 
 ### Security validators
 

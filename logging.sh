@@ -76,6 +76,69 @@ elif [ -n "${ZSH_VERSION:-}" ] && [ "$(command -v emulate 2>/dev/null)" = "emula
     _LOGGER_SHELL_FAMILY="zsh"
 fi
 
+# Self-check for any shell that is not bash or zsh (internal). The portable code below is
+# written and tested for dash and busybox ash. Another shell is not checked to run it, and
+# some run it wrongly: posh loads it but does not remove a suffix or prefix when the pattern
+# is a quoted variable, so a newline in a message is never replaced and a second, forged log
+# line is written. ksh93 has no `local`, so a function changes the caller's variables.
+# The check covers the two primitives the sanitizing path depends on. If either fails, the
+# file prints one error to stderr and stops sourcing, before any function is defined, so a
+# script that carries on after a failed `.` finds no log functions. The caller gets status 1
+# from `.`, which stops a script that runs under `set -e`.
+# It runs only in the shells where it can fail, and uses no command substitution and no
+# external command, so it costs nothing measurable. No variable skips it: an override
+# would let the environment turn the protection off.
+if [ -z "$_LOGGER_SHELL_FAMILY" ]; then
+    _logger_check_local() {
+        local _logger_check_var=""
+        _logger_check_var="inner"
+    }
+    _logger_check_var="outer"
+    _logger_check_newline='
+'
+    # A literal tab: POSIX sh cannot write one without a command substitution
+    _logger_check_tab='	'
+    _logger_check_reason=""
+
+    # stderr is discarded because a shell without `local` prints "local: not found". The
+    # call is the left side of an || list so that set -e does not end the shell inside the
+    # function (ksh93 does), which would skip the message below.
+    _logger_check_local 2>/dev/null || :
+    if [ "$_logger_check_var" != "outer" ]; then
+        _logger_check_reason="'local' does not keep a variable local to a function"
+    else
+        # Each separator is used as a quoted variable in all four removal forms
+        for _logger_check_separator in "$_logger_check_newline" "$_logger_check_tab"; do
+            _logger_check_text="a${_logger_check_separator}b${_logger_check_separator}c"
+            if [ "${_logger_check_text%%"$_logger_check_separator"*}" != "a" ] ||
+                [ "${_logger_check_text%"$_logger_check_separator"*}" != "a${_logger_check_separator}b" ] ||
+                [ "${_logger_check_text#*"$_logger_check_separator"}" != "b${_logger_check_separator}c" ] ||
+                [ "${_logger_check_text##*"$_logger_check_separator"}" != "c" ]; then
+                _logger_check_reason="a parameter expansion with a quoted pattern does not remove text"
+                break
+            fi
+        done
+    fi
+
+    if [ -n "$_logger_check_reason" ]; then
+        printf '%s\n' "logging.sh: this shell cannot run bash-logger safely ($_logger_check_reason)." \
+            "  Supported shells: bash 3.2+, zsh, dash, busybox ash. See docs/shell-compatibility.md." >&2
+    fi
+    _logger_check_failed="$_logger_check_reason"
+    unset -f _logger_check_local
+    unset _logger_check_var _logger_check_newline _logger_check_tab _logger_check_reason \
+        _logger_check_separator _logger_check_text
+    if [ -n "$_logger_check_failed" ]; then
+        unset _logger_check_failed
+        # return ends a sourced file. It fails when the file is run directly, and exit then
+        # ends the shell. They are two commands and not "return 1 || exit 1" because ksh93
+        # does not apply set -e to a failure that comes out of an || list.
+        return 1 2>/dev/null
+        exit 1
+    fi
+    unset _logger_check_failed
+fi
+
 # ${name@a} gives the attributes of a variable (internal). bash 4.4 added it, but bash 4.4
 # gave a different answer from the later versions in the readonly tests, so it is used from
 # bash 5.1, the oldest version that has been checked against them. Older bash uses the

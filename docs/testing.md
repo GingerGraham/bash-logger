@@ -494,6 +494,7 @@ Current runnable suite files include:
 * `test_source_guard.sh`
 * `test_toctou_protection.sh`
 * `test_unsafe_newlines.sh`
+* `test_unsupported_shells.sh`
 * `test_validator_equivalence.sh`
 * `test_zsh_compat.sh`
 

@@ -56,6 +56,9 @@ demos, and pipeline scripts - exists to support using that file.
   * zsh
   * dash (`/bin/sh` on Debian and Ubuntu)
   * busybox ash (`/bin/sh` on Alpine and other busybox-based images)
+* **Other shells**: not supported. At load time `logging.sh` checks that the shell can run the
+  library safely and refuses to load, with an error on stderr and status 1, if it cannot (posh
+  and ksh93 fail the check). A shell that passes the check is otherwise untested.
 * **Test suite (`tests/`)**: Bash 3.2 or later, on Linux and on macOS with its BSD userland. The
   cross-shell suites run the library under each shell listed in `TEST_SHELLS`.
 
