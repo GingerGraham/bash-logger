@@ -1732,9 +1732,11 @@ test_posix_lone_double_hyphen_message() {
     cat > "$stub_dir/printf" <<'STUB'
 #!/bin/sh
 # Drops an operand of exactly -- unless -- came first, as uutils coreutils printf does
+# The real printf is always called with -- first, as the real printf on the system may be
+# uutils coreutils itself, which would drop the operand again.
 if [ "$1" = "--" ]; then
     shift
-    exec /usr/bin/printf "$@"
+    exec /usr/bin/printf -- "$@"
 fi
 format="$1"
 shift
@@ -1744,7 +1746,7 @@ for operand in "$@"; do
     fi
     shift
 done
-exec /usr/bin/printf "$format" "$@"
+exec /usr/bin/printf -- "$format" "$@"
 STUB
     chmod +x "$stub_dir/printf"
 
@@ -1759,10 +1761,10 @@ log_info --verbose
 
     assert_equals "--
 -- x
---verbose" "$output" "console output" || return
+--verbose" "$output" || return
     assert_equals "--
 -- x
---verbose" "$(cat "$log_file")" "log file" || return
+--verbose" "$(cat "$log_file")" || return
 
     pass_test
 }
