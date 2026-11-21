@@ -15,6 +15,10 @@ cd tests
 
 Tests automatically run in parallel using detected CPU cores (capped at 8 jobs, due to diminishing returns above this).
 
+**Run the tests as a normal user, not as root.** Several security tests check that the logger handles a file it cannot write or read. Root can write and read any file, so those tests
+fail when run as root, including in containers where root is the default user. In a container, create a user and run the suite as that user, as the container jobs in
+[.github/workflows/tests.yml](../.github/workflows/tests.yml) do. See [Running as root](../docs/testing.md#running-as-root) for the failing suites and an example.
+
 ### Run Tests with Custom Parallelism
 
 Override the auto-detected parallelism if needed:

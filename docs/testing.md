@@ -7,6 +7,7 @@ Comprehensive guide to the bash-logger test suite, including how to run tests, w
 * [Overview](#overview)
 * [Running Tests](#running-tests)
   * [Run All Tests](#run-all-tests)
+    * [Running as root](#running-as-root)
     * [Parallel Execution](#parallel-execution)
   * [Run Specific Test Suites](#run-specific-test-suites)
   * [Understanding Test Output](#understanding-test-output)
@@ -74,6 +75,34 @@ Or from anywhere in the project:
 
 ```bash
 ./tests/run_tests.sh
+```
+
+#### Running as root
+
+Run the tests as a normal user, not as root. Several security tests check that the logger handles a file it cannot write or read. Root can write and read any file, so those tests
+fail when run as root, including in containers where root is the default user.
+
+On bash-logger 3.0.3, a run as root with the default `TEST_SHELLS` reported 751 results: 713 passed, 11 failed and 27 skipped. The 11 failures are in:
+
+| Suite                       | Failures |
+| --------------------------- | -------: |
+| `test_path_traversal`       |        3 |
+| `test_toctou_protection`    |        3 |
+| `test_error_conditions`     |        2 |
+| `test_config`               |        1 |
+| `test_config_security`      |        1 |
+| `test_environment_security` |        1 |
+
+The same checkout run as a normal user had no failures. If you see these failures on a clean checkout, check `id -u` before looking for a bug.
+
+In a container, create a user and run the suite as that user, as the container jobs in
+[`.github/workflows/tests.yml`](../.github/workflows/tests.yml) do:
+
+```bash
+# Debian, Ubuntu and Fedora images. On Alpine and busybox images use: adduser -D tester
+useradd --create-home tester
+chown -R tester /path/to/bash-logger
+su tester -c 'cd /path/to/bash-logger/tests && ./run_tests.sh'
 ```
 
 #### Parallel Execution
@@ -280,6 +309,10 @@ Additionally, you need:
 
 [kcov](https://github.com/SimonKagstrom/kcov) provides code coverage for Bash scripts by
 instrumenting the script execution and tracking which lines are executed.
+
+kcov follows bash only. Lines that run only in zsh, dash or busybox ash are reported as not covered. These include the `_LOGGER_SHELL_FAMILY` branches, the zsh re-entrancy guard and the
+byte-counting paths. Those paths are tested by `test_posix_compat`, `test_zsh_compat` and `test_shell_compat` with `TEST_SHELLS` set. The coverage figure therefore understates real
+coverage, and a bash test cannot reach those lines, so do not add bash tests to raise it.
 
 ```bash
 # Run tests with coverage
