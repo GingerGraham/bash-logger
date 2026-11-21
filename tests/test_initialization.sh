@@ -255,6 +255,20 @@ test_log_file_nested_directory() {
     pass_test
 }
 
+# Test: init_logger leaves the caller's LOG_DIR variable alone (Issue #187)
+test_log_file_preserves_caller_log_dir() {
+    start_test "init_logger --log does not overwrite the caller's LOG_DIR"
+
+    # shellcheck disable=SC2034 # read back through the assertion below
+    LOG_DIR="/srv/app/logs"
+    init_logger --quiet --log "$TEST_DIR/own_dir/test.log"
+
+    assert_equals "/srv/app/logs" "$LOG_DIR" "LOG_DIR should be unchanged" || return
+    assert_file_exists "$TEST_DIR/own_dir/test.log" || return
+
+    pass_test
+}
+
 # Test: Config file option
 test_config_file_option() {
     start_test "Config file option loads configuration"
@@ -490,6 +504,7 @@ test_short_options
 test_reinitialization
 test_invalid_log_level
 test_log_file_nested_directory
+test_log_file_preserves_caller_log_dir
 test_config_file_option
 test_cli_overrides_config
 test_stderr_level_option

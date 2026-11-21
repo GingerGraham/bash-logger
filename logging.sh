@@ -2289,14 +2289,15 @@ init_logger() {
 
     # Validate log file path if specified
     if [ -n "$LOG_FILE" ]; then
-        # Get directory of log file
-        LOG_DIR=$(dirname "$LOG_FILE")
+        # Get directory of log file. A local, so the caller's own LOG_DIR is not overwritten
+        local log_dir=""
+        log_dir=$(dirname "$LOG_FILE")
 
         # Try to create directory if it doesn't exist. Directories and the file that the
         # library creates are readable only by their owner (umask 077, set in a subshell
         # so the caller's umask is unchanged). Existing ones keep their permissions.
-        if [ ! -d "$LOG_DIR" ]; then
-            (umask 077 && mkdir -p "$LOG_DIR") 2>/dev/null || {
+        if [ ! -d "$log_dir" ]; then
+            (umask 077 && mkdir -p "$log_dir") 2>/dev/null || {
                 printf '%s\n' "Error: Cannot create log directory" >&2
                 printf '%s\n' "  Hint: Check the --log argument (or LOG_FILE environment variable) and parent directory permissions" >&2
                 return 1
