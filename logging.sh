@@ -1154,62 +1154,51 @@ _validate_config_format() {
     return 0
 }
 
-# Validate journal tag from configuration (internal)
-# Checks for reasonable length and dangerous characters
+# Validate a journal tag (internal)
+# The --tag option, set_journal_tag and the config file all use this one check, so they apply
+# the same rules: not empty, at most 64 characters, no control characters, no shell
+# metacharacters. Arguments:
+#   $1  the tag
+#   $2  where the tag came from, added to the messages after the text they name, with a
+#       leading space (for example " at line 12"); empty for a script's own argument
+#   $3  "repair" when the caller repairs a rejected tag instead of dropping it, as the config
+#       parser does. The messages then say so.
 # Returns 0 if valid, 1 otherwise
-_validate_config_journal_tag() {
+_validate_journal_tag() {
     local tag="$1"
-    local key="$2"
-    local line_num="$3"
+    local context="${2:-}"
+    local repair="${3:-}"
     local max_tag_length=64
 
     # Handle empty tag explicitly to preserve single-warning behavior
     if [ -z "$tag" ]; then
-        printf '%s\n' "Warning: Empty journal tag at line $line_num" >&2
+        printf '%s\n' "Warning: Empty journal tag$context" >&2
         return 1
     fi
 
-    if ! _validate_string "$tag" "$max_tag_length" "journal tag at line $line_num" "false" "true"; then
-        _count_characters "$tag"
-        if [ "$_LOGGER_CHARACTER_COUNT" -gt "$max_tag_length" ]; then
-            printf '%s\n' "  Hint: Truncating to maximum length" >&2
+    if ! _validate_string "$tag" "$max_tag_length" "journal tag$context" "false" "true"; then
+        if [ -n "$repair" ]; then
+            _count_characters "$tag"
+            if [ "$_LOGGER_CHARACTER_COUNT" -gt "$max_tag_length" ]; then
+                printf '%s\n' "  Hint: Truncating to maximum length" >&2
+            fi
         fi
         return 1
     fi
 
     # Check for shell metacharacters that could cause issues
     if _contains_shell_metacharacters "$tag"; then
-        printf '%s\n' "Warning: Journal tag at line $line_num contains shell metacharacters (will be sanitized)" >&2
+        if [ -n "$repair" ]; then
+            printf '%s\n' "Warning: Journal tag$context contains shell metacharacters (will be sanitized)" >&2
+        else
+            printf '%s\n' "Warning: Journal tag$context contains shell metacharacters" >&2
+        fi
         return 1
     fi
 
     return 0
 }
 
-# Validate journal tag value (internal)
-# Checks for reasonable length and dangerous characters
-# Returns 0 if valid, 1 otherwise
-_validate_journal_tag() {
-    local tag="$1"
-    local max_tag_length=64
-
-    if [ -z "$tag" ]; then
-        printf '%s\n' "Warning: Empty journal tag" >&2
-        return 1
-    fi
-
-    if ! _validate_string "$tag" "$max_tag_length" "journal tag" "false" "true"; then
-        return 1
-    fi
-
-    # Check for shell metacharacters that could cause issues
-    if _contains_shell_metacharacters "$tag"; then
-        printf '%s\n' "Warning: Journal tag contains shell metacharacters" >&2
-        return 1
-    fi
-
-    return 0
-}
 
 # Print the argument in lowercase (internal).
 # Portable replacement for ${var,,}, which bash 3.2 and zsh do not support.
@@ -1399,7 +1388,7 @@ _parse_config_file() {
                 esac
                 ;;
             tag|journal_tag)
-                if _validate_config_journal_tag "$value" "$key" "$line_num"; then
+                if _validate_journal_tag "$value" " at line $line_num" "repair"; then
                     JOURNAL_TAG="$value"
                 else
                     # Truncate or sanitize if validation failed
@@ -1523,7 +1512,7 @@ _parse_config_file() {
                     LOG_MAX_LINE_LENGTH="$value"
                 fi
                 ;;
-            max_journal_length|max-journal-length|journal_max_length|journal-max-line-length)
+            max_journal_length|max-journal-length|journal_max_length|journal-max-length|journal-max-line-length)
                 # The value is stored as written
                 if _validate_length_limit "$value" "max_journal_length" " at line $line_num" \
                     "$LOG_MAX_JOURNAL_LENGTH"; then
@@ -3064,7 +3053,8 @@ log_sensitive() {
     _log_message "SENSITIVE" "$LOG_LEVEL_INFO" "$1" "true" "true"
 }
 
-# Log a single message directly to the system journal, regardless of USE_JOURNAL state.
+# Log a single message through the normal routing (console and log file, as for any other
+# level function) and also force it to the system journal, regardless of USE_JOURNAL state.
 # Respects the current log level, sanitization, and truncation rules.
 # If the logger command is not available, emits a warning to stderr.
 #

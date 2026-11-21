@@ -394,6 +394,39 @@ test_init_empty_log_file_is_accepted() {
     pass_test
 }
 
+# Test: --tag, set_journal_tag and the config file apply the same tag rules (Issue #194)
+test_journal_tag_rules_are_shared() {
+    start_test "--tag, set_journal_tag and the config file reject the same tags"
+
+    local escape_char
+    escape_char=$(printf '\033')
+    local long_tag
+    long_tag=$(printf 'a%.0s' $(seq 1 65))
+    local config_file="$TEST_DIR/tag_rules.conf"
+    local tag
+    for tag in "bad;tag" "bad${escape_char}tag" "$long_tag"; do
+        init_logger --quiet --tag good 2>/dev/null
+        init_logger --quiet --tag "$tag" 2>/dev/null
+        assert_equals "good" "$JOURNAL_TAG" "--tag keeps the tag after a rejected value" || return
+
+        set_journal_tag "$tag" 2>/dev/null
+        assert_equals 1 "$?" "set_journal_tag returns 1 for a rejected value" || return
+        assert_equals "good" "$JOURNAL_TAG" "set_journal_tag keeps the tag" || return
+
+        # The parser repairs a rejected tag. Its warning names the line, the others do not.
+        printf '[logging]\ntag = %s\n' "$tag" > "$config_file"
+        init_logger --quiet --config "$config_file" 2>"$TEST_STDERR"
+        assert_not_equals "$tag" "$JOURNAL_TAG" "the config file does not keep the tag as written" || return
+        assert_file_contains "$TEST_STDERR" "at line 2" || return
+    done
+
+    init_logger --quiet --tag "bad;tag" 2>"$TEST_STDERR"
+    assert_file_contains "$TEST_STDERR" "Warning: Journal tag contains shell metacharacters" || return
+    assert_file_not_contains "$TEST_STDERR" "at line" "No line number outside the config file" || return
+
+    pass_test
+}
+
 # Test: Log file write failure on initialization
 test_log_file_write_failure_on_init() {
     start_test "init_logger detects write failures"
@@ -528,6 +561,7 @@ test_init_empty_short_option_value_is_error
 test_init_empty_option_value_keeps_settings
 test_init_missing_empty_and_invalid_values
 test_init_empty_log_file_is_accepted
+test_journal_tag_rules_are_shared
 test_log_file_write_failure_on_init
 test_log_file_unwritable_during_runtime
 test_config_journal_no_logger

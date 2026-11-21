@@ -113,7 +113,14 @@ run_check() {
         string) _validate_string "$value" 64 "value" "false" "true" ;;
         string_no_cntrl) _validate_string "$value" 4096 "value" "true" "false" ;;
         config_file_path) _validate_config_file_path "$value" "log_file" 1 ;;
-        config_journal_tag) _validate_config_journal_tag "$value" "tag" 1 ;;
+        config_journal_tag)
+            # A later version merged _validate_config_journal_tag into _validate_journal_tag
+            if command -v _validate_config_journal_tag >/dev/null 2>&1; then
+                _validate_config_journal_tag "$value" "tag" 1
+            else
+                _validate_journal_tag "$value" " at line 1" "repair"
+            fi
+            ;;
         journal_tag) _validate_journal_tag "$value" ;;
         config_format) _validate_config_format "$value" 1 ;;
         log_level_value) _get_log_level_value "$value" 1 ;;

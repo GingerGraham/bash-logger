@@ -273,6 +273,27 @@ EOF
     pass_test
 }
 
+# Test: Every spelling of the journal length key sets the limit (Issue #194)
+test_config_journal_length_aliases() {
+    start_test "max_journal_length is accepted under all of its key names"
+
+    local config_file="$TEST_DIR/journal_aliases.conf"
+    local key
+    local value=100
+    for key in max_journal_length max-journal-length journal_max_length journal-max-length \
+        journal-max-line-length; do
+        value=$((value + 1))
+        printf '[logging]\n%s = %s\n' "$key" "$value" > "$config_file"
+
+        init_logger --quiet --config "$config_file" 2>"$TEST_STDERR"
+
+        assert_equals "$value" "$LOG_MAX_JOURNAL_LENGTH" "key: $key" || return
+        assert_file_not_contains "$TEST_STDERR" "Unknown configuration key" "key: $key" || return
+    done
+
+    pass_test
+}
+
 # Test: Comments in config file
 test_config_comments() {
     start_test "Comments are ignored in config"
@@ -727,6 +748,7 @@ test_config_empty_path() {
 # Run all tests
 test_basic_config_load
 test_multiple_config_options
+test_config_journal_length_aliases
 test_config_unusable_format_rejected
 test_config_usable_format_accepted
 test_config_log_file

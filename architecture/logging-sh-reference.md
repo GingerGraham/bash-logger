@@ -403,13 +403,13 @@ These came up while mapping the code. They are candidates for review, not confir
 2. **Invalid level names were silently INFO (fixed).** `init_logger --level`, `--stderr-level` and `set_log_level` now print the warning the config parser prints, and still use INFO.
    `set_log_level` still returns 0, because making it return 1 would break scripts running under `set -e`.
 3. **Extra arguments to the level functions are dropped (checked).** `log_info first second` logs `first`. `log_to_journal` uses `$*`, so the two behave differently.
-4. **`log_to_journal` writes to every destination.** It passes `force_journal=true` but not `skip_file`, so the message also reaches the console and the file. The comment "Log a
-   single message directly to the system journal" could suggest journal only.
+4. **`log_to_journal` writes to every destination (comment fixed).** It passes `force_journal=true` but not `skip_file`, so the message also reaches the console and the file. The comment above
+   the function now says so.
 5. **Option value checks differed (fixed).** An empty value for `--name`, `--level`, `--stderr-level`, `--format`, `--tag`, `-F`, `--max-line-length` or `--max-journal-length` is now an
    error for every one of them, through `_require_nonempty_option_value`.
 6. **`docs/api-reference.md` lists 11 internal functions.** There are 66. Linking this document from there would close the gap.
-7. **Config key naming.** `journal-max-line-length` is the only alias that does not follow the `max_journal_length` pattern.
-8. **Two journal tag validators.** `_validate_config_journal_tag` and `_validate_journal_tag` differ only in message wording and the config line number.
+7. **Config key naming (fixed).** `journal-max-length` is now accepted as well. `journal-max-line-length` still works, and is not documented.
+8. **Two journal tag validators (fixed).** `_validate_journal_tag` takes an optional context and a `repair` flag, and the config parser calls it too. `_validate_config_journal_tag` is gone.
 
 ## Appendix A. Function index
 
