@@ -31,7 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-* **logging:** fix bugs [#187](https://github.com/GingerGraham/bash-logger/issues/187)-[#189](https://github.com/GingerGraham/bash-logger/issues/189) and [#196](https://github.com/GingerGraham/bash-logger/issues/196), add features [#192](https://github.com/GingerGraham/bash-logger/issues/192)-[#195](https://github.com/GingerGraham/bash-logger/issues/195) and [#197](https://github.com/GingerGraham/bash-logger/issues/197) ([#199](https://github.com/GingerGraham/bash-logger/issues/199))
+* **logging:**
+  * fix bugs:
+    * [#187](https://github.com/GingerGraham/bash-logger/issues/187)
+    * [#189](https://github.com/GingerGraham/bash-logger/issues/189)
+    * [#196](https://github.com/GingerGraham/bash-logger/issues/196)
+  * add features:
+    * [#192](https://github.com/GingerGraham/bash-logger/issues/192)
+    * [#195](https://github.com/GingerGraham/bash-logger/issues/195)
+    * [#197](https://github.com/GingerGraham/bash-logger/issues/197)
+    * ([#199](https://github.com/GingerGraham/bash-logger/issues/199))
 * **logging:** log all arguments passed to the level functions
 * **logging:** support mksh and run it in the CI shell matrix
 * **logging:** warn when an invalid log level falls back to INFO
