@@ -197,8 +197,9 @@ This project is currently maintained by [@GingerGraham](https://github.com/Ginge
 
 ### Development Workflow Transparency
 
-The maintainer uses a combination of GitHub Copilot and Claude to assist with development, code review, and test design/execution in this repository.
-Final decisions, validation, and responsibility for merged changes remain with the maintainer.
+The maintainer uses a combination of GitHub Copilot and Claude to assist with development, code review,
+and test design/execution in this repository. Final decisions, validation, and responsibility for merged changes
+remain with the maintainer.
 
 ## License
 
